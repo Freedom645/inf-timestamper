@@ -1,0 +1,66 @@
+from injector import inject
+from datetime import datetime
+from typing import Callable
+
+from domain.entity.stream import StreamSession
+from domain.port.stream_gateway import IStreamGateway
+from domain.value.stream import StreamEventType
+
+
+class StreamService:
+
+    @inject
+    def __init__(self, stream_gateway: IStreamGateway) -> None:
+        self._stream_gateway = stream_gateway
+        self._stream_gateway.observe_stream(self._on_stream_event)
+
+        self._session: StreamSession | None = None
+        self._callbacks: dict[StreamEventType, list[Callable[[], None]]] = {
+            type_: [] for type_ in StreamEventType
+        }
+
+    def connect(self, host: str, port: int, password: str) -> StreamSession:
+        if self._session is not None:
+            raise RuntimeError("すでに配信セッションが存在します。")
+
+        try:
+            self._session = StreamSession()
+            self._stream_gateway.connect(host, port, password)
+        except:
+            self._session = None
+            raise
+
+        return self._session
+
+    def disconnect(self) -> None:
+        if self._session is None:
+            raise RuntimeError("配信セッションが存在しません。")
+        try:
+            self._stream_gateway.disconnect()
+        except Exception as e:
+            # TODO: ロギング
+            print(f"配信切断時にエラーが発生しました: {e}")
+        finally:
+            self._session = None
+
+    def subscribe(
+        self, event_type: StreamEventType, callback: Callable[[StreamSession], None]
+    ) -> None:
+        self._callbacks[event_type].append(callback)
+
+    def unsubscribe(
+        self, event_type: StreamEventType, callback: Callable[[StreamSession], None]
+    ) -> None:
+        self._callbacks[event_type].remove(callback)
+
+    def _on_stream_event(self, event: StreamEventType):
+        if self._session is None:
+            return
+
+        if event == StreamEventType.STREAM_STARTED:
+            self._session.start(datetime.now())
+        elif event == StreamEventType.STREAM_ENDED:
+            self._session.end(datetime.now())
+
+        for callback in self._callbacks[event]:
+            callback(self._session)
