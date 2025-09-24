@@ -1,0 +1,60 @@
+name: Build and Release
+
+on:
+  push:
+    tags:
+      - "v*.*.*"
+
+jobs:
+  build:
+    runs-on: windows-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v5
+
+      - name: Set up Python
+        uses: actions/setup-python@v6
+        with:
+          python-version: "3.13"
+
+      - name: Install uv
+        run: pip install uv
+
+      - name: Install dependencies
+        run: uv sync --all-extras --dev
+
+      - name: Build with PyInstaller
+        run: |
+          uv run pyinstaller InfinitasTimestamper.spec
+
+      - name: Copy settings.json
+        run: |
+          mkdir dist/InfinitasTimestamper
+          copy dist\InfinitasTimestamper.exe dist\InfinitasTimestamper\
+
+      - name: Copy settings.json
+        run: |
+          copy app_resources\settings.json dist\InfinitasTimestamper\
+
+      - name: Create zip
+        run: |
+          powershell Compress-Archive -Path dist\InfinitasTimestamper\* -DestinationPath dist\InfinitasTimestamper.zip
+
+      - name: Upload release asset
+        uses: softprops/action-gh-release@v1
+        with:
+          tag_name: ${{ github.ref }}
+          release_name: Release ${{ github.ref }}
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Upload zip
+        uses: actions/upload-release-asset@v1
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          upload_url: ${{ steps.create_release.outputs.upload_url }}
+          asset_path: dist/InfinitasTimestamper.zip
+          asset_name: InfinitasTimestamper.zip
+          asset_content_type: application/zip

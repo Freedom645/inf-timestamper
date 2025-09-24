@@ -1,5 +1,6 @@
 import sys
 from injector import Module, Binder, singleton, provider
+from pathlib import Path
 
 from domain.value.base_path import BasePath
 from domain.entity.settings import Settings
@@ -24,10 +25,9 @@ class AppModule(Module):
     @provider
     def provide_base_path(self) -> BasePath:
         if getattr(sys, "frozen", False):
-            if hasattr(sys, "_MEIPASS"):
-                return BasePath(sys._MEIPASS)
-            return BasePath(sys.executable).parent
-        return BasePath(__file__).resolve().parent
+            return BasePath(Path(sys.executable).parent)
+
+        return BasePath(Path(__file__).resolve().parent / "app_resources_dev")
 
     @provider
     @singleton
