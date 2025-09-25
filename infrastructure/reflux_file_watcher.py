@@ -48,7 +48,6 @@ class RefluxFileWatcher(FileSystemEventHandler, IPlayWatcher):
         self._settings = settings
         self._file_accessor = file_accessor
         self._callbacks: dict[UUID, Callable[[WatchType, PlayData], None]] = {}
-        self._observer = Observer()
         self._last_status: str = PlayState.OFF.value
 
     def on_modified(self, event):
@@ -117,14 +116,13 @@ class RefluxFileWatcher(FileSystemEventHandler, IPlayWatcher):
             raise RuntimeError("latest.jsonの読み込みに失敗しました。") from e
 
     def start(self):
-        if self._observer._watches:
-            raise RuntimeError("すでに開始済みです。")
-
+        self._observer = Observer()
         self._observer.schedule(self, str(self._settings.reflux.directory))
         self._observer.start()
 
     def stop(self):
         self._observer.stop()
+        self._observer.unschedule_all()
 
     def subscribe(self, id: UUID, callback: Callable[[WatchType, PlayData], None]):
         self._callbacks[id] = callback
