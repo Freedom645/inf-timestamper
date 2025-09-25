@@ -33,4 +33,4 @@ class FileStreamSessionRepository(StreamSessionRepository):
         if not json_str:
             return None
 
-        return StreamSession[PlayData].model_validate_json()
+        return StreamSession[PlayData].model_validate_json(json_str)

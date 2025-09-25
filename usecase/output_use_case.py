@@ -1,3 +1,4 @@
+from pathlib import Path
 from injector import inject
 import pyperclip
 
@@ -25,3 +26,6 @@ class OutputUseCase:
 
     def save_stream_session(self, stream_session: StreamSession[PlayData]) -> None:
         self._stream_session_repository.save(stream_session)
+
+    def load_stream_session(self, file_path: Path) -> StreamSession[PlayData]:
+        return self._stream_session_repository.load(file_path)

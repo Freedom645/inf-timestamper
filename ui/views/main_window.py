@@ -3,6 +3,7 @@ from PySide6.QtWidgets import QMainWindow, QWidget, QVBoxLayout
 from PySide6.QtGui import QCloseEvent
 
 from core.version import __version__
+from domain.value.base_path import BasePath
 from ui.view_models.main_window_view_model import MainWindowViewModel
 from ui.views.play_recording_widget import PlayRecordingWidget
 from ui.views.setting_window import SettingsDialog
@@ -21,11 +22,11 @@ class MainWindow(QMainWindow):
         self.vm.get_settings()
 
         self.setWindowTitle(f"INFINITAS TimeStamper {__version__}")
-        self.setMinimumWidth(300)
+        self.setMinimumWidth(400)
         self.setMinimumHeight(500)
         file_menu = self.menuBar().addMenu("ファイル")
-        file_menu.addAction("記録を開く")
-        self.menuBar().addAction("設定", self.open_settings)
+        file_menu.addAction("記録を開く", self.play_recording_widget.open_recording)
+        file_menu.addAction("設定", self.open_settings)
 
         central_widget = QWidget()
         self.setCentralWidget(central_widget)

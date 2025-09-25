@@ -1,3 +1,4 @@
+from pathlib import Path
 from injector import inject
 from PySide6.QtCore import Signal, QObject
 from datetime import datetime
@@ -15,6 +16,7 @@ class PlayRecordingViewModel(QObject):
     start_time_changed = Signal(object)
     timestamp_count_changed = Signal(int)
     timestamp_upsert_signal = Signal(StreamSession[PlayData], Timestamp[PlayData])
+    play_record_overwrite_signal = Signal(StreamSession[PlayData])
 
     @inject
     def __init__(
@@ -44,6 +46,20 @@ class PlayRecordingViewModel(QObject):
         self, session: StreamSession[PlayData], timestamp: Timestamp[PlayData]
     ) -> None:
         self.timestamp_upsert_signal.emit(session, timestamp)
+
+    def on_open_recording(self, file_path: Path) -> None:
+        """記録ファイルを開く"""
+        try:
+            session = self._output_use_case.load_stream_session(file_path)
+        except Exception as e:
+            self.status_changed.emit(f"記録ファイルの読み込みに失敗しました（{e}）")
+            raise e
+
+        self._stream_session = session
+        self.recording_button_changed.emit(False, "記録開始")
+        self.status_changed.emit("記録ファイル読み込み完了")
+
+        self.play_record_overwrite_signal.emit(session)
 
     def on_start_recording_button(self) -> None:
         """記録開始ボタン押下"""
@@ -100,7 +116,10 @@ class PlayRecordingViewModel(QObject):
 
     def on_close(self) -> None:
         """ウィジェットが閉じられるときの処理"""
-        if self._stream_session:
+        if (
+            self._stream_session
+            and self._stream_session.stream_status == StreamStatus.LIVE
+        ):
             self._play_recording_use_case.stop_recording(self, self._stream_session)
             self._output_use_case.save_stream_session(self._stream_session)
             self._stream_session = None
