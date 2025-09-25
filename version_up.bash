@@ -10,13 +10,14 @@ fi
 PART=$1
 
 # バージョンを更新
-uv version "$PART"
+uv version --bump "$PART"
 
 # 更新後のバージョンを取得
-VERSION=$(uv version)
+VERSION=$(uv version --short)
 
-# コミットに含める（pyproject.toml の変更をコミット）
+# コミット対象
 git add pyproject.toml
+git add uv.lock
 git commit -m "Bump version to v$VERSION"
 
 # Annotated タグを作成
