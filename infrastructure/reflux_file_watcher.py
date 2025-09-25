@@ -3,6 +3,7 @@ from enum import StrEnum
 from typing import Callable
 from pathlib import Path
 from uuid import UUID
+from time import sleep
 from watchdog.observers import Observer
 from watchdog.events import FileSystemEventHandler
 
@@ -60,6 +61,9 @@ class RefluxFileWatcher(FileSystemEventHandler, IPlayWatcher):
             return
 
         try:
+            # FIXME: ファイル書き込みにラグがあるため、少し待つ
+            sleep(0.3)
+
             if status == PlayState.PLAY.value:
                 play_data = PlayData(
                     title=self._file_accessor.load_as_text(
