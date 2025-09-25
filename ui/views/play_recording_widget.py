@@ -51,6 +51,7 @@ class PlayRecordingWidget(QWidget):
         self.copy_btn.setMinimumSize(80, 40)
         self.copy_btn.setSizePolicy(QSizePolicy.Policy.Fixed, QSizePolicy.Policy.Fixed)
         self.copy_btn.clicked.connect(self._vm.on_copy_timestamps_to_clipboard)
+        self._vm.copy_button_changed.connect(self._on_copy_button_changed)
 
         btn_layout = QHBoxLayout()
         btn_layout.addWidget(self.start_btn)
@@ -107,6 +108,10 @@ class PlayRecordingWidget(QWidget):
     def _on_recording_button_changed(self, enabled: bool, text: str):
         self.start_btn.setEnabled(enabled)
         self.start_btn.setText(text)
+
+    def _on_copy_button_changed(self, enabled: bool, text: str):
+        self.copy_btn.setEnabled(enabled)
+        self.copy_btn.setText(text)
 
     def _on_status_changed(self, status: str):
         self.status_label.setText(f"状態: {status}")
