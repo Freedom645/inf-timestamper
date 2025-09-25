@@ -1,9 +1,11 @@
+from datetime import datetime, timedelta
 from PySide6.QtWidgets import (
     QDialog,
     QLabel,
     QPushButton,
     QHBoxLayout,
     QLineEdit,
+    QTextEdit,
     QFileDialog,
     QComboBox,
     QGridLayout,
@@ -13,16 +15,114 @@ from PySide6.QtWidgets import (
 from PySide6.QtGui import QIntValidator
 from PySide6.QtCore import QThread
 from pathlib import Path
-from domain.entity.settings import Settings, SettingObs, SettingReflux, SettingYoutube
+from domain.entity.game import ChartDetail, PlayData, PlayResult
+from domain.entity.game_format import FormatID, GameTimestampFormatter
+from domain.entity.settings import (
+    SettingTimestampFormat,
+    Settings,
+    SettingObs,
+    SettingReflux,
+    SettingYoutube,
+)
+from domain.entity.stream import StreamSession, Timestamp
+from domain.value.game import DJ_LEVEL, ClearLamp
 from infrastructure.obs_connector_v5 import OBSConnectorV5
 from ui.views.utils import FunctionRunner
+
+
+def create_sample_data() -> StreamSession[PlayData]:
+    start_time = datetime.now()
+    timestamps = [
+        Timestamp[PlayData](
+            occurred_at=start_time + timedelta(minutes=2, seconds=4),
+            data=PlayData(
+                title="BLUE ZONE",
+                level=7,
+                chart_detail=ChartDetail(
+                    artist="Natsh & TAKAKI",
+                    genre="SPEED RAVE",
+                    bpm=123,
+                    difficulty="SPN",
+                    note_count=654,
+                ),
+                play_result=PlayResult(
+                    dj_level=DJ_LEVEL.AAA,
+                    lamp=ClearLamp.PERFECT,
+                    p_great=512,
+                    great=42,
+                    good=0,
+                    bad=0,
+                    poor=3,
+                    fast=20,
+                    slow=22,
+                    combo_break=0,
+                ),
+            ),
+        ),
+        Timestamp[PlayData](
+            occurred_at=start_time + timedelta(minutes=4, seconds=31),
+            data=PlayData(
+                title="天空の日没",
+                level=10,
+                chart_detail=ChartDetail(
+                    artist="Cube",
+                    genre="ANTHEM",
+                    bpm=188,
+                    difficulty="SPH",
+                    note_count=990,
+                ),
+                play_result=PlayResult(
+                    dj_level=DJ_LEVEL.A,
+                    lamp=ClearLamp.CLEAR,
+                    p_great=624,
+                    great=243,
+                    good=77,
+                    bad=25,
+                    poor=21,
+                    fast=173,
+                    slow=193,
+                    combo_break=18,
+                ),
+            ),
+        ),
+        Timestamp[PlayData](
+            occurred_at=start_time + timedelta(minutes=7, seconds=12),
+            data=PlayData(
+                title="Sample Paradise",
+                level=12,
+                chart_detail=ChartDetail(
+                    artist="Mamon",
+                    genre="HARD TRANCE",
+                    bpm=213,
+                    difficulty="SPL",
+                    note_count=2184,
+                ),
+                play_result=PlayResult(
+                    dj_level=DJ_LEVEL.A,
+                    lamp=ClearLamp.FAILED,
+                    p_great=1987,
+                    great=123,
+                    good=43,
+                    bad=14,
+                    poor=18,
+                    fast=107,
+                    slow=90,
+                    combo_break=20,
+                ),
+            ),
+        ),
+    ]
+    return StreamSession[PlayData](start_time=start_time, timestamps=timestamps)
+
+
+SAMPLE_SESSION_DATA = create_sample_data()
 
 
 class SettingsDialog(QDialog):
     def __init__(self, parent):
         super().__init__(parent)
         self.setWindowTitle("設定")
-        self.setMinimumWidth(400)
+        self.setMinimumWidth(500)
         self._setting = Settings()
 
         # OBS
@@ -30,6 +130,7 @@ class SettingsDialog(QDialog):
         self.obs_port = QLineEdit("")
         self.obs_port.setValidator(QIntValidator(0, 65535))
         self.obs_password = QLineEdit("")
+        self.obs_password.setEchoMode(QLineEdit.EchoMode.Password)
         self.obs_test_btn = QPushButton("接続テスト")
         self.obs_test_btn.clicked.connect(self._test_obs_connect)
         self.obs_test_btn.setFixedWidth(100)
@@ -42,6 +143,26 @@ class SettingsDialog(QDialog):
         dir_layout = QHBoxLayout()
         dir_layout.addWidget(self.reflux_dir)
         dir_layout.addWidget(browse_btn)
+
+        # タイムスタンプ
+        self.format_template = QLineEdit("")
+        self.format_id_combo = QComboBox()
+        for fmt in FormatID:
+            display = f"{fmt.logical_name()} (${fmt.value})"
+            self.format_id_combo.addItem(display, userData=fmt)
+        add_button = QPushButton("追加")
+        add_button.setFixedWidth(100)
+        add_button.clicked.connect(self.insert_format_template)
+        format_layout = QHBoxLayout()
+        format_layout.addWidget(self.format_id_combo)
+        format_layout.addWidget(add_button)
+
+        format_preview_layout = QHBoxLayout()
+        self.format_preview = QTextEdit("")
+        self.format_preview.setReadOnly(True)
+        self.format_template.textChanged.connect(self.update_preview)
+        format_preview_layout.addWidget(QLabel("プレビュー"))
+        format_preview_layout.addWidget(self.format_preview)
 
         # YouTube 認証方式
         self.youtube_auth = QComboBox()
@@ -67,6 +188,10 @@ class SettingsDialog(QDialog):
             (self.obs_test_btn,),
             (QLabel("Reflux"),),
             (QLabel("フォルダ"), dir_layout),
+            (QLabel("タイムスタンプフォーマット"),),
+            (self.format_template,),
+            (format_layout,),
+            (format_preview_layout,),
             # (QLabel("YouTube"),),
             # (QLabel("認証方式"), self.youtube_auth),
             (btn_layout,),
@@ -130,12 +255,33 @@ class SettingsDialog(QDialog):
         if dir_path:
             self.reflux_dir.setText(dir_path)
 
+    def insert_format_template(self):
+        cursor_pos = self.format_template.cursorPosition()
+        text = self.format_template.text()
+
+        fmt: FormatID = self.format_id_combo.currentData()
+        placeholder = f"${fmt}"
+
+        new_text = text[:cursor_pos] + placeholder + text[cursor_pos:]
+        self.format_template.setText(new_text)
+        self.format_template.setCursorPosition(cursor_pos + len(placeholder))
+
+    def update_preview(self):
+        formatter = GameTimestampFormatter(self.format_template.text())
+
+        rendered = "\n".join(
+            formatter.format(SAMPLE_SESSION_DATA, timestamp)
+            for timestamp in SAMPLE_SESSION_DATA.timestamps
+        )
+        self.format_preview.setPlainText(rendered)
+
     def exec(self, setting: Settings):
         self._setting = setting
         self.obs_host.setText(setting.obs.host)
         self.obs_port.setText(str(setting.obs.port))
         self.obs_password.setText(setting.obs.password)
         self.reflux_dir.setText(str(setting.reflux.directory))
+        self.format_template.setText(setting.timestamp.template)
         self.youtube_auth.setCurrentText(setting.youtube.auth_type)
 
         return super().exec()
@@ -151,6 +297,7 @@ class SettingsDialog(QDialog):
                 password=self.obs_password.text(),
             ),
             reflux=SettingReflux(directory=Path(self.reflux_dir.text())),
+            timestamp=SettingTimestampFormat(template=self.format_template.text()),
             youtube=SettingYoutube(auth_type=""),
         )
         self.accept()

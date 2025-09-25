@@ -32,6 +32,35 @@ class FormatID(StrEnum):
     def __str__(self):
         return self.value
 
+    def logical_name(self) -> str:
+        return FORMAT_ID_LOGICAL_NAMES.get(self, self.value)
+
+
+FORMAT_ID_LOGICAL_NAMES = {
+    FormatID.TIMESTAMP: "タイムスタンプ",
+    FormatID.TITLE: "タイトル",
+    FormatID.LEVEL: "レベル",
+    FormatID.ARTIST: "アーティスト",
+    FormatID.GENRE: "ジャンル",
+    FormatID.BPM: "BPM",
+    FormatID.DIFFICULTY: "難易度",
+    FormatID.NOTE_COUNT: "ノーツ数",
+    FormatID.DJ_LEVEL: "DJ LEVEL",
+    FormatID.CLEAR_LAMP: "クリアランプ",
+    FormatID.EX_SCORE: "EXスコア",
+    FormatID.MISS_COUNT: "ミスカウント",
+    FormatID.MISS_POOR: "見逃しPOOR",
+    FormatID.EMPTY_POOR: "空POOR",
+    FormatID.P_GREAT: "P-GREAT",
+    FormatID.GREAT: "GREAT",
+    FormatID.GOOD: "GOOD",
+    FormatID.BAD: "BAD",
+    FormatID.POOR: "POOR",
+    FormatID.FAST: "FAST",
+    FormatID.SLOW: "SLOW",
+    FormatID.COMBO_BREAK: "COMBO BREAK",
+}
+
 
 class GameTimestampFormatter:
     def __init__(
@@ -52,7 +81,7 @@ class GameTimestampFormatter:
                 print(f"フォーマットに失敗 [{identifier}]: {e}")
                 mapping[identifier.value] = self.default_value.get(identifier, "")
 
-        return self.template.substitute(mapping)
+        return self.template.safe_substitute(mapping)
 
     def _extract_value(
         self,
