@@ -14,6 +14,7 @@ from PySide6.QtGui import QIntValidator
 from PySide6.QtCore import QThread
 from pathlib import Path
 from domain.entity.settings import Settings, SettingObs, SettingReflux, SettingYoutube
+from infrastructure.obs_connector_v5 import OBSConnectorV5
 from ui.views.utils import FunctionRunner
 
 
@@ -84,22 +85,26 @@ class SettingsDialog(QDialog):
                     )
         self.setLayout(grid_layout)
 
-    def mock_test_obs_connection(self):
-        import time
-        import random
-
-        time.sleep(1)
-        if random.random() > 0.5:
-            return "接続成功しました！"
-        else:
-            return "接続失敗: OBS が見つかりません"
+    def test_obs_connection(self):
+        connector = OBSConnectorV5()
+        try:
+            obs_version, scene_name = connector.test_connect(
+                host=self.obs_host.text(),
+                port=int(self.obs_port.text()),
+                password=self.obs_password.text(),
+            )
+            return (
+                f"接続成功: OBSバージョン {obs_version}, プレビューシーン {scene_name}"
+            )
+        except Exception as e:
+            return f"接続失敗: {e}"
 
     def _test_obs_connect(self):
         self.obs_test_btn.setEnabled(False)
-        self.obs_test_btn.setText("接続中…")
+        self.obs_test_btn.setText("接続中...")
 
         self._thread = QThread()
-        self._runner = FunctionRunner(self.mock_test_obs_connection)
+        self._runner = FunctionRunner(self.test_obs_connection)
         self._runner.moveToThread(self._thread)
 
         self._thread.started.connect(self._runner.run)
@@ -111,9 +116,14 @@ class SettingsDialog(QDialog):
         self._thread.start()
 
     def _on_test_finished(self, success: bool, msg: str):
+        if not self.isVisible():
+            return
+
         self.obs_test_btn.setEnabled(True)
         self.obs_test_btn.setText("接続テスト")
         QMessageBox.information(self, "接続テスト結果", msg)
+        self._thread = None
+        self._runner = None
 
     def _browse_dir(self):
         dir_path = QFileDialog.getExistingDirectory(self, "Refluxフォルダを選択")
@@ -146,7 +156,7 @@ class SettingsDialog(QDialog):
         self.accept()
 
     def closeEvent(self, arg__1):
-        if hasattr(self, "_thread") and self._thread.isRunning():
-            self._thread.quit()
-            self._thread.wait()
+        if hasattr(self, "_thread") and self._thread is not None:
+            if self._thread.isRunning():
+                self._thread.quit()
         return super().closeEvent(arg__1)

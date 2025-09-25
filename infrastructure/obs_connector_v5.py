@@ -41,6 +41,20 @@ class OBSConnectorV5(IStreamGateway):
         self.event_client.disconnect()
         self.req_client.disconnect()
 
+    def test_connect(self, host: str, port: int, password: str):
+        try:
+            req_client = obsV5.ReqClient(
+                host=host, port=port, password=password, timeout=5
+            )
+            scene_name = req_client.get_current_preview_scene().scene_name
+            obs_version = req_client.get_version().obs_version
+            req_client.disconnect()
+            return obs_version, scene_name
+        except TimeoutError as e:
+            raise ConnectionError(
+                "[TimeoutError] OBSへの接続に失敗しました。OBSが起動しているか、ホスト・ポート・パスワードが正しいか確認してください。"
+            ) from e
+
     def observe_stream(self, callback: Callable[[StreamEventType], None]) -> None:
         self._callbacks.append(callback)
 

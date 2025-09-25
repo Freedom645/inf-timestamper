@@ -13,4 +13,4 @@ class FunctionRunner(QObject):
         try:
             self.finished.emit(True, self.func())
         except Exception as e:
-            self.finished.emit(False, self.func())
+            self.finished.emit(False, str(e))

@@ -101,7 +101,8 @@ class PlayRecordingWidget(QWidget):
             dir=str(dir),
             filter="記録ファイル (*.json);;すべてのファイル (*)",
         )
-        self._vm.on_open_recording(Path(file_path))
+        if file_path:
+            self._vm.on_open_recording(Path(file_path))
 
     def _on_recording_button_changed(self, enabled: bool, text: str):
         self.start_btn.setEnabled(enabled)
