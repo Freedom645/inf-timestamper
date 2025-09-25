@@ -213,13 +213,15 @@ class SettingsDialog(QDialog):
     def test_obs_connection(self):
         connector = OBSConnectorV5()
         try:
-            obs_version, scene_name = connector.test_connect(
+            obs_version, program_scene = connector.test_connect(
                 host=self.obs_host.text(),
                 port=int(self.obs_port.text()),
                 password=self.obs_password.text(),
             )
             return (
-                f"接続成功: OBSバージョン {obs_version}, プレビューシーン {scene_name}"
+                f"接続成功\n"
+                f"・OBSバージョン：{obs_version}\n"
+                f"・表示シーン：{program_scene}"
             )
         except Exception as e:
             return f"接続失敗: {e}"

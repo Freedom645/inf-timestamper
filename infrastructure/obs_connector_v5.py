@@ -46,10 +46,12 @@ class OBSConnectorV5(IStreamGateway):
             req_client = obsV5.ReqClient(
                 host=host, port=port, password=password, timeout=5
             )
-            scene_name = req_client.get_current_preview_scene().scene_name
+            program_scene = (
+                req_client.get_current_program_scene().current_program_scene_name
+            )
             obs_version = req_client.get_version().obs_version
             req_client.disconnect()
-            return obs_version, scene_name
+            return obs_version, program_scene
         except TimeoutError as e:
             raise ConnectionError(
                 "[TimeoutError] OBSへの接続に失敗しました。OBSが起動しているか、ホスト・ポート・パスワードが正しいか確認してください。"
