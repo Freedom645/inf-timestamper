@@ -33,10 +33,6 @@ jobs:
           mkdir dist/InfinitasTimestamper
           copy dist\InfinitasTimestamper.exe dist\InfinitasTimestamper\
 
-      - name: Copy settings.json
-        run: |
-          copy app_resources\settings.json dist\InfinitasTimestamper\
-
       - name: Create zip
         run: |
           powershell Compress-Archive -Path dist\InfinitasTimestamper\* -DestinationPath dist\InfinitasTimestamper.zip
