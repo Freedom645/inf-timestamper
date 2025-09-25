@@ -75,7 +75,11 @@ class PlayRecordingUseCase:
     def stop_recording(
         self, presenter: PlayRecordingPresenter, stream_session: StreamSession[PlayData]
     ) -> None:
-        self._play_watcher.unsubscribe(stream_session.id)
+        try:
+            self._play_watcher.stop()
+        finally:
+            self._play_watcher.unsubscribe(stream_session.id)
+
         try:
             self._stream_service.disconnect()
         finally:

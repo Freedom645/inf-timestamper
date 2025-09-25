@@ -106,3 +106,7 @@ class PlayRecordingWidget(QWidget):
 
         self._timestamp_item_map[timestamp.id] = QListWidgetItem(label)
         self.list_widget.addItem(self._timestamp_item_map[timestamp.id])
+
+    def closeEvent(self, event):
+        self._vm.on_close()
+        return super().closeEvent(event)

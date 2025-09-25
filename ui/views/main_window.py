@@ -23,6 +23,8 @@ class MainWindow(QMainWindow):
         self.setWindowTitle(f"INFINITAS TimeStamper {__version__}")
         self.setMinimumWidth(300)
         self.setMinimumHeight(500)
+        file_menu = self.menuBar().addMenu("ファイル")
+        file_menu.addAction("記録を開く")
         self.menuBar().addAction("設定", self.open_settings)
 
         central_widget = QWidget()
@@ -37,4 +39,7 @@ class MainWindow(QMainWindow):
             self.vm.update_setting(dialog.get_setting())
 
     def closeEvent(self, event: QCloseEvent):
+        for child in self.findChildren(QWidget):
+            if child is not self:
+                child.close()
         event.accept()

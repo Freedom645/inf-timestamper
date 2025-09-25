@@ -36,6 +36,7 @@ class StreamService:
         if self._session is None:
             raise RuntimeError("配信セッションが存在しません。")
         try:
+            self._session.end(datetime.now())
             self._stream_gateway.disconnect()
         except Exception as e:
             # TODO: ロギング

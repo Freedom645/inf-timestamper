@@ -66,8 +66,8 @@ class SettingsDialog(QDialog):
             (self.obs_test_btn,),
             (QLabel("Reflux"),),
             (QLabel("フォルダ"), dir_layout),
-            (QLabel("YouTube"),),
-            (QLabel("認証方式"), self.youtube_auth),
+            # (QLabel("YouTube"),),
+            # (QLabel("認証方式"), self.youtube_auth),
             (btn_layout,),
         ]
         grid_layout = QGridLayout()
@@ -141,7 +141,7 @@ class SettingsDialog(QDialog):
                 password=self.obs_password.text(),
             ),
             reflux=SettingReflux(directory=Path(self.reflux_dir.text())),
-            youtube=SettingYoutube(auth_type=self.youtube_auth.currentText()),
+            youtube=SettingYoutube(auth_type=""),
         )
         self.accept()
 

@@ -72,8 +72,15 @@ class PlayRecordingViewModel(QObject):
             self.status_changed.emit(f"停止失敗（{e}）")
         else:
             self.status_changed.emit("停止完了")
-        finally:
-            self.recording_button_changed.emit(True, "記録開始")
+
+        try:
+            self._output_use_case.save_stream_session(self._stream_session)
+        except Exception as e:
+            # TODO: ロギング
+            print(f"配信セッションの保存に失敗しました: {e}")
+
+        self._stream_session = None
+        self.recording_button_changed.emit(True, "記録開始")
 
     def on_copy_timestamps_to_clipboard(self) -> None:
         """タイムスタンプをクリップボードにコピー"""
@@ -90,3 +97,10 @@ class PlayRecordingViewModel(QObject):
             self.status_changed.emit("OBS完了（配信終了）")
         else:
             self.status_changed.emit("-")
+
+    def on_close(self) -> None:
+        """ウィジェットが閉じられるときの処理"""
+        if self._stream_session:
+            self._play_recording_use_case.stop_recording(self, self._stream_session)
+            self._output_use_case.save_stream_session(self._stream_session)
+            self._stream_session = None
