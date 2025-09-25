@@ -51,6 +51,7 @@ class PlayRecordingViewModel(QObject):
         """記録ファイルを開く"""
         try:
             session = self._output_use_case.load_stream_session(file_path)
+            session.stream_status = StreamStatus.ENDED
         except Exception as e:
             self.status_changed.emit(f"記録ファイルの読み込みに失敗しました（{e}）")
             raise e

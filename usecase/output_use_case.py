@@ -3,6 +3,8 @@ from injector import inject
 import pyperclip
 
 from domain.entity.game import PlayData
+from domain.entity.game_format import GameTimestampFormatter
+from domain.entity.settings import Settings
 from domain.entity.stream import StreamSession
 from usecase.repository.stream_session_repository import StreamSessionRepository
 
@@ -10,16 +12,21 @@ from usecase.repository.stream_session_repository import StreamSessionRepository
 class OutputUseCase:
 
     @inject
-    def __init__(self, stream_session_repository: StreamSessionRepository):
+    def __init__(
+        self, stream_session_repository: StreamSessionRepository, settings: Settings
+    ):
         self._stream_session_repository = stream_session_repository
+        self.settings = settings
 
     def copy_to_clipboard(self, stream_session: StreamSession[PlayData]) -> None:
         if stream_session.start_time is None:
-            raise ValueError("配信が開始していません。")
+            raise ValueError("配信が開始されていません。")
+
+        formatter = GameTimestampFormatter(self.settings.timestamp.template)
 
         lines: list[str] = []
-        for delta, timestamp in stream_session.get_timestamp_list():
-            line = f"{delta} {timestamp.data.title} [Lv.{timestamp.data.level}]"
+        for timestamp in stream_session.timestamps:
+            line = formatter.format(stream_session, timestamp)
             lines.append(line)
 
         pyperclip.copy("\n".join(lines))

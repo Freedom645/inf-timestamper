@@ -16,6 +16,8 @@ from datetime import datetime
 from injector import inject
 
 from domain.entity.game import PlayData
+from domain.entity.game_format import GameTimestampFormatter
+from domain.entity.settings import Settings
 from domain.entity.stream import StreamSession, Timestamp
 from domain.value.base_path import BasePath
 from ui.view_models.play_recording_view_model import PlayRecordingViewModel
@@ -29,11 +31,13 @@ class PlayRecordingWidget(QWidget):
         self,
         play_recording_view_model: PlayRecordingViewModel,
         base_path: BasePath,
+        settings: Settings,
         parent=None,
     ):
         super().__init__(parent)
         self._vm = play_recording_view_model
         self.base_path = base_path
+        self.settings = settings
 
         self._thread: QThread | None = None
         self._timestamp_item_map: dict[UUID, QListWidgetItem] = {}
@@ -116,11 +120,8 @@ class PlayRecordingWidget(QWidget):
     def _on_timestamp_upsert_signal(
         self, session: StreamSession[PlayData], timestamp: Timestamp[PlayData]
     ):
-        delta = session.get_elapse(timestamp)
-        label = f"{delta} {timestamp.data.title} [Lv.{timestamp.data.level}]"
-
-        if res := timestamp.data.play_result:
-            label += f" (DJ LEVEL: {res.dj_level.name}, EXスコア: {res.ex_score}, ランプ: {res.lamp.name})"
+        formatter = GameTimestampFormatter(self.settings.timestamp.template)
+        label = formatter.format(session, timestamp)
 
         if timestamp.id in self._timestamp_item_map:
             item = self._timestamp_item_map[timestamp.id]
