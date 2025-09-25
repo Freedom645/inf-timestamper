@@ -32,7 +32,7 @@ class AppModule(Module):
         if getattr(sys, "frozen", False):
             return BasePath(Path(sys.executable).parent)
 
-        return BasePath(Path(__file__).resolve().parent / "app_resources_dev")
+        return BasePath(Path(__file__).resolve().parent.parent / "app_resources_dev")
 
     @provider
     @singleton

@@ -1,3 +1,4 @@
+import logging
 from pathlib import Path
 from injector import inject
 from PySide6.QtCore import Signal, QObject
@@ -21,10 +22,12 @@ class PlayRecordingViewModel(QObject):
     @inject
     def __init__(
         self,
+        logger: logging.Logger,
         play_recording_use_case: PlayRecordingUseCase,
         output_use_case: OutputUseCase,
     ) -> None:
         QObject.__init__(self)
+        self._logger = logger
         self._play_recording_use_case = play_recording_use_case
         self._output_use_case = output_use_case
         self._stream_session: StreamSession[PlayData] | None = None
@@ -90,11 +93,7 @@ class PlayRecordingViewModel(QObject):
         else:
             self.status_changed.emit("停止完了")
 
-        try:
-            self._output_use_case.save_stream_session(self._stream_session)
-        except Exception as e:
-            # TODO: ロギング
-            print(f"配信セッションの保存に失敗しました: {e}")
+        self._output_use_case.save_stream_session(self._stream_session)
 
         self._stream_session = None
         self.recording_button_changed.emit(True, "記録開始")

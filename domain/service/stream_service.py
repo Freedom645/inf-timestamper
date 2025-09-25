@@ -1,3 +1,4 @@
+import logging
 from injector import inject
 from datetime import datetime
 from typing import Callable
@@ -21,7 +22,7 @@ class StreamService:
 
     def connect(self, host: str, port: int, password: str) -> StreamSession:
         if self._session is not None:
-            raise RuntimeError("すでに配信セッションが存在します。")
+            raise RuntimeError("すでに配信セッションが存在します")
 
         try:
             self._session = StreamSession()
@@ -34,13 +35,10 @@ class StreamService:
 
     def disconnect(self) -> None:
         if self._session is None:
-            raise RuntimeError("配信セッションが存在しません。")
+            raise RuntimeError("配信セッションが存在しません")
         try:
             self._session.end(datetime.now())
             self._stream_gateway.disconnect()
-        except Exception as e:
-            # TODO: ロギング
-            print(f"配信切断時にエラーが発生しました: {e}")
         finally:
             self._session = None
 

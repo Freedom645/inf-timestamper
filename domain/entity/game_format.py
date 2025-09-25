@@ -1,3 +1,4 @@
+import logging
 from enum import StrEnum
 from string import Template
 
@@ -76,9 +77,8 @@ class GameTimestampFormatter:
                 mapping[identifier.value] = self._extract_value(
                     identifier, session, timestamp
                 )
-            except Exception as e:
-                # TODO: ログ出力
-                print(f"フォーマットに失敗 [{identifier}]: {e}")
+            except Exception:
+                # FIXME: 握り潰しちゃっているので検知方法など考えたい
                 mapping[identifier.value] = self.default_value.get(identifier, "")
 
         return self.template.safe_substitute(mapping)
