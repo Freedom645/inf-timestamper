@@ -1,3 +1,4 @@
+import logging
 from injector import inject
 from enum import StrEnum
 from typing import Callable
@@ -5,7 +6,7 @@ from pathlib import Path
 from uuid import UUID
 from time import sleep
 from watchdog.observers import Observer
-from watchdog.events import FileSystemEventHandler
+from watchdog.events import FileSystemEventHandler, DirModifiedEvent, FileModifiedEvent
 
 from domain.entity.game import ChartDetail, PlayData, PlayResult
 from domain.entity.settings import Settings
@@ -44,23 +45,28 @@ class PlayState(StrEnum):
 class RefluxFileWatcher(FileSystemEventHandler, IPlayWatcher):
 
     @inject
-    def __init__(self, settings: Settings, file_accessor: FileAccessor) -> None:
+    def __init__(
+        self, settings: Settings, file_accessor: FileAccessor, logger: logging.Logger
+    ) -> None:
         FileSystemEventHandler.__init__(self)
         self._settings = settings
         self._file_accessor = file_accessor
+        self._logger = logger
+
         self._callbacks: dict[UUID, Callable[[WatchType, PlayData], None]] = {}
         self._last_status: str = PlayState.OFF.value
 
     def on_modified(self, event):
-        src_path = Path(event.src_path)
-        if src_path.name != "playstate.txt":
-            return
-
-        status = read_text(src_path)
-        if status == self._last_status:
-            return
-
         try:
+            src_path = Path(event.src_path)
+            if not src_path.is_file() or src_path.name != "playstate.txt":
+                return
+
+            status = read_text(src_path)
+            if status == self._last_status:
+                # Modifyイベントは多重で発生するため、状態が変化していなければ無視する
+                return
+
             # FIXME: ファイル書き込みにラグがあるため、少し待つ
             sleep(0.3)
 
@@ -83,6 +89,9 @@ class RefluxFileWatcher(FileSystemEventHandler, IPlayWatcher):
                     self._settings.reflux.directory / "latest.json"
                 )
                 self._notify(WatchType.MODIFY, play_data)
+        except Exception as e:
+            self._logger.error(f"RefluxFileWatcherの処理に失敗しました")
+            self._logger.exception(e)
         finally:
             self._last_status = status
 
@@ -120,6 +129,7 @@ class RefluxFileWatcher(FileSystemEventHandler, IPlayWatcher):
             raise RuntimeError("latest.jsonの読み込みに失敗しました。") from e
 
     def start(self):
+        self._last_status = PlayState.OFF.value
         self._observer = Observer()
         self._observer.schedule(self, str(self._settings.reflux.directory))
         self._observer.start()
@@ -127,6 +137,7 @@ class RefluxFileWatcher(FileSystemEventHandler, IPlayWatcher):
     def stop(self):
         self._observer.stop()
         self._observer.unschedule_all()
+        self._observer = None
 
     def subscribe(self, id: UUID, callback: Callable[[WatchType, PlayData], None]):
         self._callbacks[id] = callback
