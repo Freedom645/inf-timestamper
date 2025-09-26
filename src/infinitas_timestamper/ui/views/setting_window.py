@@ -125,6 +125,9 @@ class SettingsDialog(QDialog):
         self.setMinimumWidth(500)
         self._setting = Settings()
 
+        self._thread: QThread | None = None
+        self._runner: FunctionRunner | None = None
+
         # OBS
         self.obs_host = QLineEdit("")
         self.obs_port = QLineEdit("")
@@ -210,7 +213,7 @@ class SettingsDialog(QDialog):
                     )
         self.setLayout(grid_layout)
 
-    def test_obs_connection(self):
+    def test_obs_connection(self) -> str:
         connector = OBSConnectorV5()
         try:
             obs_version, program_scene = connector.test_connect(
@@ -226,7 +229,7 @@ class SettingsDialog(QDialog):
         except Exception as e:
             return f"接続失敗: {e}"
 
-    def _test_obs_connect(self):
+    def _test_obs_connect(self) -> None:
         self.obs_test_btn.setEnabled(False)
         self.obs_test_btn.setText("接続中...")
 
@@ -242,7 +245,7 @@ class SettingsDialog(QDialog):
 
         self._thread.start()
 
-    def _on_test_finished(self, success: bool, msg: str):
+    def _on_test_finished(self, success: bool, msg: str) -> None:
         if not self.isVisible():
             return
 
@@ -252,12 +255,12 @@ class SettingsDialog(QDialog):
         self._thread = None
         self._runner = None
 
-    def _browse_dir(self):
+    def _browse_dir(self) -> None:
         dir_path = QFileDialog.getExistingDirectory(self, "Refluxフォルダを選択")
         if dir_path:
             self.reflux_dir.setText(dir_path)
 
-    def insert_format_template(self):
+    def insert_format_template(self) -> None:
         cursor_pos = self.format_template.cursorPosition()
         text = self.format_template.text()
 
@@ -268,7 +271,7 @@ class SettingsDialog(QDialog):
         self.format_template.setText(new_text)
         self.format_template.setCursorPosition(cursor_pos + len(placeholder))
 
-    def update_preview(self):
+    def update_preview(self) -> None:
         formatter = GameTimestampFormatter(self.format_template.text())
 
         rendered = "\n".join(
@@ -277,7 +280,7 @@ class SettingsDialog(QDialog):
         )
         self.format_preview.setPlainText(rendered)
 
-    def open_dialog(self, setting: Settings):
+    def open_dialog(self, setting: Settings) -> int:
         self._setting = setting
         self.obs_host.setText(setting.obs.host)
         self.obs_port.setText(str(setting.obs.port))
@@ -291,7 +294,7 @@ class SettingsDialog(QDialog):
     def get_setting(self) -> Settings:
         return self._setting
 
-    def save_setting(self):
+    def save_setting(self) -> None:
         self._setting = Settings(
             obs=SettingObs(
                 host=self.obs_host.text(),
@@ -304,7 +307,7 @@ class SettingsDialog(QDialog):
         )
         self.accept()
 
-    def closeEvent(self, arg__1: QCloseEvent):
+    def closeEvent(self, arg__1: QCloseEvent) -> None:
         if hasattr(self, "_thread") and self._thread is not None:
             if self._thread.isRunning():
                 self._thread.quit()

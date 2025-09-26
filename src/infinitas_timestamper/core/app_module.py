@@ -29,18 +29,17 @@ from infrastructure.in_memory_current_stream_session_repository import (
 
 
 class AppModule(Module):
-
     def configure(self, binder: Binder) -> None:
-        binder.bind(SettingsRepository, to=FileSettingsRepository, scope=singleton)
+        binder.bind(SettingsRepository, to=FileSettingsRepository, scope=singleton)  # type: ignore
         binder.bind(
-            StreamSessionRepository[PlayData],
+            StreamSessionRepository[PlayData],  # type: ignore
             to=FileStreamSessionRepository,
             scope=singleton,
         )
-        binder.bind(IPlayWatcher, to=RefluxFileWatcher, scope=singleton)
-        binder.bind(IStreamGateway, to=OBSConnectorV5, scope=singleton)
+        binder.bind(IPlayWatcher, to=RefluxFileWatcher, scope=singleton)  # type: ignore
+        binder.bind(IStreamGateway, to=OBSConnectorV5, scope=singleton)  # type: ignore
         binder.bind(
-            CurrentStreamSessionRepository[PlayData],
+            CurrentStreamSessionRepository[PlayData],  # type: ignore
             to=InMemoryCurrentStreamSessionRepository,
             scope=singleton,
         )
@@ -60,20 +59,14 @@ class AppModule(Module):
 
     @singleton
     @provider
-    def provide_stream_service(
-        self, stream_gateway: IStreamGateway
-    ) -> StreamService[PlayData]:
+    def provide_stream_service(self, stream_gateway: IStreamGateway) -> StreamService[PlayData]:
         return StreamService[PlayData](stream_gateway=stream_gateway)
 
     @singleton
     @provider
-    def _provide_play_widget_factory(
-        self, injector: Injector
-    ) -> PlayRecordingWidgetFactory:
+    def _provide_play_widget_factory(self, injector: Injector) -> PlayRecordingWidgetFactory:
         def factory(parent: QWidget | None = None) -> PlayRecordingWidget:
             # Injectorに解決させつつ、parentを渡してUIライフサイクルに載せる
-            return injector.create_object(
-                PlayRecordingWidget, additional_kwargs={"parent": parent}
-            )
+            return injector.create_object(PlayRecordingWidget, additional_kwargs={"parent": parent})
 
         return factory

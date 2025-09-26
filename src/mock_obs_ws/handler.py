@@ -74,7 +74,7 @@ async def handle_client(websocket: websockets.ServerConnection) -> None:
         print("Client disconnected")
 
 
-async def event_dispatcher():
+async def event_dispatcher() -> None:
     """コンソール入力でイベントを発行"""
     loop = asyncio.get_event_loop()
     while True:
@@ -105,7 +105,7 @@ async def event_dispatcher():
             print("Unknown command. Use: start / stop / scene <name>")
 
 
-async def main():
+async def main() -> None:
     await websockets.serve(handle_client, "localhost", 4455)
     print(f"Mock OBS WebSocket server running on ws://localhost:4455")
     await event_dispatcher()  # コンソール待機

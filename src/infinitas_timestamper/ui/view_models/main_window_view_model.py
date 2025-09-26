@@ -12,7 +12,7 @@ class MainWindowViewModel(QObject):
         QObject.__init__(self)
         self._settings_use_case = settings_use_case
 
-    def get_settings(self):
+    def get_settings(self) -> Settings:
         return self._settings_use_case.load_settings()
 
     def update_setting(self, settings: Settings) -> None:

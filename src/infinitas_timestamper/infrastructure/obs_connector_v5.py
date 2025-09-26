@@ -17,7 +17,7 @@ EVENT_MAP = {
 
 
 class OBSConnectorV5(IStreamGateway):
-    def __init__(self):
+    def __init__(self) -> None:
         self._callbacks: list[Callable[[StreamEventType], None]] = []
         self._logger = logging.getLogger("app")
 
@@ -25,12 +25,12 @@ class OBSConnectorV5(IStreamGateway):
         self.req_client = obsV5.ReqClient(host=host, port=port, password=password)
         self.event_client = obsV5.EventClient(host=host, port=port, password=password)
 
-        def on_stream_state_changed(status: Any):
+        def on_stream_state_changed(status: Any) -> None:
             for state, event_enum in EVENT_MAP.items():
                 if status.output_state == state:
                     self._notify(event_enum)
 
-        def on_exit_started(*_):
+        def on_exit_started(data: Any) -> None:
             self.event_client.unsubscribe()
 
         if self._is_streaming():
@@ -69,7 +69,7 @@ class OBSConnectorV5(IStreamGateway):
     def observe_stream(self, callback: Callable[[StreamEventType], None]) -> None:
         self._callbacks.append(callback)
 
-    def _notify(self, evt: StreamEventType):
+    def _notify(self, evt: StreamEventType) -> None:
         for callback in self._callbacks:
             callback(evt)
 

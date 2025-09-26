@@ -6,6 +6,7 @@ from pathlib import Path
 from uuid import UUID
 from time import sleep
 from watchdog.observers import Observer
+from watchdog.observers.api import BaseObserver
 from watchdog.events import FileSystemEventHandler, DirModifiedEvent, FileModifiedEvent
 
 from domain.entity.game_entity import ChartDetail, PlayData, PlayResult
@@ -77,20 +78,18 @@ class PlayState(StrEnum):
 
 
 class RefluxFileWatcher(FileSystemEventHandler, IPlayWatcher):
-
     @inject
-    def __init__(
-        self, settings: Settings, file_accessor: FileAccessor, logger: logging.Logger
-    ) -> None:
+    def __init__(self, settings: Settings, file_accessor: FileAccessor, logger: logging.Logger) -> None:
         FileSystemEventHandler.__init__(self)
         self._settings = settings
         self._file_accessor = file_accessor
         self._logger = logger
 
+        self._observer: BaseObserver | None = None
         self._callbacks: dict[UUID, Callable[[WatchType, PlayData], None]] = {}
         self._last_status: str = PlayState.OFF.value
 
-    def on_modified(self, event: DirModifiedEvent | FileModifiedEvent):
+    def on_modified(self, event: DirModifiedEvent | FileModifiedEvent) -> None:
         status = self._last_status
         try:
             if isinstance(event.src_path, bytes):
@@ -111,22 +110,13 @@ class RefluxFileWatcher(FileSystemEventHandler, IPlayWatcher):
 
             if status == PlayState.PLAY.value:
                 play_data = PlayData(
-                    title=self._file_accessor.load_as_text(
-                        src_path.parent / "title.txt", default=""
-                    ),
-                    level=self._file_accessor.load_as_integer(
-                        src_path.parent / "level.txt"
-                    ),
+                    title=self._file_accessor.load_as_text(src_path.parent / "title.txt", default=""),
+                    level=self._file_accessor.load_as_integer(src_path.parent / "level.txt"),
                 )
                 self._notify(WatchType.REGISTER, play_data)
 
-            if (
-                self._last_status == PlayState.PLAY.value
-                and status != PlayState.PLAY.value
-            ):
-                play_data = self._read_latest_json(
-                    self._settings.reflux.directory / "latest.json"
-                )
+            if self._last_status == PlayState.PLAY.value and status != PlayState.PLAY.value:
+                play_data = self._read_latest_json(self._settings.reflux.directory / "latest.json")
                 self._notify(WatchType.MODIFY, play_data)
         except Exception as e:
             self._logger.error("RefluxFileWatcherの処理に失敗しました")
@@ -167,13 +157,13 @@ class RefluxFileWatcher(FileSystemEventHandler, IPlayWatcher):
         except Exception as e:
             raise RuntimeError("latest.jsonの読み込みに失敗しました。") from e
 
-    def start(self):
+    def start(self) -> None:
         self._last_status = PlayState.OFF.value
         self._observer = Observer()
         self._observer.schedule(self, str(self._settings.reflux.directory))
         self._observer.start()
 
-    def stop(self):
+    def stop(self) -> None:
         if self._observer is None:
             self._logger.warning("Observerが存在しません")
             return
@@ -181,13 +171,13 @@ class RefluxFileWatcher(FileSystemEventHandler, IPlayWatcher):
         self._observer.unschedule_all()
         self._observer = None
 
-    def subscribe(self, id: UUID, callback: Callable[[WatchType, PlayData], None]):
+    def subscribe(self, id: UUID, callback: Callable[[WatchType, PlayData], None]) -> None:
         self._callbacks[id] = callback
 
-    def unsubscribe(self, id: UUID):
+    def unsubscribe(self, id: UUID) -> None:
         if id in self._callbacks:
             del self._callbacks[id]
 
-    def _notify(self, watch_type: WatchType, record: PlayData):
+    def _notify(self, watch_type: WatchType, record: PlayData) -> None:
         for callback in self._callbacks.values():
             callback(watch_type, record)

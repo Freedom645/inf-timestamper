@@ -16,7 +16,7 @@ class FileAccessor:
         with open(path, "r", encoding=ENCODING) as f:
             return json.load(f)
 
-    def save_as_json(self, path: Path, data: Any):
+    def save_as_json(self, path: Path, data: Any) -> None:
         with open(path, "w", encoding=ENCODING) as f:
             json.dump(data, f, ensure_ascii=False, default=lambda e: str(e))
 
@@ -37,6 +37,6 @@ class FileAccessor:
             except ValueError:
                 return default
 
-    def save_as_text(self, path: Path, data: str):
+    def save_as_text(self, path: Path, data: str) -> None:
         with open(path, "w", encoding=ENCODING) as f:
             f.write(data)

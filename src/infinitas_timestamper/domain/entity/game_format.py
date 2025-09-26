@@ -29,7 +29,7 @@ class FormatID(StrEnum):
     SLOW = "slow"
     COMBO_BREAK = "combo_break"
 
-    def __str__(self):
+    def __str__(self) -> str:
         return self.value
 
     def logical_name(self) -> str:

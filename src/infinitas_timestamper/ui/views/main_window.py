@@ -35,12 +35,12 @@ class MainWindow(QMainWindow):
 
         self.main_layout.addWidget(self.play_recording_widget)
 
-    def open_settings(self):
+    def open_settings(self) -> None:
         dialog = SettingsDialog(self)
         if dialog.open_dialog(setting=self.vm.get_settings()):
             self.vm.update_setting(dialog.get_setting())
 
-    def closeEvent(self, event: QCloseEvent):
+    def closeEvent(self, event: QCloseEvent) -> None:
         for child in self.findChildren(QWidget):
             if child is not self:
                 child.close()

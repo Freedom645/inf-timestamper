@@ -11,10 +11,10 @@ EVENT_MAP: dict[Any, StreamEventType] = {
 
 
 class OBSConnectorV4(IStreamGateway):
-    def __init__(self):
+    def __init__(self) -> None:
         self._callbacks: list[Callable[[StreamEventType], None]] = []
 
-    def connect(self, host: str, port: int, password: str):
+    def connect(self, host: str, port: int, password: str) -> None:
         self.ws = obsws(host, port, password)
         self.ws.connect()
 
@@ -22,7 +22,7 @@ class OBSConnectorV4(IStreamGateway):
             self._notify(StreamEventType.STREAM_STARTED)
         self.ws.register(self._on_obs_event)  # type: ignore
 
-    def disconnect(self):
+    def disconnect(self) -> None:
         self.ws.disconnect()
 
     def observe_stream(self, callback: Callable[[StreamEventType], None]) -> None:
@@ -31,11 +31,11 @@ class OBSConnectorV4(IStreamGateway):
     def _is_streaming(self) -> bool:
         return self.ws.call(requests.GetStreamingStatus()).getStreaming()  # type: ignore
 
-    def _on_obs_event(self, event):  # type: ignore
+    def _on_obs_event(self, event) -> None:  # type: ignore
         for obs_event_class, event_enum in EVENT_MAP.items():
             if isinstance(event, obs_event_class):
                 self._notify(event_enum)
 
-    def _notify(self, evt: StreamEventType):
+    def _notify(self, evt: StreamEventType) -> None:
         for callback in self._callbacks:
             callback(evt)

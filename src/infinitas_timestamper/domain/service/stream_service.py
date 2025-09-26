@@ -57,7 +57,7 @@ class StreamService(Generic[T]):
     ) -> None:
         self._callbacks[event_type].remove(callback)
 
-    def _on_stream_event(self, event: StreamEventType):
+    def _on_stream_event(self, event: StreamEventType) -> None:
         if self._session is None:
             return
 

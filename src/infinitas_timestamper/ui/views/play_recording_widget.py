@@ -34,7 +34,7 @@ class PlayRecordingWidget(QWidget):
         base_path: BasePath,
         settings: Settings,
         parent: QWidget | None = None,
-    ):
+    ) -> None:
         super().__init__(parent)
         self._vm = play_recording_view_model
         self.base_path = base_path
@@ -79,7 +79,7 @@ class PlayRecordingWidget(QWidget):
         self._vm.timestamp_upsert_signal.connect(self._on_timestamp_upsert_signal)
         self._vm.play_record_overwrite_signal.connect(self._on_overwrite_signal)
 
-    def toggle_recording(self):
+    def toggle_recording(self) -> None:
         if self.start_btn.text() == "記録開始":
             self._thread = QThread()
             self._worker = FunctionRunner(self._vm.on_start_recording_button)
@@ -92,7 +92,7 @@ class PlayRecordingWidget(QWidget):
         else:
             self._vm.on_stop_recording_button()
 
-    def open_recording(self):
+    def open_recording(self) -> None:
         dir = self.base_path / "sessions"
         if not dir.exists():
             dir = dir.parent
@@ -106,27 +106,27 @@ class PlayRecordingWidget(QWidget):
         if file_path:
             self._vm.on_open_recording(Path(file_path))
 
-    def _on_recording_button_changed(self, enabled: bool, text: str):
+    def _on_recording_button_changed(self, enabled: bool, text: str) -> None:
         self.start_btn.setEnabled(enabled)
         self.start_btn.setText(text)
 
-    def _on_copy_button_changed(self, enabled: bool, text: str):
+    def _on_copy_button_changed(self, enabled: bool, text: str) -> None:
         self.copy_btn.setEnabled(enabled)
         self.copy_btn.setText(text)
 
-    def _on_status_changed(self, status: str):
+    def _on_status_changed(self, status: str) -> None:
         self.status_label.setText(f"状態: {status}")
 
-    def _on_start_time_changed(self, start_time: datetime | None):
+    def _on_start_time_changed(self, start_time: datetime | None) -> None:
         text = start_time.strftime("%Y-%m-%d %H:%M:%S") if start_time else "-"
         self.start_time_label.setText(f"配信開始: {text}")
 
-    def _on_timestamp_count_changed(self, count: int):
+    def _on_timestamp_count_changed(self, count: int) -> None:
         self.timestamp_count_label.setText(f"タイムスタンプ数: {count}")
 
     def _on_timestamp_upsert_signal(
         self, session: StreamSession[PlayData], timestamp: Timestamp[PlayData]
-    ):
+    ) -> None:
         formatter = GameTimestampFormatter(self.settings.timestamp.template)
         label = formatter.format(session, timestamp)
 
@@ -138,7 +138,7 @@ class PlayRecordingWidget(QWidget):
         self._timestamp_item_map[timestamp.id] = QListWidgetItem(label)
         self.list_widget.addItem(self._timestamp_item_map[timestamp.id])
 
-    def _on_overwrite_signal(self, session: StreamSession[PlayData]):
+    def _on_overwrite_signal(self, session: StreamSession[PlayData]) -> None:
         self._on_start_time_changed(session.start_time)
         self._on_timestamp_count_changed(session.count_timestamp())
         self._timestamp_item_map.clear()
@@ -146,6 +146,6 @@ class PlayRecordingWidget(QWidget):
         for timestamp in session.timestamps:
             self._vm.timestamp_upsert_signal.emit(session, timestamp)
 
-    def closeEvent(self, event: QCloseEvent):
+    def closeEvent(self, event: QCloseEvent) -> None:
         self._vm.on_close()
         return super().closeEvent(event)

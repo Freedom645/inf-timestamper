@@ -9,7 +9,7 @@ class FunctionRunner(QObject):
         super().__init__()
         self.func = func
 
-    def run(self):
+    def run(self) -> None:
         try:
             self.finished.emit(True, self.func())
         except Exception as e:

@@ -50,7 +50,7 @@ class PlayRecordingUseCase:
                 password=self._settings.obs.password,
             )
 
-            def callback(watch_type: WatchType, play_data: PlayData):
+            def callback(watch_type: WatchType, play_data: PlayData) -> None:
                 self._logger.info("タイムスタンプイベント受信")
                 if watch_type == WatchType.REGISTER:
                     # タイムスタンプの新規登録
