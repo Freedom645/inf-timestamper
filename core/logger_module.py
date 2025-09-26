@@ -12,29 +12,55 @@ class LoggerModule(Module):
         logs_dir = base_path / "logs"
         logs_dir.mkdir(exist_ok=True)
 
-        log_file = logs_dir / f"{datetime.now().strftime('%Y-%m-%d_%H-%M-%S')}.log"
+        timestamp = datetime.now().strftime("%Y-%m-%d_%H-%M-%S")
+        app_log_file = logs_dir / f"app_{timestamp}.log"
+        external_log_file = logs_dir / f"external_{timestamp}.log"
 
-        logger = logging.getLogger("app")
-        logger.setLevel(logging.DEBUG)
+        # === アプリ用ロガー ===
+        app_logger = logging.getLogger("app")
+        app_logger.setLevel(logging.INFO)
 
-        # すでにハンドラが付いていれば重複回避
-        if not logger.handlers:
-            # --- FileHandler ---
-            file_handler = logging.FileHandler(log_file, encoding="utf-8")
-            file_handler.setLevel(logging.DEBUG)
+        if not app_logger.handlers:
+            # アプリ用 FileHandler
+            app_file_handler = logging.FileHandler(app_log_file, encoding="utf-8")
+            app_file_handler.setLevel(logging.INFO)
 
-            # --- StreamHandler (console) ---
+            # コンソール出力
             console_handler = logging.StreamHandler()
-            console_handler.setLevel(logging.INFO)
+            console_handler.setLevel(logging.DEBUG)
 
-            formatter = logging.Formatter(
+            app_formatter = logging.Formatter(
                 fmt="%(asctime)s [%(levelname)s] %(name)s: %(message)s",
                 datefmt="%Y-%m-%d %H:%M:%S",
             )
-            file_handler.setFormatter(formatter)
-            console_handler.setFormatter(formatter)
+            app_file_handler.setFormatter(app_formatter)
+            console_handler.setFormatter(app_formatter)
 
-            logger.addHandler(file_handler)
-            logger.addHandler(console_handler)
+            app_logger.addHandler(app_file_handler)
+            app_logger.addHandler(console_handler)
 
-        return logger
+            # アプリのログを root に伝播させない
+            app_logger.propagate = False
+
+        # === 外部ライブラリ用ロガー (root) ===
+        root_logger = logging.getLogger()
+        root_logger.setLevel(logging.WARNING)  # デフォルトは warning 以上
+        if not any(
+            isinstance(h, logging.FileHandler)
+            and h.baseFilename == str(external_log_file)
+            for h in root_logger.handlers
+        ):
+            external_file_handler = logging.FileHandler(
+                external_log_file, encoding="utf-8"
+            )
+            external_file_handler.setLevel(logging.DEBUG)
+
+            external_formatter = logging.Formatter(
+                fmt="%(asctime)s [%(levelname)s] %(name)s: %(message)s",
+                datefmt="%Y-%m-%d %H:%M:%S",
+            )
+            external_file_handler.setFormatter(external_formatter)
+
+            root_logger.addHandler(external_file_handler)
+
+        return app_logger
