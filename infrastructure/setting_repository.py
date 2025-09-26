@@ -1,8 +1,7 @@
 from injector import inject
-from dataclasses import asdict
 
 from domain.value.base_path import BasePath
-from domain.entity.settings import Settings, SettingObs, SettingReflux, SettingYoutube
+from domain.entity.settings import Settings
 from usecase.repository.settings_repository import SettingsRepository
 from infrastructure.file_accessor import FileAccessor
 
@@ -15,7 +14,7 @@ class FileSettingsRepository(SettingsRepository):
         self._file_path = base_path / "settings.json"
 
     def load(self) -> Settings:
-        data = self._file_accessor.load_as_text(self._file_path)
+        data = self._file_accessor.load_as_text(self._file_path, default=None)
         if data is None:
             return Settings()
 

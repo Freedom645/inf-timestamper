@@ -3,9 +3,8 @@ from PySide6.QtWidgets import QMainWindow, QWidget, QVBoxLayout
 from PySide6.QtGui import QCloseEvent
 
 from core.version import __version__
-from domain.value.base_path import BasePath
+from ui.factory.play_recording_widget_factory import PlayRecordingWidgetFactory
 from ui.view_models.main_window_view_model import MainWindowViewModel
-from ui.views.play_recording_widget import PlayRecordingWidget
 from ui.views.setting_window import SettingsDialog
 
 
@@ -13,11 +12,13 @@ class MainWindow(QMainWindow):
 
     @inject
     def __init__(
-        self, vm: MainWindowViewModel, play_recording_widget: PlayRecordingWidget
+        self,
+        vm: MainWindowViewModel,
+        play_recording_widget_factory: PlayRecordingWidgetFactory,
     ):
         super().__init__()
         self.vm = vm
-        self.play_recording_widget = play_recording_widget
+        self.play_recording_widget = play_recording_widget_factory(parent=self)
 
         self.vm.get_settings()
 
@@ -36,7 +37,7 @@ class MainWindow(QMainWindow):
 
     def open_settings(self):
         dialog = SettingsDialog(self)
-        if dialog.exec(setting=self.vm.get_settings()):
+        if dialog.open_dialog(setting=self.vm.get_settings()):
             self.vm.update_setting(dialog.get_setting())
 
     def closeEvent(self, event: QCloseEvent):

@@ -12,7 +12,7 @@ from PySide6.QtWidgets import (
     QWidget,
     QMessageBox,
 )
-from PySide6.QtGui import QIntValidator
+from PySide6.QtGui import QIntValidator, QCloseEvent
 from PySide6.QtCore import QThread
 from pathlib import Path
 from domain.entity.game import ChartDetail, PlayData, PlayResult
@@ -119,7 +119,7 @@ SAMPLE_SESSION_DATA = create_sample_data()
 
 
 class SettingsDialog(QDialog):
-    def __init__(self, parent):
+    def __init__(self, parent: QWidget):
         super().__init__(parent)
         self.setWindowTitle("設定")
         self.setMinimumWidth(500)
@@ -277,7 +277,7 @@ class SettingsDialog(QDialog):
         )
         self.format_preview.setPlainText(rendered)
 
-    def exec(self, setting: Settings):
+    def open_dialog(self, setting: Settings):
         self._setting = setting
         self.obs_host.setText(setting.obs.host)
         self.obs_port.setText(str(setting.obs.port))
@@ -304,7 +304,7 @@ class SettingsDialog(QDialog):
         )
         self.accept()
 
-    def closeEvent(self, arg__1):
+    def closeEvent(self, arg__1: QCloseEvent):
         if hasattr(self, "_thread") and self._thread is not None:
             if self._thread.isRunning():
                 self._thread.quit()

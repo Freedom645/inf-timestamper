@@ -16,7 +16,7 @@ class OutputUseCase:
     def __init__(
         self,
         logger: logging.Logger,
-        stream_session_repository: StreamSessionRepository,
+        stream_session_repository: StreamSessionRepository[PlayData],
         settings: Settings,
     ):
         self._logger = logger
@@ -54,8 +54,13 @@ class OutputUseCase:
 
     def load_stream_session(self, file_path: Path) -> StreamSession[PlayData]:
         try:
-            return self._stream_session_repository.load(file_path)
+            session = self._stream_session_repository.load(file_path)
         except Exception as e:
             self._logger.error("配信セッションの読み込みに失敗しました")
             self._logger.exception(e)
             raise e
+
+        if session is None:
+            raise RuntimeError(f"配信セッションの読み込みに失敗しました {file_path}")
+
+        return session

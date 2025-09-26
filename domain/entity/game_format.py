@@ -1,4 +1,3 @@
-import logging
 from enum import StrEnum
 from string import Template
 
@@ -70,7 +69,9 @@ class GameTimestampFormatter:
         self.template = Template(format_str)
         self.default_value = default_value
 
-    def format(self, session: StreamSession, timestamp: Timestamp[PlayData]) -> str:
+    def format(
+        self, session: StreamSession[PlayData], timestamp: Timestamp[PlayData]
+    ) -> str:
         mapping: dict[str, str] = {}
         for identifier in FormatID:
             try:
@@ -86,7 +87,7 @@ class GameTimestampFormatter:
     def _extract_value(
         self,
         identifier: FormatID,
-        session: StreamSession,
+        session: StreamSession[PlayData],
         timestamp: Timestamp[PlayData],
     ) -> str:
         match identifier:
@@ -96,6 +97,8 @@ class GameTimestampFormatter:
                 return timestamp.data.title
             case FormatID.LEVEL:
                 return str(timestamp.data.level)
+            case _:
+                pass
 
         if timestamp.data.chart_detail:
             match identifier:
@@ -109,6 +112,8 @@ class GameTimestampFormatter:
                     return timestamp.data.chart_detail.difficulty
                 case FormatID.NOTE_COUNT:
                     return str(timestamp.data.chart_detail.note_count)
+                case _:
+                    pass
 
         if timestamp.data.play_result:
             match identifier:
@@ -140,5 +145,6 @@ class GameTimestampFormatter:
                     return str(timestamp.data.play_result.slow)
                 case FormatID.COMBO_BREAK:
                     return str(timestamp.data.play_result.combo_break)
-
+                case _:
+                    pass
         return ""

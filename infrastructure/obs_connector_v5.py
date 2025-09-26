@@ -1,4 +1,4 @@
-from typing import Callable
+from typing import Any, Callable
 import obsws_python as obsV5
 
 from domain.port.stream_gateway import IStreamGateway
@@ -23,35 +23,38 @@ class OBSConnectorV5(IStreamGateway):
         self.req_client = obsV5.ReqClient(host=host, port=port, password=password)
         self.event_client = obsV5.EventClient(host=host, port=port, password=password)
 
-        def on_stream_state_changed(status):
+        def on_stream_state_changed(status: Any):
             for state, event_enum in EVENT_MAP.items():
                 if status.output_state == state:
                     self._notify(event_enum)
 
-        def on_exit_started(*args):
+        def on_exit_started(*_):
             self.event_client.unsubscribe()
 
         if self._is_streaming():
             self._notify(StreamEventType.STREAM_STARTED)
 
-        self.event_client.callback.register([on_stream_state_changed, on_exit_started])
+        self.event_client.callback.register([on_stream_state_changed, on_exit_started])  # type: ignore
         self.event_client.subscribe()
 
     def disconnect(self) -> None:
         self.event_client.disconnect()
         self.req_client.disconnect()
 
-    def test_connect(self, host: str, port: int, password: str):
+    def test_connect(self, host: str, port: int, password: str) -> tuple[str, str]:
         try:
             req_client = obsV5.ReqClient(
                 host=host, port=port, password=password, timeout=5
             )
-            program_scene = (
-                req_client.get_current_program_scene().current_program_scene_name
-            )
-            obs_version = req_client.get_version().obs_version
+
+            res = req_client.get_current_program_scene()
+            program_scene: Any = res.current_program_scene_name  # type: ignore
+
+            res = req_client.get_version()
+            obs_version: Any = res.obs_version  # type: ignore
             req_client.disconnect()
-            return obs_version, program_scene
+
+            return obs_version, program_scene  # type: ignore
         except TimeoutError as e:
             raise ConnectionError(
                 "[TimeoutError] OBSへの接続に失敗しました。OBSが起動しているか、ホスト・ポート・パスワードが正しいか確認してください。"
@@ -66,4 +69,4 @@ class OBSConnectorV5(IStreamGateway):
 
     def _is_streaming(self) -> bool:
         status = self.req_client.get_stream_status()
-        return status.output_active
+        return status.output_active  # type: ignore

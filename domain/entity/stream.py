@@ -67,6 +67,9 @@ class StreamSession(BaseModel, Generic[T]):
         self.timestamps.append(timestamp)
 
     def get_elapse(self, timestamp: Timestamp[T]) -> timedelta:
+        if self.start_time is None:
+            raise ValueError("配信が開始していません")
+
         delta_seconds = (timestamp.occurred_at - self.start_time).total_seconds()
         return timedelta(seconds=int(delta_seconds))
 

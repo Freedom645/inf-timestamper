@@ -9,14 +9,14 @@ from usecase.repository.stream_session_repository import StreamSessionRepository
 from infrastructure.file_accessor import FileAccessor
 
 
-class FileStreamSessionRepository(StreamSessionRepository):
+class FileStreamSessionRepository(StreamSessionRepository[PlayData]):
 
     @inject
     def __init__(self, file_accessor: FileAccessor, base_path: BasePath):
         self._file_accessor = file_accessor
         self._sessions_path = base_path / "sessions"
 
-    def save(self, stream_session: StreamSession):
+    def save(self, stream_session: StreamSession[PlayData]) -> None:
         if not self._sessions_path.exists():
             self._sessions_path.mkdir(exist_ok=True)
 
@@ -28,7 +28,7 @@ class FileStreamSessionRepository(StreamSessionRepository):
 
         self._file_accessor.save_as_text(file_path, json_str)
 
-    def load(self, path: Path):
+    def load(self, path: Path) -> StreamSession[PlayData] | None:
         json_str = self._file_accessor.load_as_text(path)
         if not json_str:
             return None

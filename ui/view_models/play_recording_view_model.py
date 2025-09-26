@@ -2,7 +2,6 @@ import logging
 from pathlib import Path
 from injector import inject
 from PySide6.QtCore import Signal, QObject, QTimer
-from time import sleep
 
 from domain.entity.game import PlayData
 from domain.entity.stream import StreamSession, Timestamp
@@ -63,13 +62,15 @@ class PlayRecordingViewModel(QObject):
             self.status_changed.emit(f"記録ファイルの読み込みに失敗しました（{e}）")
             raise e
 
+        self._logger.debug(f"読み込んだセッション: {session}")
+
         self._stream_session = session
         self.recording_button_changed.emit(False, "記録開始")
         self.status_changed.emit("記録ファイル読み込み完了")
 
         self.play_record_overwrite_signal.emit(session)
 
-    def on_start_recording_button(self) -> None:
+    def on_start_recording_button(self) -> str:
         """記録開始ボタン押下"""
         try:
             self.recording_button_changed.emit(False, "記録開始（開始中...）")
@@ -87,9 +88,13 @@ class PlayRecordingViewModel(QObject):
 
         self.recording_button_changed.emit(True, "記録停止")
         self._emit_status_changed(self._stream_session.stream_status)
+        return "-"
 
     def on_stop_recording_button(self) -> None:
         """記録停止ボタン押下"""
+        if self._stream_session is None:
+            self._logger.error("配信セッションが存在しません")
+            return
         self.recording_button_changed.emit(False, "記録停止（停止中...）")
         self.status_changed.emit("停止中...")
         try:

@@ -1,7 +1,7 @@
 import logging
 from injector import inject
 from enum import StrEnum
-from typing import Callable
+from typing import Callable, TypedDict
 from pathlib import Path
 from uuid import UUID
 from time import sleep
@@ -13,6 +13,40 @@ from domain.entity.settings import Settings
 from domain.port.play_watcher import IPlayWatcher, WatchType
 from domain.value.game import DJ_LEVEL, ClearLamp
 from infrastructure.file_accessor import FileAccessor
+
+
+class LatestJson(TypedDict):
+    apikey: str
+    songid: str
+    title: str
+    title2: str
+    bpm: str
+    artist: str
+    genre: str
+    unlockType: str
+    notecount: str
+    diff: str
+    level: str
+    unlocked: str
+    grade: str
+    gaugepercent: str
+    lamp: str
+    exscore: str
+    prematureend: str
+    pgreat: str
+    great: str
+    good: str
+    bad: str
+    poor: str
+    fast: str
+    slow: str
+    combobreak: str
+    playtype: str
+    style: str
+    style2: str
+    gauge: str
+    assist: str
+    range: str
 
 
 def read_text(path: Path, default: str = "") -> str:
@@ -30,7 +64,7 @@ def parse_int(text: str, default: int = -1) -> int:
         return default
 
 
-KEY_MAP = {
+KEY_MAP: dict[str, Callable[[Path], str | int]] = {
     "title": lambda path: read_text(path / "title.txt"),
     "level": lambda path: parse_int(read_text(path / "level.txt")),
 }
@@ -56,9 +90,14 @@ class RefluxFileWatcher(FileSystemEventHandler, IPlayWatcher):
         self._callbacks: dict[UUID, Callable[[WatchType, PlayData], None]] = {}
         self._last_status: str = PlayState.OFF.value
 
-    def on_modified(self, event):
+    def on_modified(self, event: DirModifiedEvent | FileModifiedEvent):
+        status = self._last_status
         try:
-            src_path = Path(event.src_path)
+            if isinstance(event.src_path, bytes):
+                src_path = Path(event.src_path.decode())
+            else:
+                src_path = Path(event.src_path)
+
             if not src_path.is_file() or src_path.name != "playstate.txt":
                 return
 
@@ -73,7 +112,7 @@ class RefluxFileWatcher(FileSystemEventHandler, IPlayWatcher):
             if status == PlayState.PLAY.value:
                 play_data = PlayData(
                     title=self._file_accessor.load_as_text(
-                        src_path.parent / "title.txt"
+                        src_path.parent / "title.txt", default=""
                     ),
                     level=self._file_accessor.load_as_integer(
                         src_path.parent / "level.txt"
@@ -97,7 +136,7 @@ class RefluxFileWatcher(FileSystemEventHandler, IPlayWatcher):
 
     def _read_latest_json(self, directory: Path) -> PlayData:
         try:
-            data = self._file_accessor.load_as_json(directory)
+            data: LatestJson = self._file_accessor.load_as_json(directory)  # type: ignore
 
             chart_detail = ChartDetail(
                 artist=data.get("artist", ""),
@@ -121,7 +160,7 @@ class RefluxFileWatcher(FileSystemEventHandler, IPlayWatcher):
 
             return PlayData(
                 title=data.get("title", ""),
-                level=data.get("level", -1),
+                level=int(data.get("level", "-1")),
                 chart_detail=chart_detail,
                 play_result=play_result,
             )
@@ -135,6 +174,9 @@ class RefluxFileWatcher(FileSystemEventHandler, IPlayWatcher):
         self._observer.start()
 
     def stop(self):
+        if self._observer is None:
+            self._logger.warning("Observerが存在しません")
+            return
         self._observer.stop()
         self._observer.unschedule_all()
         self._observer = None

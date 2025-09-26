@@ -16,7 +16,7 @@ class PlayRecordingUseCase:
         self,
         logger: logging.Logger,
         settings: Settings,
-        stream_service: StreamService,
+        stream_service: StreamService[PlayData],
         play_watcher: IPlayWatcher,
     ) -> None:
         self._logger = logger
@@ -62,6 +62,12 @@ class PlayRecordingUseCase:
                 elif watch_type == WatchType.MODIFY:
                     # タイムスタンプのデータ更新
                     latest_timestamp = stream_session.get_latest_timestamp()
+                    if latest_timestamp is None:
+                        self._logger.warning(
+                            "タイムスタンプの更新イベントを受信しましたが、タイムスタンプが存在しません "
+                            f"play_data: {play_data.model_json_schema()}"
+                        )
+                        return
 
                     if latest_timestamp.data.equals_without_result(play_data):
                         latest_timestamp.data = play_data

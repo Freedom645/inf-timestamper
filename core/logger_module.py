@@ -18,7 +18,7 @@ class LoggerModule(Module):
 
         # === アプリ用ロガー ===
         app_logger = logging.getLogger("app")
-        app_logger.setLevel(logging.INFO)
+        app_logger.setLevel(logging.DEBUG)
 
         if not app_logger.handlers:
             # アプリ用 FileHandler

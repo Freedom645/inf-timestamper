@@ -11,6 +11,7 @@ from PySide6.QtWidgets import (
     QFileDialog,
     QHBoxLayout,
 )
+from PySide6.QtGui import QCloseEvent
 from PySide6.QtCore import QThread
 from datetime import datetime
 from injector import inject
@@ -32,7 +33,7 @@ class PlayRecordingWidget(QWidget):
         play_recording_view_model: PlayRecordingViewModel,
         base_path: BasePath,
         settings: Settings,
-        parent=None,
+        parent: QWidget | None = None,
     ):
         super().__init__(parent)
         self._vm = play_recording_view_model
@@ -145,6 +146,6 @@ class PlayRecordingWidget(QWidget):
         for timestamp in session.timestamps:
             self._vm.timestamp_upsert_signal.emit(session, timestamp)
 
-    def closeEvent(self, event):
+    def closeEvent(self, event: QCloseEvent):
         self._vm.on_close()
         return super().closeEvent(event)
