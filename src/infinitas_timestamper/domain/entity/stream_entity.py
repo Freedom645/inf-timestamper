@@ -55,15 +55,7 @@ class StreamSession(BaseModel, Generic[T]):
     def add_timestamp(self, timestamp: Timestamp[T]) -> None:
         """タイムスタンプを追加する"""
         if self.start_time is None:
-            raise ValueError(
-                "配信が開始していないため、タイムスタンプを追加できません。"
-            )
-        if self.end_time is not None:
-            raise ValueError("終了した配信にはタイムスタンプを追加できません。")
-        if timestamp.occurred_at < self.start_time:
-            raise ValueError(
-                f"配信開始前のタイムスタンプは登録できません。 開始時間: {self.start_time}, 登録時間: {timestamp.occurred_at}"
-            )
+            raise ValueError("配信が開始していないため、タイムスタンプを追加できません。")
         self.timestamps.append(timestamp)
 
     def get_elapse(self, timestamp: Timestamp[T]) -> timedelta:

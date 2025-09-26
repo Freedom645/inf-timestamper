@@ -45,9 +45,7 @@ class OBSConnectorV5(IStreamGateway):
 
     def test_connect(self, host: str, port: int, password: str) -> tuple[str, str]:
         try:
-            req_client = obsV5.ReqClient(
-                host=host, port=port, password=password, timeout=5
-            )
+            req_client = obsV5.ReqClient(host=host, port=port, password=password, timeout=5)
 
             res = req_client.get_current_program_scene()
             program_scene: Any = res.current_program_scene_name  # type: ignore

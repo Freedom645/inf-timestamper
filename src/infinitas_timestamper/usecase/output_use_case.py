@@ -7,23 +7,30 @@ from domain.entity.game_entity import PlayData
 from domain.entity.game_format import GameTimestampFormatter
 from domain.entity.settings_entity import Settings
 from domain.entity.stream_entity import StreamSession
+from usecase.repository.current_stream_session_repository import CurrentStreamSessionRepository
 from usecase.repository.stream_session_repository import StreamSessionRepository
 
 
 class OutputUseCase:
-
     @inject
     def __init__(
         self,
         logger: logging.Logger,
         stream_session_repository: StreamSessionRepository[PlayData],
         settings: Settings,
+        current_session: CurrentStreamSessionRepository[PlayData],
     ):
         self._logger = logger
         self._stream_session_repository = stream_session_repository
+        self._current_session = current_session
         self.settings = settings
 
-    def copy_to_clipboard(self, stream_session: StreamSession[PlayData]) -> bool:
+    def copy_to_clipboard(self) -> bool:
+        stream_session = self._current_session.get()
+        if stream_session is None:
+            self._logger.error("セッションがありません")
+            return False
+
         if stream_session.start_time is None:
             self._logger.error(f"配信が開始されていません ID: {stream_session.id}")
             return False
@@ -63,4 +70,5 @@ class OutputUseCase:
         if session is None:
             raise RuntimeError(f"配信セッションの読み込みに失敗しました {file_path}")
 
+        self._current_session.set(session)
         return session

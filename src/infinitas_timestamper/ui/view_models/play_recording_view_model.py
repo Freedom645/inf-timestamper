@@ -31,7 +31,6 @@ class PlayRecordingViewModel(QObject):
         self._logger = logger
         self._play_recording_use_case = play_recording_use_case
         self._output_use_case = output_use_case
-        self._stream_session: StreamSession[PlayData] | None = None
 
     def stream_started(self, session: StreamSession[PlayData]) -> None:
         self._emit_status_changed(session.stream_status)
@@ -40,15 +39,11 @@ class PlayRecordingViewModel(QObject):
     def stream_ended(self, session: StreamSession[PlayData]) -> None:
         self._emit_status_changed(session.stream_status)
 
-    def timestamp_added(
-        self, session: StreamSession[PlayData], timestamp: Timestamp[PlayData]
-    ) -> None:
+    def timestamp_added(self, session: StreamSession[PlayData], timestamp: Timestamp[PlayData]) -> None:
         self.timestamp_count_changed.emit(session.count_timestamp())
         self.timestamp_upsert_signal.emit(session, timestamp)
 
-    def timestamp_updated(
-        self, session: StreamSession[PlayData], timestamp: Timestamp[PlayData]
-    ) -> None:
+    def timestamp_updated(self, session: StreamSession[PlayData], timestamp: Timestamp[PlayData]) -> None:
         self.timestamp_upsert_signal.emit(session, timestamp)
 
     def on_open_recording(self, file_path: Path) -> None:
@@ -64,7 +59,6 @@ class PlayRecordingViewModel(QObject):
 
         self._logger.debug(f"読み込んだセッション: {session}")
 
-        self._stream_session = session
         self.recording_button_changed.emit(False, "記録開始")
         self.status_changed.emit("記録ファイル読み込み完了")
 
@@ -78,7 +72,7 @@ class PlayRecordingViewModel(QObject):
             self.start_time_changed.emit(None)
             self.timestamp_count_changed.emit(0)
 
-            self._stream_session = self._play_recording_use_case.start_recording(self)
+            stream_session = self._play_recording_use_case.start_recording(self)
         except Exception as e:
             self._logger.error("OBS接続に失敗しました")
             self._logger.exception(e)
@@ -87,24 +81,24 @@ class PlayRecordingViewModel(QObject):
             raise e
 
         self.recording_button_changed.emit(True, "記録停止")
-        self._emit_status_changed(self._stream_session.stream_status)
+        self._emit_status_changed(stream_session.stream_status)
         return "-"
 
     def on_stop_recording_button(self) -> None:
         """記録停止ボタン押下"""
-        if self._stream_session is None:
-            self._logger.error("配信セッションが存在しません")
-            return
         self.recording_button_changed.emit(False, "記録停止（停止中...）")
         self.status_changed.emit("停止中...")
+        stream_session = None
         try:
-            self._play_recording_use_case.stop_recording(self, self._stream_session)
+            stream_session = self._play_recording_use_case.stop_recording(self)
         except Exception as e:
             self.status_changed.emit(f"停止失敗（{e}）")
         else:
             self.status_changed.emit("停止完了")
 
-        self._output_use_case.save_stream_session(self._stream_session)
+        if stream_session:
+            self._output_use_case.save_stream_session(stream_session)
+
         self.recording_button_changed.emit(True, "記録開始")
 
     def on_copy_timestamps_to_clipboard(self) -> None:
@@ -112,20 +106,14 @@ class PlayRecordingViewModel(QObject):
         self.copy_button_changed.emit(False, "コピー中...")
         res = False
         try:
-            if self._stream_session is None:
-                self._logger.error("配信セッションが存在しません")
-                res = False
-            else:
-                res = self._output_use_case.copy_to_clipboard(self._stream_session)
+            res = self._output_use_case.copy_to_clipboard()
         except Exception as e:
             self._logger.error("クリップボードへのコピーに失敗しました")
             self._logger.exception(e)
             res = False
         finally:
             self.copy_button_changed.emit(False, "完了" if res else "失敗")
-            QTimer.singleShot(
-                1000, lambda: self.copy_button_changed.emit(True, "コピー")
-            )
+            QTimer.singleShot(1000, lambda: self.copy_button_changed.emit(True, "コピー"))
 
     def _emit_status_changed(self, stream_status: StreamStatus) -> None:
         if stream_status == StreamStatus.BEFORE:
@@ -140,13 +128,10 @@ class PlayRecordingViewModel(QObject):
     def on_close(self) -> None:
         """ウィジェットが閉じられるときの処理"""
         self._logger.info("クローズイベント処理を開始します")
-        if (
-            self._stream_session
-            and self._stream_session.stream_status == StreamStatus.LIVE
-        ):
-            self._logger.info("記録停止処理を実行します")
-            self._play_recording_use_case.stop_recording(self, self._stream_session)
+        self._logger.info("記録停止処理を実行します")
+        stream_session = self._play_recording_use_case.stop_recording(self)
+        if stream_session is not None:
             self._logger.info("記録保存処理を実行します")
-            self._output_use_case.save_stream_session(self._stream_session)
-            self._stream_session = None
+            self._output_use_case.save_stream_session(stream_session)
+
         self._logger.info("クローズイベント処理が完了しました")

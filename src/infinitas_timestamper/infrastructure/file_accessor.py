@@ -8,7 +8,6 @@ ENCODING = "utf-8"
 
 
 class FileAccessor:
-
     def load_as_json(self, path: Path) -> Any | None:
         if not path.exists():
             return None

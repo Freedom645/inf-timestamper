@@ -204,13 +204,9 @@ class SettingsDialog(QDialog):
         for row_index, row in enumerate(grid_data):
             for column_index, e in enumerate(row):
                 if isinstance(e, QWidget):
-                    grid_layout.addWidget(
-                        e, row_index, column_index, 1, 2 if len(row) == 1 else 1
-                    )
+                    grid_layout.addWidget(e, row_index, column_index, 1, 2 if len(row) == 1 else 1)
                 else:
-                    grid_layout.addLayout(
-                        e, row_index, column_index, 1, 2 if len(row) == 1 else 1
-                    )
+                    grid_layout.addLayout(e, row_index, column_index, 1, 2 if len(row) == 1 else 1)
         self.setLayout(grid_layout)
 
     def test_obs_connection(self) -> str:
@@ -221,11 +217,7 @@ class SettingsDialog(QDialog):
                 port=int(self.obs_port.text()),
                 password=self.obs_password.text(),
             )
-            return (
-                f"接続成功\n"
-                f"・OBSバージョン：{obs_version}\n"
-                f"・表示シーン：{program_scene}"
-            )
+            return f"接続成功\n・OBSバージョン：{obs_version}\n・表示シーン：{program_scene}"
         except Exception as e:
             return f"接続失敗: {e}"
 
@@ -275,8 +267,7 @@ class SettingsDialog(QDialog):
         formatter = GameTimestampFormatter(self.format_template.text())
 
         rendered = "\n".join(
-            formatter.format(SAMPLE_SESSION_DATA, timestamp)
-            for timestamp in SAMPLE_SESSION_DATA.timestamps
+            formatter.format(SAMPLE_SESSION_DATA, timestamp) for timestamp in SAMPLE_SESSION_DATA.timestamps
         )
         self.format_preview.setPlainText(rendered)
 

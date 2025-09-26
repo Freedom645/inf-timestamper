@@ -26,7 +26,6 @@ from ui.views.utils import FunctionRunner
 
 
 class PlayRecordingWidget(QWidget):
-
     @inject
     def __init__(
         self,
@@ -124,9 +123,7 @@ class PlayRecordingWidget(QWidget):
     def _on_timestamp_count_changed(self, count: int) -> None:
         self.timestamp_count_label.setText(f"タイムスタンプ数: {count}")
 
-    def _on_timestamp_upsert_signal(
-        self, session: StreamSession[PlayData], timestamp: Timestamp[PlayData]
-    ) -> None:
+    def _on_timestamp_upsert_signal(self, session: StreamSession[PlayData], timestamp: Timestamp[PlayData]) -> None:
         formatter = GameTimestampFormatter(self.settings.timestamp.template)
         label = formatter.format(session, timestamp)
 

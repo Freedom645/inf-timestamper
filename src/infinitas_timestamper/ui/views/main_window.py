@@ -9,7 +9,6 @@ from ui.views.setting_window import SettingsDialog
 
 
 class MainWindow(QMainWindow):
-
     @inject
     def __init__(
         self,

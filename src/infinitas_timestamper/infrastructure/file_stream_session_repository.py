@@ -10,7 +10,6 @@ from infrastructure.file_accessor import FileAccessor
 
 
 class FileStreamSessionRepository(StreamSessionRepository[PlayData]):
-
     @inject
     def __init__(self, file_accessor: FileAccessor, base_path: BasePath):
         self._file_accessor = file_accessor

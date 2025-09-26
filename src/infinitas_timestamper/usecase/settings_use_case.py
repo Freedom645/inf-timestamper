@@ -5,11 +5,8 @@ from usecase.repository.settings_repository import SettingsRepository
 
 
 class SettingsUseCase:
-
     @inject
-    def __init__(
-        self, settings: Settings, settings_repository: SettingsRepository
-    ) -> None:
+    def __init__(self, settings: Settings, settings_repository: SettingsRepository) -> None:
         self._settings = settings
         self._settings_repository = settings_repository
 

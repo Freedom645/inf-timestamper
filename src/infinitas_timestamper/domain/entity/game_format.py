@@ -63,21 +63,15 @@ FORMAT_ID_LOGICAL_NAMES = {
 
 
 class GameTimestampFormatter:
-    def __init__(
-        self, format_str: str, default_value: dict[FormatID, str] = {}
-    ) -> None:
+    def __init__(self, format_str: str, default_value: dict[FormatID, str] = {}) -> None:
         self.template = Template(format_str)
         self.default_value = default_value
 
-    def format(
-        self, session: StreamSession[PlayData], timestamp: Timestamp[PlayData]
-    ) -> str:
+    def format(self, session: StreamSession[PlayData], timestamp: Timestamp[PlayData]) -> str:
         mapping: dict[str, str] = {}
         for identifier in FormatID:
             try:
-                mapping[identifier.value] = self._extract_value(
-                    identifier, session, timestamp
-                )
+                mapping[identifier.value] = self._extract_value(identifier, session, timestamp)
             except Exception:
                 # FIXME: 握り潰しちゃっているので検知方法など考えたい
                 mapping[identifier.value] = self.default_value.get(identifier, "")

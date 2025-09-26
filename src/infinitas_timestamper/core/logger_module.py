@@ -46,13 +46,10 @@ class LoggerModule(Module):
         root_logger = logging.getLogger()
         root_logger.setLevel(logging.INFO)
         if not any(
-            isinstance(h, logging.FileHandler)
-            and h.baseFilename == str(external_log_file)
+            isinstance(h, logging.FileHandler) and h.baseFilename == str(external_log_file)
             for h in root_logger.handlers
         ):
-            external_file_handler = logging.FileHandler(
-                external_log_file, encoding="utf-8"
-            )
+            external_file_handler = logging.FileHandler(external_log_file, encoding="utf-8")
             external_file_handler.setLevel(logging.DEBUG)
 
             external_formatter = logging.Formatter(

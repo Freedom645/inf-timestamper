@@ -7,40 +7,32 @@ from domain.entity.stream_entity import StreamSession, Timestamp
 from domain.port.play_watcher import IPlayWatcher, WatchType
 from domain.service.stream_service import StreamEventType, StreamService
 from usecase.presenter.play_recording_presenter import PlayRecordingPresenter
+from usecase.repository.current_stream_session_repository import CurrentStreamSessionRepository
 
 
 class PlayRecordingUseCase:
-
     @inject
     def __init__(
         self,
         logger: logging.Logger,
         settings: Settings,
         stream_service: StreamService[PlayData],
+        current_session_repository: CurrentStreamSessionRepository[PlayData],
         play_watcher: IPlayWatcher,
     ) -> None:
         self._logger = logger
         self._stream_service = stream_service
         self._settings = settings
+        self._current_session_repository = current_session_repository
         self._play_watcher = play_watcher
 
-        self._stream_service.subscribe(
-            StreamEventType.STREAM_STARTED, lambda _: self._play_watcher.start()
-        )
-        self._stream_service.subscribe(
-            StreamEventType.STREAM_ENDED, lambda _: self._play_watcher.stop()
-        )
+        self._stream_service.subscribe(StreamEventType.STREAM_STARTED, lambda _: self._play_watcher.start())
+        self._stream_service.subscribe(StreamEventType.STREAM_ENDED, lambda _: self._play_watcher.stop())
 
-    def start_recording(
-        self, presenter: PlayRecordingPresenter
-    ) -> StreamSession[PlayData]:
+    def start_recording(self, presenter: PlayRecordingPresenter) -> StreamSession[PlayData]:
         self._logger.info("プレイ記録を開始します")
-        self._stream_service.subscribe(
-            StreamEventType.STREAM_STARTED, presenter.stream_started
-        )
-        self._stream_service.subscribe(
-            StreamEventType.STREAM_ENDED, presenter.stream_ended
-        )
+        self._stream_service.subscribe(StreamEventType.STREAM_STARTED, presenter.stream_started)
+        self._stream_service.subscribe(StreamEventType.STREAM_ENDED, presenter.stream_ended)
 
         try:
             self._logger.info("配信接続します")
@@ -51,10 +43,9 @@ class PlayRecordingUseCase:
             )
 
             def callback(watch_type: WatchType, play_data: PlayData) -> None:
-                self._logger.info("タイムスタンプイベント受信")
+                self._logger.info(f"タイムスタンプイベント受信 {watch_type.name}: {play_data}")
                 if watch_type == WatchType.REGISTER:
                     # タイムスタンプの新規登録
-                    self._logger.info("タイムスタンプイベント受信")
                     timestamp = Timestamp[PlayData](data=play_data)
                     stream_session.add_timestamp(timestamp)
                     presenter.timestamp_added(stream_session, timestamp)
@@ -75,22 +66,23 @@ class PlayRecordingUseCase:
 
             self._play_watcher.subscribe(stream_session.id, callback)
             self._logger.info(f"プレイ記録を開始しました ID: {stream_session.id}")
+
+            self._current_session_repository.set(stream_session)
             return stream_session
         except Exception as e:
             self._logger.error("プレイ記録の開始に失敗しました")
             self._logger.exception(e)
-            self._stream_service.unsubscribe(
-                StreamEventType.STREAM_STARTED, presenter.stream_started
-            )
-            self._stream_service.unsubscribe(
-                StreamEventType.STREAM_ENDED, presenter.stream_ended
-            )
+            self._stream_service.unsubscribe(StreamEventType.STREAM_STARTED, presenter.stream_started)
+            self._stream_service.unsubscribe(StreamEventType.STREAM_ENDED, presenter.stream_ended)
             raise
 
-    def stop_recording(
-        self, presenter: PlayRecordingPresenter, stream_session: StreamSession[PlayData]
-    ) -> None:
+    def stop_recording(self, presenter: PlayRecordingPresenter) -> StreamSession[PlayData] | None:
         self._logger.info("プレイ記録を停止します")
+        stream_session = self._current_session_repository.get()
+        if stream_session is None:
+            self._logger.warning("セッションがなかったため、停止処理をスキップしました")
+            return None
+
         try:
             self._play_watcher.stop()
         except Exception as e:
@@ -105,9 +97,7 @@ class PlayRecordingUseCase:
             self._logger.error("配信切断に失敗しました")
             self._logger.exception(e)
         finally:
-            self._stream_service.unsubscribe(
-                StreamEventType.STREAM_STARTED, presenter.stream_started
-            )
-            self._stream_service.unsubscribe(
-                StreamEventType.STREAM_ENDED, presenter.stream_ended
-            )
+            self._stream_service.unsubscribe(StreamEventType.STREAM_STARTED, presenter.stream_started)
+            self._stream_service.unsubscribe(StreamEventType.STREAM_ENDED, presenter.stream_ended)
+
+        return stream_session

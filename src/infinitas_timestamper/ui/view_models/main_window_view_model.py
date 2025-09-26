@@ -6,7 +6,6 @@ from usecase.settings_use_case import SettingsUseCase
 
 
 class MainWindowViewModel(QObject):
-
     @inject
     def __init__(self, settings_use_case: SettingsUseCase) -> None:
         QObject.__init__(self)
