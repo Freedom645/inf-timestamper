@@ -4,10 +4,10 @@ from pathlib import Path
 
 from PySide6.QtWidgets import QWidget
 
-from domain.entity.game import PlayData
+from domain.entity.game_entity import PlayData
 from domain.service.stream_service import StreamService
 from domain.value.base_path import BasePath
-from domain.entity.settings import Settings
+from domain.entity.settings_entity import Settings
 from domain.port.play_watcher import IPlayWatcher
 from domain.port.stream_gateway import IStreamGateway
 
@@ -21,8 +21,8 @@ from usecase.repository.current_stream_session_repository import (
 
 from infrastructure.reflux_file_watcher import RefluxFileWatcher
 from infrastructure.obs_connector_v5 import OBSConnectorV5
-from infrastructure.setting_repository import FileSettingsRepository
-from infrastructure.stream_session_repository import FileStreamSessionRepository
+from infrastructure.file_setting_repository import FileSettingsRepository
+from infrastructure.file_stream_session_repository import FileStreamSessionRepository
 from infrastructure.in_memory_current_stream_session_repository import (
     InMemoryCurrentStreamSessionRepository,
 )

@@ -2,8 +2,8 @@ from pathlib import Path
 from injector import inject
 from datetime import datetime
 
-from domain.entity.game import PlayData
-from domain.entity.stream import StreamSession
+from domain.entity.game_entity import PlayData
+from domain.entity.stream_entity import StreamSession
 from domain.value.base_path import BasePath
 from usecase.repository.stream_session_repository import StreamSessionRepository
 from infrastructure.file_accessor import FileAccessor

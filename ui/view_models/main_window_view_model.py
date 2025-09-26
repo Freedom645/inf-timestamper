@@ -1,7 +1,7 @@
 from injector import inject
 from PySide6.QtCore import QObject
 
-from domain.entity.settings import Settings
+from domain.entity.settings_entity import Settings
 from usecase.settings_use_case import SettingsUseCase
 
 

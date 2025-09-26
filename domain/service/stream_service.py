@@ -2,9 +2,9 @@ from injector import inject
 from datetime import datetime
 from typing import Callable, TypeVar, Generic
 
-from domain.entity.stream import StreamSession, TimestampData
+from domain.entity.stream_entity import StreamSession, TimestampData
 from domain.port.stream_gateway import IStreamGateway
-from domain.value.stream import StreamEventType
+from domain.value.stream_value import StreamEventType
 
 T = TypeVar("T", bound=TimestampData)
 

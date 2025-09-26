@@ -1,7 +1,7 @@
 from injector import inject
 
 from domain.value.base_path import BasePath
-from domain.entity.settings import Settings
+from domain.entity.settings_entity import Settings
 from usecase.repository.settings_repository import SettingsRepository
 from infrastructure.file_accessor import FileAccessor
 

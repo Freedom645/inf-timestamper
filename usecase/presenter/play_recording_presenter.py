@@ -1,7 +1,7 @@
 from typing import Protocol
 
-from domain.entity.stream import StreamSession, Timestamp
-from domain.entity.game import PlayData
+from domain.entity.stream_entity import StreamSession, Timestamp
+from domain.entity.game_entity import PlayData
 
 
 class PlayRecordingPresenter(Protocol):

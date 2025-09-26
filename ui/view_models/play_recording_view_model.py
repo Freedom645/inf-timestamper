@@ -3,9 +3,9 @@ from pathlib import Path
 from injector import inject
 from PySide6.QtCore import Signal, QObject, QTimer
 
-from domain.entity.game import PlayData
-from domain.entity.stream import StreamSession, Timestamp
-from domain.value.stream import StreamStatus
+from domain.entity.game_entity import PlayData
+from domain.entity.stream_entity import StreamSession, Timestamp
+from domain.value.stream_value import StreamStatus
 from usecase.output_use_case import OutputUseCase
 from usecase.play_recording_use_case import PlayRecordingUseCase
 

@@ -1,6 +1,6 @@
 from injector import inject
 
-from domain.entity.settings import Settings
+from domain.entity.settings_entity import Settings
 from usecase.repository.settings_repository import SettingsRepository
 
 

@@ -1,7 +1,7 @@
 from abc import ABC, abstractmethod
 from typing import TypeVar, Generic
 
-from domain.entity.stream import StreamSession, TimestampData
+from domain.entity.stream_entity import StreamSession, TimestampData
 
 T = TypeVar("T", bound=TimestampData)
 

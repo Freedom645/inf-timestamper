@@ -8,10 +8,10 @@ from time import sleep
 from watchdog.observers import Observer
 from watchdog.events import FileSystemEventHandler, DirModifiedEvent, FileModifiedEvent
 
-from domain.entity.game import ChartDetail, PlayData, PlayResult
-from domain.entity.settings import Settings
+from domain.entity.game_entity import ChartDetail, PlayData, PlayResult
+from domain.entity.settings_entity import Settings
 from domain.port.play_watcher import IPlayWatcher, WatchType
-from domain.value.game import DJ_LEVEL, ClearLamp
+from domain.value.game_value import DJ_LEVEL, ClearLamp
 from infrastructure.file_accessor import FileAccessor
 
 

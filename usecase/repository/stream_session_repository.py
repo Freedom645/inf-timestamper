@@ -2,7 +2,7 @@ from abc import ABC, abstractmethod
 from pathlib import Path
 from typing import Generic, TypeVar
 
-from domain.entity.stream import StreamSession, TimestampData
+from domain.entity.stream_entity import StreamSession, TimestampData
 
 T = TypeVar("T", bound=TimestampData)
 

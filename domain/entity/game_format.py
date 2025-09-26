@@ -1,8 +1,8 @@
 from enum import StrEnum
 from string import Template
 
-from domain.entity.game import PlayData
-from domain.entity.stream import StreamSession, Timestamp
+from domain.entity.game_entity import PlayData
+from domain.entity.stream_entity import StreamSession, Timestamp
 
 
 class FormatID(StrEnum):

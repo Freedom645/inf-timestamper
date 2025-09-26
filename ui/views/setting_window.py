@@ -15,17 +15,17 @@ from PySide6.QtWidgets import (
 from PySide6.QtGui import QIntValidator, QCloseEvent
 from PySide6.QtCore import QThread
 from pathlib import Path
-from domain.entity.game import ChartDetail, PlayData, PlayResult
+from domain.entity.game_entity import ChartDetail, PlayData, PlayResult
 from domain.entity.game_format import FormatID, GameTimestampFormatter
-from domain.entity.settings import (
+from domain.entity.settings_entity import (
     SettingTimestampFormat,
     Settings,
     SettingObs,
     SettingReflux,
     SettingYoutube,
 )
-from domain.entity.stream import StreamSession, Timestamp
-from domain.value.game import DJ_LEVEL, ClearLamp
+from domain.entity.stream_entity import StreamSession, Timestamp
+from domain.value.game_value import DJ_LEVEL, ClearLamp
 from infrastructure.obs_connector_v5 import OBSConnectorV5
 from ui.views.utils import FunctionRunner
 

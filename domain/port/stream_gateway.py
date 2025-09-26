@@ -1,7 +1,7 @@
 from abc import ABC, abstractmethod
 from typing import Callable
 
-from domain.value.stream import StreamEventType
+from domain.value.stream_value import StreamEventType
 
 
 class IStreamGateway(ABC):

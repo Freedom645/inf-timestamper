@@ -1,5 +1,5 @@
 from abc import ABC, abstractmethod
-from domain.entity.settings import Settings
+from domain.entity.settings_entity import Settings
 
 
 class SettingsRepository(ABC):

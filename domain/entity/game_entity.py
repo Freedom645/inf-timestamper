@@ -1,7 +1,7 @@
 from pydantic import BaseModel
 
-from domain.entity.stream import TimestampData
-from domain.value.game import DJ_LEVEL, ClearLamp
+from domain.entity.stream_entity import TimestampData
+from domain.value.game_value import DJ_LEVEL, ClearLamp
 
 
 class PlayResult(BaseModel):

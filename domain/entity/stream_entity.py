@@ -4,7 +4,7 @@ from typing import Generic, TypeVar
 from pydantic import BaseModel, Field
 from datetime import datetime, timedelta
 
-from domain.value.stream import StreamStatus
+from domain.value.stream_value import StreamStatus
 
 
 class TimestampData(ABC, BaseModel): ...

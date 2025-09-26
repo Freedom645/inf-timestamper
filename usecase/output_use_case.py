@@ -3,10 +3,10 @@ from pathlib import Path
 from injector import inject
 import pyperclip
 
-from domain.entity.game import PlayData
+from domain.entity.game_entity import PlayData
 from domain.entity.game_format import GameTimestampFormatter
-from domain.entity.settings import Settings
-from domain.entity.stream import StreamSession
+from domain.entity.settings_entity import Settings
+from domain.entity.stream_entity import StreamSession
 from usecase.repository.stream_session_repository import StreamSessionRepository
 
 

@@ -16,10 +16,10 @@ from PySide6.QtCore import QThread
 from datetime import datetime
 from injector import inject
 
-from domain.entity.game import PlayData
+from domain.entity.game_entity import PlayData
 from domain.entity.game_format import GameTimestampFormatter
-from domain.entity.settings import Settings
-from domain.entity.stream import StreamSession, Timestamp
+from domain.entity.settings_entity import Settings
+from domain.entity.stream_entity import StreamSession, Timestamp
 from domain.value.base_path import BasePath
 from ui.view_models.play_recording_view_model import PlayRecordingViewModel
 from ui.views.utils import FunctionRunner
