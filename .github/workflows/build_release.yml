@@ -28,7 +28,7 @@ jobs:
         run: |
           uv run pyinstaller InfinitasTimestamper.spec
 
-      - name: Copy settings.json
+      - name: Copy executable to dist folder
         run: |
           mkdir dist/InfinitasTimestamper
           copy dist\InfinitasTimestamper.exe dist\InfinitasTimestamper\
