@@ -1,13 +1,5 @@
 # -*- mode: python ; coding: utf-8 -*-
 
-import tomllib
-from pathlib import Path
-
-# pyproject.toml からバージョン取得して、version.py を更新
-data = tomllib.loads(Path("pyproject.toml").read_text(encoding="utf-8"))
-version = data["project"]["version"]
-(Path("core") / "version.py").write_text(f"__version__ = '{version}'", encoding="utf-8")
-
 block_cipher = None
 
 a = Analysis(

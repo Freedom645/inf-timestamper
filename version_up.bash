@@ -15,9 +15,13 @@ uv version --bump "$PART"
 # 更新後のバージョンを取得
 VERSION=$(uv version --short)
 
+# version.py を更新
+echo "__version__ = '$VERSION'" > core/version.py
+
 # コミット対象
 git add pyproject.toml
 git add uv.lock
+git add core/version.py
 git commit -m "Bump version to v$VERSION"
 
 # Annotated タグを作成
