@@ -4,7 +4,6 @@ import websockets
 from typing import Any
 
 clients: set[websockets.ServerConnection] = set()  # 接続中クライアントを管理
-PASSWORD = "password"
 
 
 def generate_success_response(
@@ -108,7 +107,7 @@ async def event_dispatcher():
 
 async def main():
     await websockets.serve(handle_client, "localhost", 4455)
-    print("Mock OBS WebSocket server running on ws://localhost:4455")
+    print(f"Mock OBS WebSocket server running on ws://localhost:4455")
     await event_dispatcher()  # コンソール待機
 
 

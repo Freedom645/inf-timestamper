@@ -3,7 +3,7 @@
 block_cipher = None
 
 a = Analysis(
-    ["main.py"],
+    ["src/infinitas_timestamper/main.py"],
     pathex=[],
     binaries=[],
     datas=[],

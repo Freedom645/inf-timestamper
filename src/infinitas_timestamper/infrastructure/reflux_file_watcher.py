@@ -53,7 +53,7 @@ def read_text(path: Path, default: str = "") -> str:
     try:
         with open(path, "r", encoding="utf-8") as f:
             return f.read().strip()
-    except:
+    except Exception:
         return default
 
 
@@ -129,7 +129,7 @@ class RefluxFileWatcher(FileSystemEventHandler, IPlayWatcher):
                 )
                 self._notify(WatchType.MODIFY, play_data)
         except Exception as e:
-            self._logger.error(f"RefluxFileWatcherの処理に失敗しました")
+            self._logger.error("RefluxFileWatcherの処理に失敗しました")
             self._logger.exception(e)
         finally:
             self._last_status = status
