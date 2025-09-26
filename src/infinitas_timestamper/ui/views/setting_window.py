@@ -28,6 +28,7 @@ from domain.entity.stream_entity import StreamSession, Timestamp
 from domain.value.game_value import DJ_LEVEL, ClearLamp
 from infrastructure.obs_connector_v5 import OBSConnectorV5
 from ui.views.utils import FunctionRunner
+from ui.widgets.dollar_completer_line_edit import DollarCompleterLineEdit
 
 
 def create_sample_data() -> StreamSession[PlayData]:
@@ -148,7 +149,7 @@ class SettingsDialog(QDialog):
         dir_layout.addWidget(browse_btn)
 
         # タイムスタンプ
-        self.format_template = QLineEdit("")
+        self.format_template = DollarCompleterLineEdit([f"${f.value}" for f in FormatID])
         self.format_id_combo = QComboBox()
         for fmt in FormatID:
             display = f"{fmt.logical_name()} (${fmt.value})"
