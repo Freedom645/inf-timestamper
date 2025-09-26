@@ -44,7 +44,7 @@ class LoggerModule(Module):
 
         # === 外部ライブラリ用ロガー (root) ===
         root_logger = logging.getLogger()
-        root_logger.setLevel(logging.WARNING)  # デフォルトは warning 以上
+        root_logger.setLevel(logging.INFO)
         if not any(
             isinstance(h, logging.FileHandler)
             and h.baseFilename == str(external_log_file)

@@ -5,25 +5,18 @@ description = "INFINITAS向けタイムスタンプ生成ツール"
 readme = "README.md"
 requires-python = ">=3.13"
 dependencies = [
-    "google-api-python-client>=2.182.0",
-    "google-auth>=2.40.3",
-    "google-auth-oauthlib>=1.2.2",
     "injector>=0.22.0",
     "obs-websocket-py>=1.0",
     "obsws-python>=1.8.0",
     "pydantic>=2.11.9",
     "pyinstaller>=6.16.0",
     "pyperclip>=1.10.0",
-    "pyside6[tools]>=6.9.2",
+    "pyside6>=6.9.2",
     "watchdog>=6.0.0",
 ]
 
 [dependency-groups]
-dev = [
-    "mypy>=1.18.2",
-    "pyright>=1.1.405",
-    "ruff>=0.13.2",
-]
+dev = ["mypy>=1.18.2", "pyright>=1.1.405", "ruff>=0.13.2", "websockets>=15.0.1"]
 
 [tool.mypy]
 python_version = "3.13"
@@ -34,3 +27,4 @@ disallow_incomplete_defs = true
 check_untyped_defs = true
 no_implicit_optional = true
 strict_optional = true
+mypy_path = "src"

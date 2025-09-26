@@ -1,3 +1,4 @@
+import logging
 from typing import Any, Callable
 import obsws_python as obsV5
 
@@ -18,6 +19,7 @@ EVENT_MAP = {
 class OBSConnectorV5(IStreamGateway):
     def __init__(self):
         self._callbacks: list[Callable[[StreamEventType], None]] = []
+        self._logger = logging.getLogger("app")
 
     def connect(self, host: str, port: int, password: str) -> None:
         self.req_client = obsV5.ReqClient(host=host, port=port, password=password)
@@ -59,6 +61,10 @@ class OBSConnectorV5(IStreamGateway):
             raise ConnectionError(
                 "[TimeoutError] OBSへの接続に失敗しました。OBSが起動しているか、ホスト・ポート・パスワードが正しいか確認してください。"
             ) from e
+        except Exception as e:
+            self._logger.error("テスト接続失敗")
+            self._logger.exception(e)
+            raise e
 
     def observe_stream(self, callback: Callable[[StreamEventType], None]) -> None:
         self._callbacks.append(callback)

@@ -16,12 +16,12 @@ uv version --bump "$PART"
 VERSION=$(uv version --short)
 
 # version.py を更新
-echo "__version__ = '$VERSION'" > core/version.py
+echo "__version__ = '$VERSION'" > src/infinitas_timestamper/version.py
 
 # コミット対象
 git add pyproject.toml
 git add uv.lock
-git add core/version.py
+git add src/infinitas_timestamper/version.py
 git commit -m "Bump version to v$VERSION"
 
 # Annotated タグを作成
