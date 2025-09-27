@@ -25,7 +25,8 @@ jobs:
         run: uv sync --all-extras --dev
 
       - name: Run lint and type checks
-        run: bash lint_all.sh
+        shell: bash
+        run: lint-all.bash
 
       - name: Build with PyInstaller
         run: |
