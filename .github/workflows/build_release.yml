@@ -26,7 +26,7 @@ jobs:
 
       - name: Run lint and type checks
         shell: bash
-        run: lint-all.bash
+        run: bash lint-all.bash
 
       - name: Build with PyInstaller
         run: |
