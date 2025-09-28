@@ -5,25 +5,27 @@ from domain.value.game_value import DJ_LEVEL, ClearLamp
 
 
 class PlayResult(BaseModel):
-    dj_level: DJ_LEVEL
+    dj_level: DJ_LEVEL = DJ_LEVEL.F
     """DJ LEVEL (AAA ~ F)"""
-    lamp: ClearLamp
+    lamp: ClearLamp = ClearLamp.NO_PLAY
     """クリアランプ"""
-    p_great: int
+    gauge: str = ""
+    """ゲージオプション"""
+    p_great: int = 0
     """P-GREAT"""
-    great: int
+    great: int = 0
     """GREAT"""
-    good: int
+    good: int = 0
     """GOOD"""
-    bad: int
+    bad: int = 0
     """BAD"""
-    poor: int
+    poor: int = 0
     """POOR"""
-    fast: int
+    fast: int = 0
     """FAST"""
-    slow: int
+    slow: int = 0
     """SLOW"""
-    combo_break: int
+    combo_break: int = 0
     """COMBO BREAK"""
 
     @property
@@ -48,23 +50,29 @@ class PlayResult(BaseModel):
 
 
 class ChartDetail(BaseModel):
-    artist: str
+    title: str = ""
+    """楽曲名"""
+    level: int = -1
+    """レベル"""
+    artist: str = ""
     """アーティスト名"""
-    genre: str
+    genre: str = ""
     """ジャンル"""
-    bpm: int
+    bpm: str = ""
     """BPM"""
-    difficulty: str
+    min_bpm: str = ""
+    """最小BPM"""
+    max_bpm: str = ""
+    """最大BPM"""
+    difficulty: str = ""
     """難易度"""
-    note_count: int
+    note_count: int = 0
     """ノーツ数"""
 
 
 class PlayData(TimestampData):
-    title: str
-    """楽曲名"""
-    level: int
-    """レベル"""
+    key: str
+    """一意なキー"""
     chart_detail: ChartDetail | None = None
     """譜面情報"""
     play_result: PlayResult | None = None
@@ -72,4 +80,4 @@ class PlayData(TimestampData):
 
     def equals_without_result(self, other: "PlayData") -> bool:
         """プレイ結果を除いた同一性を判定する"""
-        return self.title == other.title and self.level == other.level
+        return self.key == other.key

@@ -109,9 +109,11 @@ class RefluxFileWatcher(FileSystemEventHandler, IPlayWatcher):
             sleep(0.3)
 
             if status == PlayState.PLAY.value:
+                title = self._file_accessor.load_as_text(src_path.parent / "title.txt", default="unknown")
+                level = self._file_accessor.load_as_integer(src_path.parent / "level.txt", default=-1)
                 play_data = PlayData(
-                    title=self._file_accessor.load_as_text(src_path.parent / "title.txt", default=""),
-                    level=self._file_accessor.load_as_integer(src_path.parent / "level.txt"),
+                    key=self._generate_key(title=title, level=level),
+                    chart_detail=ChartDetail(title=title, level=level),
                 )
                 self._notify(WatchType.REGISTER, play_data)
 
@@ -124,20 +126,33 @@ class RefluxFileWatcher(FileSystemEventHandler, IPlayWatcher):
         finally:
             self._last_status = status
 
+    def _generate_key(self, title: str, level: int) -> str:
+        return f"{title}_{level}"
+
     def _read_latest_json(self, directory: Path) -> PlayData:
         try:
             data: LatestJson = self._file_accessor.load_as_json(directory)  # type: ignore
 
+            title = data.get("title", "unknown")
+            level = int(data.get("level", "-1"))
+            bpm_str = data.get("bpm", "")
+            min_bpm, max_bpm = bpm_str.split("~") if "~" in bpm_str else (bpm_str, bpm_str)
+
             chart_detail = ChartDetail(
+                title=title,
+                level=level,
                 artist=data.get("artist", ""),
                 genre=data.get("genre", ""),
-                bpm=int(data.get("bpm", -1)),
+                bpm=bpm_str,
+                min_bpm=min_bpm,
+                max_bpm=max_bpm,
                 difficulty=data.get("diff", ""),
                 note_count=int(data.get("notecount", -1)),
             )
             play_result = PlayResult(
                 dj_level=DJ_LEVEL(data.get("grade", "")),
                 lamp=ClearLamp(data.get("lamp", "")),
+                gauge=data.get("gauge", ""),
                 p_great=int(data.get("pgreat", -1)),
                 great=int(data.get("great", -1)),
                 good=int(data.get("good", -1)),
@@ -149,8 +164,7 @@ class RefluxFileWatcher(FileSystemEventHandler, IPlayWatcher):
             )
 
             return PlayData(
-                title=data.get("title", ""),
-                level=int(data.get("level", "-1")),
+                key=self._generate_key(title=title, level=level),
                 chart_detail=chart_detail,
                 play_result=play_result,
             )

@@ -12,10 +12,13 @@ class FormatID(StrEnum):
     ARTIST = "artist"
     GENRE = "genre"
     BPM = "bpm"
+    MIN_BPM = "min_bpm"
+    MAX_BPM = "max_bpm"
     DIFFICULTY = "difficulty"
     NOTE_COUNT = "note_count"
     DJ_LEVEL = "dj_level"
     CLEAR_LAMP = "clear_lamp"
+    GAUGE = "gauge"
     EX_SCORE = "ex_score"
     MISS_COUNT = "miss_count"
     MISS_POOR = "miss_poor"
@@ -43,10 +46,13 @@ FORMAT_ID_LOGICAL_NAMES = {
     FormatID.ARTIST: "アーティスト",
     FormatID.GENRE: "ジャンル",
     FormatID.BPM: "BPM",
+    FormatID.MIN_BPM: "最小BPM",
+    FormatID.MAX_BPM: "最大BPM",
     FormatID.DIFFICULTY: "難易度",
     FormatID.NOTE_COUNT: "ノーツ数",
     FormatID.DJ_LEVEL: "DJ LEVEL",
     FormatID.CLEAR_LAMP: "クリアランプ",
+    FormatID.GAUGE: "ゲージ",
     FormatID.EX_SCORE: "EXスコア",
     FormatID.MISS_COUNT: "ミスカウント",
     FormatID.MISS_POOR: "見逃しPOOR",
@@ -89,21 +95,25 @@ class GameTimestampFormatter:
                 if session.start_time is None:
                     return str(timestamp.occurred_at.strftime("%Y/%m/%d %H:%M:%S"))
                 return str(timestamp.get_elapse(session.start_time))
-            case FormatID.TITLE:
-                return timestamp.data.title
-            case FormatID.LEVEL:
-                return str(timestamp.data.level)
             case _:
                 pass
 
         if timestamp.data.chart_detail:
             match identifier:
+                case FormatID.TITLE:
+                    return timestamp.data.chart_detail.title
+                case FormatID.LEVEL:
+                    return str(timestamp.data.chart_detail.level)
                 case FormatID.ARTIST:
                     return timestamp.data.chart_detail.artist
                 case FormatID.GENRE:
                     return timestamp.data.chart_detail.genre
                 case FormatID.BPM:
-                    return str(timestamp.data.chart_detail.bpm)
+                    return timestamp.data.chart_detail.bpm
+                case FormatID.MIN_BPM:
+                    return timestamp.data.chart_detail.min_bpm
+                case FormatID.MAX_BPM:
+                    return timestamp.data.chart_detail.max_bpm
                 case FormatID.DIFFICULTY:
                     return timestamp.data.chart_detail.difficulty
                 case FormatID.NOTE_COUNT:
@@ -125,6 +135,8 @@ class GameTimestampFormatter:
                     return str(timestamp.data.play_result.miss_poor)
                 case FormatID.EMPTY_POOR:
                     return str(timestamp.data.play_result.empty_poor)
+                case FormatID.GAUGE:
+                    return timestamp.data.play_result.gauge
                 case FormatID.P_GREAT:
                     return str(timestamp.data.play_result.p_great)
                 case FormatID.GREAT:

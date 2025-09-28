@@ -103,17 +103,21 @@ def create_sample_data() -> StreamSession[PlayData]:
         Timestamp[PlayData](
             occurred_at=start_time + timedelta(minutes=2, seconds=4),
             data=PlayData(
-                title="BLUE ZONE",
-                level=7,
+                key="test_1",
                 chart_detail=ChartDetail(
+                    title="BLUE ZONE",
+                    level=7,
                     artist="Natsh & TAKAKI",
                     genre="SPEED RAVE",
-                    bpm=123,
+                    bpm="123",
+                    min_bpm="123",
+                    max_bpm="123",
                     difficulty="SPN",
                     note_count=654,
                 ),
                 play_result=PlayResult(
                     dj_level=DJ_LEVEL.AAA,
+                    gauge="EX HARD",
                     lamp=ClearLamp.PERFECT,
                     p_great=512,
                     great=42,
@@ -129,18 +133,22 @@ def create_sample_data() -> StreamSession[PlayData]:
         Timestamp[PlayData](
             occurred_at=start_time + timedelta(minutes=4, seconds=31),
             data=PlayData(
-                title="天空の日没",
-                level=10,
+                key="test_2",
                 chart_detail=ChartDetail(
+                    title="天空の日没",
+                    level=10,
                     artist="Cube",
                     genre="ANTHEM",
-                    bpm=188,
+                    bpm="188",
+                    min_bpm="188",
+                    max_bpm="188",
                     difficulty="SPH",
                     note_count=990,
                 ),
                 play_result=PlayResult(
                     dj_level=DJ_LEVEL.A,
                     lamp=ClearLamp.CLEAR,
+                    gauge="OFF",
                     p_great=624,
                     great=243,
                     good=77,
@@ -155,18 +163,22 @@ def create_sample_data() -> StreamSession[PlayData]:
         Timestamp[PlayData](
             occurred_at=start_time + timedelta(minutes=7, seconds=12),
             data=PlayData(
-                title="Sample Paradise",
-                level=12,
+                key="test_3",
                 chart_detail=ChartDetail(
+                    title="Sample Paradise",
+                    level=12,
                     artist="Mamon",
                     genre="HARD TRANCE",
-                    bpm=213,
+                    bpm="200~254",
+                    min_bpm="200",
+                    max_bpm="254",
                     difficulty="SPL",
                     note_count=2184,
                 ),
                 play_result=PlayResult(
                     dj_level=DJ_LEVEL.A,
                     lamp=ClearLamp.FAILED,
+                    gauge="HARD",
                     p_great=1987,
                     great=123,
                     good=43,
