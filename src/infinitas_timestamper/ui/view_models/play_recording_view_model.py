@@ -13,9 +13,10 @@ from usecase.play_recording_use_case import PlayRecordingUseCase
 
 class PlayRecordingViewModel(QObject):
     recording_button_changed = Signal(bool, str)
+    reset_button_changed = Signal(bool)
     copy_button_changed = Signal(bool, str)
 
-    status_changed = Signal(str)
+    status_label_changed = Signal(str)
     start_time_changed = Signal(object)
     timestamp_count_changed = Signal(int)
     timestamp_upsert_signal = Signal(StreamSession[PlayData], Timestamp[PlayData])
@@ -55,13 +56,10 @@ class PlayRecordingViewModel(QObject):
         except Exception as e:
             self._logger.error("記録ファイルの読み込みに失敗しました")
             self._logger.exception(e)
-            self.status_changed.emit(f"記録ファイルの読み込みに失敗しました（{e}）")
+            self.status_label_changed.emit(f"記録ファイルの読み込みに失敗しました（{e}）")
             raise e
 
         self._logger.debug(f"読み込んだセッション: {session}")
-
-        self.recording_button_changed.emit(False, "記録開始")
-        self.status_changed.emit("記録ファイル読み込み完了")
 
         self.play_record_overwrite_signal.emit(session)
 
@@ -69,38 +67,70 @@ class PlayRecordingViewModel(QObject):
         """記録開始ボタン押下"""
         try:
             self.recording_button_changed.emit(False, "記録開始（開始中...）")
-            self.status_changed.emit("OBS接続中...")
+            self.status_label_changed.emit("開始中...")
             self.start_time_changed.emit(None)
             self.timestamp_count_changed.emit(0)
 
             stream_session = self._play_recording_use_case.start_recording(self)
         except Exception as e:
-            self._logger.error("OBS接続に失敗しました")
+            self._logger.error("記録開始に失敗しました")
             self._logger.exception(e)
             self.recording_button_changed.emit(True, "記録開始")
-            self.status_changed.emit(f"OBS接続失敗（{e}）")
+            self.status_label_changed.emit(f"記録開始失敗（{e}）")
             raise e
 
-        self.recording_button_changed.emit(True, "記録停止")
+        self.play_record_overwrite_signal.emit(stream_session)
+        self._emit_status_changed(stream_session.stream_status)
+        return "-"
+
+    def on_resume_recording_button(self) -> str:
+        """記録再開ボタン押下"""
+        try:
+            self.recording_button_changed.emit(False, "記録再開（再開中...）")
+            self.status_label_changed.emit("記録再開中...")
+            self.start_time_changed.emit(None)
+            self.timestamp_count_changed.emit(0)
+
+            stream_session = self._play_recording_use_case.resume_recording(self)
+        except Exception as e:
+            self._logger.error("記録再開に失敗しました")
+            self._logger.exception(e)
+            self.recording_button_changed.emit(True, "記録再開")
+            self.status_label_changed.emit(f"記録再開失敗（{e}）")
+            raise e
+
+        self.play_record_overwrite_signal.emit(stream_session)
         self._emit_status_changed(stream_session.stream_status)
         return "-"
 
     def on_stop_recording_button(self) -> None:
         """記録停止ボタン押下"""
         self.recording_button_changed.emit(False, "記録停止（停止中...）")
-        self.status_changed.emit("停止中...")
+        self.status_label_changed.emit("停止中...")
         stream_session = None
         try:
             stream_session = self._play_recording_use_case.stop_recording()
         except Exception as e:
-            self.status_changed.emit(f"停止失敗（{e}）")
+            self.status_label_changed.emit(f"停止失敗（{e}）")
         else:
-            self.status_changed.emit("停止完了")
+            self.status_label_changed.emit("停止完了")
 
         if stream_session:
-            self._output_use_case.save_stream_session(stream_session)
+            if stream_session.stream_status == StreamStatus.COMPLETED:
+                self._output_use_case.save_stream_session(stream_session)
+            self._emit_status_changed(stream_session.stream_status)
 
-        self.recording_button_changed.emit(True, "記録開始")
+    def on_reset_recording_button(self) -> None:
+        """記録リセットボタン押下"""
+        try:
+            new_session = self._play_recording_use_case.reset_recording()
+            self.status_label_changed.emit("リセット完了")
+            self.play_record_overwrite_signal.emit(new_session)
+            self._emit_status_changed(new_session.stream_status)
+        except Exception as e:
+            self.status_label_changed.emit(f"リセット失敗（{e}）")
+            self._logger.error("記録リセットに失敗しました")
+            self._logger.exception(e)
 
     def on_copy_timestamps_to_clipboard(self) -> None:
         """タイムスタンプをクリップボードにコピー"""
@@ -130,20 +160,34 @@ class PlayRecordingViewModel(QObject):
 
     def _emit_status_changed(self, stream_status: StreamStatus) -> None:
         if stream_status == StreamStatus.WAITING:
-            self.status_changed.emit("記録開始待ち")
+            self.status_label_changed.emit("記録開始待ち")
+
+            self.recording_button_changed.emit(True, "記録開始")
+            self.reset_button_changed.emit(False)
+        elif stream_status == StreamStatus.BEFORE_STREAM:
+            self.status_label_changed.emit("配信待機中")
+
+            self.recording_button_changed.emit(True, "記録停止")
+            self.reset_button_changed.emit(False)
         elif stream_status == StreamStatus.RECORDING:
-            self.status_changed.emit("記録中")
+            self.status_label_changed.emit("記録中")
+
+            self.recording_button_changed.emit(True, "記録停止")
+            self.reset_button_changed.emit(False)
         elif stream_status == StreamStatus.COMPLETED:
-            self.status_changed.emit("記録完了")
+            self.status_label_changed.emit("記録完了")
+
+            self.recording_button_changed.emit(True, "記録再開")
+            self.reset_button_changed.emit(True)
         else:
-            self.status_changed.emit("-")
+            self.status_label_changed.emit("-")
 
     def on_close(self) -> None:
         """ウィジェットが閉じられるときの処理"""
         self._logger.info("クローズイベント処理を開始します")
         self._logger.info("記録停止処理を実行します")
         stream_session = self._play_recording_use_case.stop_recording()
-        if stream_session is not None:
+        if stream_session.stream_status == StreamStatus.COMPLETED:
             self._logger.info("記録保存処理を実行します")
             self._output_use_case.save_stream_session(stream_session)
 

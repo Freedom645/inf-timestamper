@@ -53,6 +53,9 @@ class SettingsStreamTab(QWidget):
 
     def _on_obs_enabled_changed(self, state: Qt.CheckState) -> None:
         enabled = state == Qt.CheckState.Checked
+        self._set_enabled_all_obs_settings(enabled)
+
+    def _set_enabled_all_obs_settings(self, enabled: bool) -> None:
         self.obs_host.setEnabled(enabled)
         self.obs_port.setEnabled(enabled)
         self.obs_password.setEnabled(enabled)
@@ -101,6 +104,7 @@ class SettingsStreamTab(QWidget):
         self.obs_host.setText(obs_settings.host)
         self.obs_port.setText(str(obs_settings.port))
         self.obs_password.setText(obs_settings.password)
+        self._set_enabled_all_obs_settings(obs_settings.is_enabled)
 
     def get_settings(self) -> SettingObs:
         return SettingObs(

@@ -1,4 +1,5 @@
 import logging
+from uuid import UUID
 from injector import inject
 from typing import Any, Callable
 import obsws_python as obsV5
@@ -20,7 +21,7 @@ EVENT_MAP = {
 class OBSConnectorV5(IStreamGateway):
     @inject
     def __init__(self, logger: logging.Logger) -> None:
-        self._callbacks: list[Callable[[StreamEventType], None]] = []
+        self._callbacks: dict[UUID, Callable[[StreamEventType], None]] = {}
         self._logger = logger
 
         self.req_client: obsV5.ReqClient | None = None
@@ -47,12 +48,16 @@ class OBSConnectorV5(IStreamGateway):
 
     def disconnect(self) -> None:
         if self.event_client:
-            self.event_client.disconnect()
-            self.event_client = None
+            try:
+                self.event_client.disconnect()
+            finally:
+                self.event_client = None
 
         if self.req_client:
-            self.req_client.disconnect()
-            self.req_client = None
+            try:
+                self.req_client.disconnect()
+            finally:
+                self.req_client = None
 
     def test_connect(self, host: str, port: int, password: str) -> tuple[str, str]:
         try:
@@ -75,11 +80,16 @@ class OBSConnectorV5(IStreamGateway):
             self._logger.exception(e)
             raise e
 
-    def observe_stream(self, callback: Callable[[StreamEventType], None]) -> None:
-        self._callbacks.append(callback)
+    def subscribe(self, id: UUID, callback: Callable[[StreamEventType], None]) -> None:
+        self._callbacks[id] = callback
+
+    def unsubscribe(self, id: UUID) -> None:
+        if id in self._callbacks:
+            del self._callbacks[id]
 
     def _notify(self, evt: StreamEventType) -> None:
-        for callback in self._callbacks:
+        callbacks = list(self._callbacks.values())
+        for callback in callbacks:
             callback(evt)
 
     def _is_streaming(self, req_client: obsV5.ReqClient) -> bool:

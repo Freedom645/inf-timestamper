@@ -27,12 +27,9 @@ class OutputUseCase:
 
     def copy_to_clipboard(self) -> bool:
         stream_session = self._current_session.get()
-        if stream_session is None:
-            self._logger.error("セッションがありません")
-            return False
 
         if stream_session.start_time is None:
-            self._logger.error(f"配信が開始されていません ID: {stream_session.id}")
+            self._logger.error(f"配信開始時間が設定されていません ID: {stream_session.id}")
             return False
 
         try:

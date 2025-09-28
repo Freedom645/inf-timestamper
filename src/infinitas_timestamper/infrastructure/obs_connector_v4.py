@@ -1,4 +1,5 @@
 from typing import Callable, Any
+from uuid import UUID
 from obswebsocket import obsws, events, requests
 
 from domain.port.stream_gateway import IStreamGateway
@@ -12,7 +13,7 @@ EVENT_MAP: dict[Any, StreamEventType] = {
 
 class OBSConnectorV4(IStreamGateway):
     def __init__(self) -> None:
-        self._callbacks: list[Callable[[StreamEventType], None]] = []
+        self._callbacks: dict[UUID, Callable[[StreamEventType], None]] = {}
 
     def connect(self, host: str, port: int, password: str) -> None:
         self.ws = obsws(host, port, password)
@@ -25,8 +26,12 @@ class OBSConnectorV4(IStreamGateway):
     def disconnect(self) -> None:
         self.ws.disconnect()
 
-    def observe_stream(self, callback: Callable[[StreamEventType], None]) -> None:
-        self._callbacks.append(callback)
+    def subscribe(self, id: UUID, callback: Callable[[StreamEventType], None]) -> None:
+        self._callbacks[id] = callback
+
+    def unsubscribe(self, id: UUID) -> None:
+        if id in self._callbacks:
+            del self._callbacks[id]
 
     def _is_streaming(self) -> bool:
         return self.ws.call(requests.GetStreamingStatus()).getStreaming()  # type: ignore
@@ -37,5 +42,6 @@ class OBSConnectorV4(IStreamGateway):
                 self._notify(event_enum)
 
     def _notify(self, evt: StreamEventType) -> None:
-        for callback in self._callbacks:
+        callbacks = list(self._callbacks.values())
+        for callback in callbacks:
             callback(evt)

@@ -37,9 +37,16 @@ class StreamSession(BaseModel, Generic[T]):
     timestamps: list[Timestamp[T]] = []
     """タイムスタンプのリスト"""
 
+    def wait_stream(self) -> "StreamSession[T]":
+        """配信待機状態にする"""
+        if self.stream_status != StreamStatus.WAITING:
+            raise ValueError(f"セッションは記録開始待ちではありません {self.stream_status}")
+        self.stream_status = StreamStatus.BEFORE_STREAM
+        return self
+
     def start_recording(self, start_time: datetime) -> "StreamSession[T]":
         """記録を開始する"""
-        if self.stream_status != StreamStatus.WAITING:
+        if self.stream_status not in [StreamStatus.WAITING, StreamStatus.BEFORE_STREAM]:
             raise ValueError(f"セッションはすでに開始しています {self.stream_status}")
 
         self.start_time = start_time
@@ -55,9 +62,14 @@ class StreamSession(BaseModel, Generic[T]):
 
     def complete_recording(self) -> "StreamSession[T]":
         """記録を完了する"""
-        if self.stream_status != StreamStatus.RECORDING:
+        if self.stream_status not in [StreamStatus.RECORDING, StreamStatus.BEFORE_STREAM]:
             raise ValueError(f"セッションは記録中ではありません {self.stream_status}")
-        self.stream_status = StreamStatus.COMPLETED
+
+        if self.stream_status == StreamStatus.BEFORE_STREAM:
+            self.stream_status = StreamStatus.WAITING
+        else:
+            self.stream_status = StreamStatus.COMPLETED
+
         return self
 
     def add_timestamp(self, timestamp: Timestamp[T]) -> None:

@@ -5,6 +5,8 @@ from enum import StrEnum, unique
 class StreamStatus(StrEnum):
     WAITING = "wait"
     """記録開始待ち"""
+    BEFORE_STREAM = "beforeStream"
+    """配信開始前"""
     RECORDING = "recording"
     """記録中"""
     COMPLETED = "ended"

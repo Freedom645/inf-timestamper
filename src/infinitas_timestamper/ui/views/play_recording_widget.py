@@ -1,4 +1,5 @@
 from pathlib import Path
+from typing import Callable
 from uuid import UUID
 from PySide6.QtWidgets import (
     QWidget,
@@ -44,19 +45,14 @@ class PlayRecordingWidget(QWidget):
         self._thread: QThread | None = None
         self._timestamp_item_map: dict[UUID, QListWidgetItem] = {}
 
-        self.start_btn = QPushButton("記録開始")
-        self.start_btn.setMinimumSize(80, 40)
-        self.start_btn.setSizePolicy(QSizePolicy.Policy.Fixed, QSizePolicy.Policy.Fixed)
-        self.start_btn.clicked.connect(self.toggle_recording)
-
-        self.copy_btn = QPushButton("コピー")
-        self.copy_btn.setMinimumSize(80, 40)
-        self.copy_btn.setSizePolicy(QSizePolicy.Policy.Fixed, QSizePolicy.Policy.Fixed)
-        self.copy_btn.clicked.connect(self._vm.on_copy_timestamps_to_clipboard)
-        self._vm.copy_button_changed.connect(self._on_copy_button_changed)
+        self.start_btn = self._generate_fixed_button("記録開始", self.toggle_recording)
+        self.reset_btn = self._generate_fixed_button("リセット", self.reset_recording)
+        self.reset_btn.setEnabled(False)
+        self.copy_btn = self._generate_fixed_button("コピー", self._vm.on_copy_timestamps_to_clipboard)
 
         btn_layout = QHBoxLayout()
         btn_layout.addWidget(self.start_btn)
+        btn_layout.addWidget(self.reset_btn)
         btn_layout.addWidget(self.copy_btn)
 
         self.status = QLabel("記録開始待ち")
@@ -87,11 +83,20 @@ class PlayRecordingWidget(QWidget):
 
         # Signal を接続
         self._vm.recording_button_changed.connect(self._on_recording_button_changed)
-        self._vm.status_changed.connect(self._on_status_changed)
+        self._vm.reset_button_changed.connect(self.reset_btn.setEnabled)
+        self._vm.copy_button_changed.connect(self._on_copy_button_changed)
+        self._vm.status_label_changed.connect(self._on_status_changed)
         self._vm.start_time_changed.connect(self._on_start_time_changed)
         self._vm.timestamp_count_changed.connect(self._on_timestamp_count_changed)
         self._vm.timestamp_upsert_signal.connect(self._on_timestamp_upsert_signal)
         self._vm.play_record_overwrite_signal.connect(self._on_overwrite_signal)
+
+    def _generate_fixed_button(self, text: str, slot: Callable[[], None]) -> QPushButton:
+        btn = QPushButton(text)
+        btn.setMinimumSize(80, 40)
+        btn.setSizePolicy(QSizePolicy.Policy.Fixed, QSizePolicy.Policy.Fixed)
+        btn.clicked.connect(slot)
+        return btn
 
     def toggle_recording(self) -> None:
         if self.start_btn.text() == "記録開始":
@@ -103,8 +108,20 @@ class PlayRecordingWidget(QWidget):
             self._worker.finished.connect(self._worker.deleteLater)
             self._thread.finished.connect(self._thread.deleteLater)
             self._thread.start()
+        elif self.start_btn.text() == "記録再開":
+            self._thread = QThread()
+            self._worker = FunctionRunner(self._vm.on_resume_recording_button)
+            self._worker.moveToThread(self._thread)
+            self._thread.started.connect(self._worker.run)
+            self._worker.finished.connect(self._thread.quit)
+            self._worker.finished.connect(self._worker.deleteLater)
+            self._thread.finished.connect(self._thread.deleteLater)
+            self._thread.start()
         else:
             self._vm.on_stop_recording_button()
+
+    def reset_recording(self) -> None:
+        self._vm.on_reset_recording_button()
 
     def open_recording(self) -> None:
         dir = self.base_path / "sessions"
