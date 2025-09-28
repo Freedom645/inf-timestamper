@@ -5,7 +5,7 @@ from PySide6.QtGui import QCloseEvent
 from core.version import __version__
 from ui.factory.play_recording_widget_factory import PlayRecordingWidgetFactory
 from ui.view_models.main_window_view_model import MainWindowViewModel
-from ui.views.setting_window import SettingsDialog
+from ui.views.settings_main_dialog import SettingsMainDialog
 
 
 class MainWindow(QMainWindow):
@@ -35,7 +35,7 @@ class MainWindow(QMainWindow):
         self.main_layout.addWidget(self.play_recording_widget)
 
     def open_settings(self) -> None:
-        dialog = SettingsDialog(self)
+        dialog = SettingsMainDialog(self)
         if dialog.open_dialog(setting=self.vm.get_settings()):
             self.vm.update_setting(dialog.get_setting())
 
