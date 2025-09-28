@@ -3,7 +3,7 @@ from uuid import UUID
 from PySide6.QtWidgets import (
     QWidget,
     QLabel,
-    QVBoxLayout,
+    QGridLayout,
     QListWidget,
     QListWidgetItem,
     QPushButton,
@@ -23,6 +23,7 @@ from domain.entity.stream_entity import StreamSession, Timestamp
 from domain.value.base_path import BasePath
 from ui.view_models.play_recording_view_model import PlayRecordingViewModel
 from ui.views.utils import FunctionRunner
+from ui.widgets.date_time_edit import DateTimeEdit
 
 
 class PlayRecordingWidget(QWidget):
@@ -57,17 +58,29 @@ class PlayRecordingWidget(QWidget):
         btn_layout.addWidget(self.start_btn)
         btn_layout.addWidget(self.copy_btn)
 
-        self.status_label = QLabel("状態: 記録開始待ち")
-        self.start_time_label = QLabel("配信開始: -")
-        self.timestamp_count_label = QLabel("タイムスタンプ数: 0")
+        self.status = QLabel("記録開始待ち")
+        self.stream_start_time = DateTimeEdit()
+
+        self.timestamp_count = QLabel("0")
         self.list_widget = QListWidget()
 
-        layout = QVBoxLayout()
-        layout.addLayout(btn_layout)
-        layout.addWidget(self.status_label)
-        layout.addWidget(self.start_time_label)
-        layout.addWidget(self.timestamp_count_label)
-        layout.addWidget(self.list_widget)
+        grid_data = [
+            [btn_layout],
+            [QLabel("状態"), self.status],
+            [QLabel("配信開始時間"), self.stream_start_time],
+            [QLabel("タイムスタンプ数", self.timestamp_count)],
+            [self.list_widget],
+        ]
+
+        layout = QGridLayout()
+        for row_index, row in enumerate(grid_data):
+            for column_index, item in enumerate(row):
+                rowSpan = 1
+                column_span = 2 if len(row) == 1 else 1
+                if isinstance(item, QWidget):
+                    layout.addWidget(item, row_index, column_index, rowSpan, column_span)
+                else:
+                    layout.addLayout(item, row_index, column_index, rowSpan, column_span)
         self.setLayout(layout)
 
         # Signal を接続
@@ -114,14 +127,16 @@ class PlayRecordingWidget(QWidget):
         self.copy_btn.setText(text)
 
     def _on_status_changed(self, status: str) -> None:
-        self.status_label.setText(f"状態: {status}")
+        self.status.setText(status)
 
     def _on_start_time_changed(self, start_time: datetime | None) -> None:
-        text = start_time.strftime("%Y-%m-%d %H:%M:%S") if start_time else "-"
-        self.start_time_label.setText(f"配信開始: {text}")
+        if start_time:
+            self.stream_start_time.set_datetime(start_time)
+        else:
+            self.stream_start_time.clear()
 
     def _on_timestamp_count_changed(self, count: int) -> None:
-        self.timestamp_count_label.setText(f"タイムスタンプ数: {count}")
+        self.timestamp_count.setText(str(count))
 
     def _on_timestamp_upsert_signal(self, session: StreamSession[PlayData], timestamp: Timestamp[PlayData]) -> None:
         formatter = GameTimestampFormatter(self.settings.timestamp.template)
@@ -134,6 +149,7 @@ class PlayRecordingWidget(QWidget):
 
         self._timestamp_item_map[timestamp.id] = QListWidgetItem(label)
         self.list_widget.addItem(self._timestamp_item_map[timestamp.id])
+        self.list_widget.scrollToBottom()
 
     def _on_overwrite_signal(self, session: StreamSession[PlayData]) -> None:
         self._on_start_time_changed(session.start_time)
