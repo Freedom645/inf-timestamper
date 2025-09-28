@@ -47,9 +47,15 @@ class PlayRecordingWidget(QWidget):
         self._timestamp_item_map: dict[UUID, QListWidgetItem] = {}
 
         self.start_btn = self._generate_fixed_button("記録開始", self.toggle_recording)
+        self.start_btn.setToolTip(
+            "記録を開始します。配信ソフトと連携している場合は、配信開始と同時に記録が開始されます。"
+        )
         self.reset_btn = self._generate_fixed_button("リセット", self.reset_recording)
+        self.reset_btn.setToolTip("記録をリセットします。記録されたタイムスタンプはすべて削除されます。")
         self.reset_btn.setEnabled(False)
+
         self.copy_btn = self._generate_fixed_button("コピー", self._vm.on_copy_timestamps_to_clipboard)
+        self.copy_btn.setToolTip("記録されたタイムスタンプをクリップボードにコピーします。")
 
         btn_layout = QHBoxLayout()
         btn_layout.addWidget(self.start_btn)
@@ -88,7 +94,6 @@ class PlayRecordingWidget(QWidget):
         self._vm.copy_button_changed.connect(self._on_copy_button_changed)
         self._vm.status_label_changed.connect(self._on_status_changed)
         self._vm.start_time_changed.connect(self._on_start_time_changed)
-        self._vm.timestamp_count_changed.connect(self._on_timestamp_count_changed)
         self._vm.timestamp_upsert_signal.connect(self._on_timestamp_upsert_signal)
         self._vm.play_record_overwrite_signal.connect(self._on_overwrite_signal)
 
@@ -164,10 +169,9 @@ class PlayRecordingWidget(QWidget):
         else:
             self.stream_start_time.clear()
 
-    def _on_timestamp_count_changed(self, count: int) -> None:
-        self.timestamp_count.setText(str(count))
-
     def _on_timestamp_upsert_signal(self, session: StreamSession[PlayData], timestamp: Timestamp[PlayData]) -> None:
+        self.timestamp_count.setText(str(session.count_timestamp()))
+
         formatter = GameTimestampFormatter(self.settings.timestamp.template)
         label = formatter.format(session, timestamp)
 
@@ -182,7 +186,7 @@ class PlayRecordingWidget(QWidget):
 
     def _on_overwrite_signal(self, session: StreamSession[PlayData]) -> None:
         self._on_start_time_changed(session.start_time)
-        self._on_timestamp_count_changed(session.count_timestamp())
+        self.timestamp_count.setText(str(session.count_timestamp()))
         self._timestamp_item_map.clear()
         self.list_widget.clear()
         for timestamp in session.timestamps:

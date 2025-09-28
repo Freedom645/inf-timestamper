@@ -18,7 +18,7 @@ class DateTimeEdit(QWidget):
         # --- 内部UI ---
         self.line_edit = QLineEdit()
         self.line_edit.setPlaceholderText(self._format)
-        self.line_edit.setReadOnly(True)
+        self.line_edit.setDisabled(True)
         self.line_edit.setText(self._empty_string)
         self.line_edit.textChanged.connect(self._on_text_changed)
 
@@ -27,11 +27,13 @@ class DateTimeEdit(QWidget):
         self.calendar_button.setFixedWidth(28)
         self.calendar_button.setEnabled(False)
         self.calendar_button.clicked.connect(self._open_calendar)
+        self.calendar_button.setToolTip("カレンダーから日付を選択します。")
 
         # 編集ボタン
         self.edit_button = QPushButton("✏️")
         self.edit_button.setFixedWidth(28)
         self.edit_button.clicked.connect(self._toggle_edit_mode)
+        self.edit_button.setToolTip("クリックして編集モードに切り替えます。")
 
         layout = QHBoxLayout(self)
         layout.setSpacing(0)
@@ -115,7 +117,7 @@ class DateTimeEdit(QWidget):
         if not self._editing:
             # 編集開始
             self._editing = True
-            self.line_edit.setReadOnly(False)
+            self.line_edit.setDisabled(False)
             self.edit_button.setText("✅")
             self.calendar_button.setEnabled(True)
             if self.line_edit.text() == "-":
@@ -123,7 +125,7 @@ class DateTimeEdit(QWidget):
         else:
             # 編集確定
             self._editing = False
-            self.line_edit.setReadOnly(True)
+            self.line_edit.setDisabled(True)
             self.edit_button.setText("✏️")
             self.calendar_button.setEnabled(False)
 

@@ -18,7 +18,6 @@ class PlayRecordingViewModel(QObject):
 
     status_label_changed = Signal(str)
     start_time_changed = Signal(object)
-    timestamp_count_changed = Signal(int)
     timestamp_upsert_signal = Signal(StreamSession[PlayData], Timestamp[PlayData])
     play_record_overwrite_signal = Signal(StreamSession[PlayData])
 
@@ -42,7 +41,6 @@ class PlayRecordingViewModel(QObject):
         self._emit_status_changed(session.stream_status)
 
     def timestamp_added(self, session: StreamSession[PlayData], timestamp: Timestamp[PlayData]) -> None:
-        self.timestamp_count_changed.emit(session.count_timestamp())
         self.timestamp_upsert_signal.emit(session, timestamp)
 
     def timestamp_updated(self, session: StreamSession[PlayData], timestamp: Timestamp[PlayData]) -> None:
@@ -70,7 +68,6 @@ class PlayRecordingViewModel(QObject):
             self.recording_button_changed.emit(False, "記録開始（開始中...）")
             self.status_label_changed.emit("開始中...")
             self.start_time_changed.emit(None)
-            self.timestamp_count_changed.emit(0)
 
             stream_session = self._play_recording_use_case.start_recording(self)
         except Exception as e:
@@ -90,7 +87,6 @@ class PlayRecordingViewModel(QObject):
             self.recording_button_changed.emit(False, "記録再開（再開中...）")
             self.status_label_changed.emit("記録再開中...")
             self.start_time_changed.emit(None)
-            self.timestamp_count_changed.emit(0)
 
             stream_session = self._play_recording_use_case.resume_recording(self)
         except Exception as e:

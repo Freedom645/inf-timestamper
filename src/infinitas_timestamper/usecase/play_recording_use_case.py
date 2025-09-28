@@ -119,6 +119,10 @@ class PlayRecordingUseCase:
         self._logger.info("記録を停止します")
         stream_session = self._current_session_repository.get()
 
+        if stream_session.stream_status == StreamStatus.WAITING:
+            self._logger.warning("セッションはまだ記録開始していないため、停止をスキップしました")
+            return stream_session
+
         if stream_session.stream_status == StreamStatus.COMPLETED:
             self._logger.warning("セッションはすでに記録完了しているため、停止をスキップしました")
             return stream_session
