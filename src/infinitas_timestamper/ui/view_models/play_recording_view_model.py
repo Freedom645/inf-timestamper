@@ -62,6 +62,7 @@ class PlayRecordingViewModel(QObject):
         self._logger.debug(f"読み込んだセッション: {session}")
 
         self.play_record_overwrite_signal.emit(session)
+        self._emit_status_changed(session.stream_status)
 
     def on_start_recording_button(self) -> str:
         """記録開始ボタン押下"""
@@ -120,8 +121,12 @@ class PlayRecordingViewModel(QObject):
                 self._output_use_case.save_stream_session(stream_session)
             self._emit_status_changed(stream_session.stream_status)
 
-    def on_reset_recording_button(self) -> None:
+    def on_reset_recording_button(self) -> bool:
         """記録リセットボタン押下"""
+        return self._play_recording_use_case.confirm_reset_recording()
+
+    def execute_reset_recording(self) -> None:
+        """記録リセット実行"""
         try:
             new_session = self._play_recording_use_case.reset_recording()
             self.status_label_changed.emit("リセット完了")

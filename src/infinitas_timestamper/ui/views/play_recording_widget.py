@@ -12,6 +12,7 @@ from PySide6.QtWidgets import (
     QSizePolicy,
     QFileDialog,
     QHBoxLayout,
+    QMessageBox,
 )
 from PySide6.QtGui import QCloseEvent
 from PySide6.QtCore import QThread
@@ -121,7 +122,16 @@ class PlayRecordingWidget(QWidget):
             self._vm.on_stop_recording_button()
 
     def reset_recording(self) -> None:
-        self._vm.on_reset_recording_button()
+        if self._vm.on_reset_recording_button():
+            reply = QMessageBox.question(
+                self,
+                "確認",
+                "記録をリセットします。よろしいですか？",
+                QMessageBox.StandardButton.Yes | QMessageBox.StandardButton.No,
+            )
+            if reply == QMessageBox.StandardButton.No:
+                return
+        self._vm.execute_reset_recording()
 
     def open_recording(self) -> None:
         dir = self.base_path / "sessions"

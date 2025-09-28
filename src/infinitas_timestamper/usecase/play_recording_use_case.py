@@ -181,6 +181,10 @@ class PlayRecordingUseCase:
 
         return stream_session
 
+    def confirm_reset_recording(self) -> bool:
+        session = self._current_session_repository.get()
+        return len(session.timestamps) > 0 or session.start_time is not None
+
     def reset_recording(self) -> StreamSession[PlayData]:
         self._logger.info("プレイ記録をリセットします")
         stream_session = self._current_session_repository.get()
