@@ -2,7 +2,7 @@ from typing import Callable, Any
 from obswebsocket import obsws, events, requests
 
 from domain.port.stream_gateway import IStreamGateway
-from domain.service.stream_service import StreamEventType
+from domain.value.stream_value import StreamEventType
 
 EVENT_MAP: dict[Any, StreamEventType] = {
     events.StreamStarted: StreamEventType.STREAM_STARTED,  # type: ignore

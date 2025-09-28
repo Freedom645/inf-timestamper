@@ -5,7 +5,6 @@ from pathlib import Path
 from PySide6.QtWidgets import QWidget
 
 from domain.entity.game_entity import PlayData
-from domain.service.stream_service import StreamService
 from domain.value.base_path import BasePath
 from domain.entity.settings_entity import Settings
 from domain.port.play_watcher import IPlayWatcher
@@ -56,11 +55,6 @@ class AppModule(Module):
     @provider
     def provide_settings(self) -> Settings:
         return Settings()
-
-    @singleton
-    @provider
-    def provide_stream_service(self, stream_gateway: IStreamGateway) -> StreamService[PlayData]:
-        return StreamService[PlayData](stream_gateway=stream_gateway)
 
     @singleton
     @provider

@@ -1,4 +1,5 @@
 from datetime import datetime, timedelta
+import logging
 from PySide6.QtWidgets import (
     QDialog,
     QLabel,
@@ -211,7 +212,7 @@ class SettingsDialog(QDialog):
         self.setLayout(grid_layout)
 
     def test_obs_connection(self) -> str:
-        connector = OBSConnectorV5()
+        connector = OBSConnectorV5(logging.getLogger("app"))
         try:
             obs_version, program_scene = connector.test_connect(
                 host=self.obs_host.text(),

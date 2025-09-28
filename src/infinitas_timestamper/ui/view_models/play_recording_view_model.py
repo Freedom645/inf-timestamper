@@ -1,7 +1,8 @@
 import logging
 from pathlib import Path
 from injector import inject
-from PySide6.QtCore import Signal, QObject, QTimer
+from datetime import datetime
+from PySide6.QtCore import Signal, QObject, QTimer, QDateTime
 
 from domain.entity.game_entity import PlayData
 from domain.entity.stream_entity import StreamSession, Timestamp
@@ -50,7 +51,7 @@ class PlayRecordingViewModel(QObject):
         """記録ファイルを開く"""
         try:
             session = self._output_use_case.load_stream_session(file_path)
-            session.stream_status = StreamStatus.ENDED
+            session.stream_status = StreamStatus.COMPLETED
         except Exception as e:
             self._logger.error("記録ファイルの読み込みに失敗しました")
             self._logger.exception(e)
@@ -90,7 +91,7 @@ class PlayRecordingViewModel(QObject):
         self.status_changed.emit("停止中...")
         stream_session = None
         try:
-            stream_session = self._play_recording_use_case.stop_recording(self)
+            stream_session = self._play_recording_use_case.stop_recording()
         except Exception as e:
             self.status_changed.emit(f"停止失敗（{e}）")
         else:
@@ -115,13 +116,25 @@ class PlayRecordingViewModel(QObject):
             self.copy_button_changed.emit(False, "完了" if res else "失敗")
             QTimer.singleShot(1000, lambda: self.copy_button_changed.emit(True, "コピー"))
 
+    def on_edit_start_time(self, new_start_time: QDateTime | None) -> None:
+        """開始時間を編集"""
+        try:
+            st_datetime = datetime.fromtimestamp(new_start_time.toSecsSinceEpoch()) if new_start_time else None
+            session = self._play_recording_use_case.edit_start_time(st_datetime)
+            if session:
+                self.play_record_overwrite_signal.emit(session)
+        except Exception as e:
+            self._logger.error("開始時間の編集に失敗しました")
+            self._logger.exception(e)
+            return
+
     def _emit_status_changed(self, stream_status: StreamStatus) -> None:
-        if stream_status == StreamStatus.BEFORE:
-            self.status_changed.emit("OBS接続完了（配信開始待ち）")
-        elif stream_status == StreamStatus.LIVE:
-            self.status_changed.emit("OBS接続完了（記録中）")
-        elif stream_status == StreamStatus.ENDED:
-            self.status_changed.emit("OBS接続完了（配信終了）")
+        if stream_status == StreamStatus.WAITING:
+            self.status_changed.emit("記録開始待ち")
+        elif stream_status == StreamStatus.RECORDING:
+            self.status_changed.emit("記録中")
+        elif stream_status == StreamStatus.COMPLETED:
+            self.status_changed.emit("記録完了")
         else:
             self.status_changed.emit("-")
 
@@ -129,7 +142,7 @@ class PlayRecordingViewModel(QObject):
         """ウィジェットが閉じられるときの処理"""
         self._logger.info("クローズイベント処理を開始します")
         self._logger.info("記録停止処理を実行します")
-        stream_session = self._play_recording_use_case.stop_recording(self)
+        stream_session = self._play_recording_use_case.stop_recording()
         if stream_session is not None:
             self._logger.info("記録保存処理を実行します")
             self._output_use_case.save_stream_session(stream_session)

@@ -86,7 +86,9 @@ class GameTimestampFormatter:
     ) -> str:
         match identifier:
             case FormatID.TIMESTAMP:
-                return str(session.get_elapse(timestamp))
+                if session.start_time is None:
+                    return str(timestamp.occurred_at.strftime("%Y/%m/%d %H:%M:%S"))
+                return str(timestamp.get_elapse(session.start_time))
             case FormatID.TITLE:
                 return timestamp.data.title
             case FormatID.LEVEL:

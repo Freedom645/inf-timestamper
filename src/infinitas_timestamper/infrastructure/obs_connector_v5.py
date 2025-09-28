@@ -1,9 +1,10 @@
 import logging
+from injector import inject
 from typing import Any, Callable
 import obsws_python as obsV5
 
 from domain.port.stream_gateway import IStreamGateway
-from domain.service.stream_service import StreamEventType
+from domain.value.stream_value import StreamEventType
 
 OBS_WEBSOCKET_OUTPUT_STARTING = "OBS_WEBSOCKET_OUTPUT_STARTING"
 OBS_WEBSOCKET_OUTPUT_STARTED = "OBS_WEBSOCKET_OUTPUT_STARTED"
@@ -17,9 +18,13 @@ EVENT_MAP = {
 
 
 class OBSConnectorV5(IStreamGateway):
-    def __init__(self) -> None:
+    @inject
+    def __init__(self, logger: logging.Logger) -> None:
         self._callbacks: list[Callable[[StreamEventType], None]] = []
-        self._logger = logging.getLogger("app")
+        self._logger = logger
+
+        self.req_client: obsV5.ReqClient | None = None
+        self.event_client: obsV5.EventClient | None = None
 
     def connect(self, host: str, port: int, password: str) -> None:
         self.req_client = obsV5.ReqClient(host=host, port=port, password=password)
@@ -31,17 +36,23 @@ class OBSConnectorV5(IStreamGateway):
                     self._notify(event_enum)
 
         def on_exit_started(data: Any) -> None:
-            self.event_client.unsubscribe()
+            if self.event_client:
+                self.event_client.unsubscribe()
 
-        if self._is_streaming():
+        if self._is_streaming(self.req_client):
             self._notify(StreamEventType.STREAM_STARTED)
 
         self.event_client.callback.register([on_stream_state_changed, on_exit_started])  # type: ignore
         self.event_client.subscribe()
 
     def disconnect(self) -> None:
-        self.event_client.disconnect()
-        self.req_client.disconnect()
+        if self.event_client:
+            self.event_client.disconnect()
+            self.event_client = None
+
+        if self.req_client:
+            self.req_client.disconnect()
+            self.req_client = None
 
     def test_connect(self, host: str, port: int, password: str) -> tuple[str, str]:
         try:
@@ -71,6 +82,6 @@ class OBSConnectorV5(IStreamGateway):
         for callback in self._callbacks:
             callback(evt)
 
-    def _is_streaming(self) -> bool:
-        status = self.req_client.get_stream_status()
+    def _is_streaming(self, req_client: obsV5.ReqClient) -> bool:
+        status = req_client.get_stream_status()
         return status.output_active  # type: ignore

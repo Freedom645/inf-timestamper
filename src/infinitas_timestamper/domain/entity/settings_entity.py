@@ -5,6 +5,8 @@ from domain.entity.game_format import FormatID
 
 
 class SettingObs(BaseModel):
+    is_enabled: bool = False
+    """OBS Studio連携を有効にする"""
     host: str = "localhost"
     """OBS Studioのホスト"""
     port: int = 4444

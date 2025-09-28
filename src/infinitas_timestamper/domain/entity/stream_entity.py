@@ -21,55 +21,59 @@ class Timestamp(BaseModel, Generic[T]):
     data: T
     """タイムスタンプデータ"""
 
+    def get_elapse(self, base_time: datetime) -> timedelta:
+        """基準時間からの経過時間を取得する"""
+        delta_seconds = (self.occurred_at - base_time).total_seconds()
+        return timedelta(seconds=int(delta_seconds))
+
 
 class StreamSession(BaseModel, Generic[T]):
     id: UUID = Field(default_factory=uuid4)
     """セッションID"""
-    stream_status: StreamStatus = StreamStatus.BEFORE
+    stream_status: StreamStatus = StreamStatus.WAITING
     """配信ステータス"""
     start_time: datetime | None = None
     """配信開始時間 (Noneの場合は配信前)"""
-    end_time: datetime | None = None
-    """配信終了時間 (Noneの場合は配信前/配信中)"""
     timestamps: list[Timestamp[T]] = []
     """タイムスタンプのリスト"""
 
-    def start(self, start_time: datetime) -> None:
-        """配信を開始する"""
-        if self.start_time is not None or self.stream_status != StreamStatus.BEFORE:
-            raise ValueError("StreamSessionはすでに開始しています。")
+    def start_recording(self, start_time: datetime) -> "StreamSession[T]":
+        """記録を開始する"""
+        if self.stream_status != StreamStatus.WAITING:
+            raise ValueError(f"セッションはすでに開始しています {self.stream_status}")
 
         self.start_time = start_time
-        self.stream_status = StreamStatus.LIVE
+        self.stream_status = StreamStatus.RECORDING
+        return self
 
-    def end(self, end_time: datetime) -> None:
-        """配信を終了する"""
-        if self.start_time is None or self.stream_status == StreamStatus.BEFORE:
-            raise ValueError("StreamSessionはまだ開始されていません。")
-        if self.end_time is not None or self.stream_status == StreamStatus.ENDED:
-            raise ValueError("StreamSessionはすでに終了しています。")
+    def resume_recording(self) -> "StreamSession[T]":
+        """記録を再開する"""
+        if self.stream_status != StreamStatus.COMPLETED:
+            raise ValueError(f"セッションは記録完了ではありません {self.stream_status}")
+        self.stream_status = StreamStatus.RECORDING
+        return self
 
-        self.end_time = end_time
-        self.stream_status = StreamStatus.ENDED
+    def complete_recording(self) -> "StreamSession[T]":
+        """記録を完了する"""
+        if self.stream_status != StreamStatus.RECORDING:
+            raise ValueError(f"セッションは記録中ではありません {self.stream_status}")
+        self.stream_status = StreamStatus.COMPLETED
+        return self
 
     def add_timestamp(self, timestamp: Timestamp[T]) -> None:
         """タイムスタンプを追加する"""
-        if self.start_time is None:
-            raise ValueError("配信が開始していないため、タイムスタンプを追加できません。")
         self.timestamps.append(timestamp)
 
-    def get_elapse(self, timestamp: Timestamp[T]) -> timedelta:
-        if self.start_time is None:
-            raise ValueError("配信が開始していません")
-
-        delta_seconds = (timestamp.occurred_at - self.start_time).total_seconds()
-        return timedelta(seconds=int(delta_seconds))
-
-    def get_timestamp_list(self) -> list[tuple[timedelta, Timestamp[T]]]:
+    def get_timestamp_list(self, start_time: datetime | None = None) -> list[tuple[timedelta, Timestamp[T]]]:
         """タイムスタンプのリストを取得する"""
+        if start_time is None:
+            start_time = self.start_time
+        if start_time is None:
+            raise ValueError("セッションの開始時間が設定されていません")
+
         stamps: list[tuple[timedelta, Timestamp[T]]] = []
         for timestamp in self.timestamps:
-            stamps.append((self.get_elapse(timestamp), timestamp))
+            stamps.append((timestamp.get_elapse(start_time), timestamp))
         return stamps
 
     def get_latest_timestamp(self) -> Timestamp[T] | None:

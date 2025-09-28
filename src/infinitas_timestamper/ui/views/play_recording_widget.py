@@ -2,6 +2,7 @@ from pathlib import Path
 from uuid import UUID
 from PySide6.QtWidgets import (
     QWidget,
+    QLayout,
     QLabel,
     QGridLayout,
     QListWidget,
@@ -60,11 +61,12 @@ class PlayRecordingWidget(QWidget):
 
         self.status = QLabel("記録開始待ち")
         self.stream_start_time = DateTimeEdit()
+        self.stream_start_time.datetime_changed.connect(self._vm.on_edit_start_time)
 
         self.timestamp_count = QLabel("0")
         self.list_widget = QListWidget()
 
-        grid_data = [
+        grid_data: list[list[QWidget | QLayout]] = [
             [btn_layout],
             [QLabel("状態"), self.status],
             [QLabel("配信開始時間"), self.stream_start_time],

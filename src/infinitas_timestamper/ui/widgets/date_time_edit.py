@@ -46,7 +46,7 @@ class DateTimeEdit(QWidget):
 
     # --- 内部処理 ---
 
-    def _set_empty(self):
+    def _set_empty(self) -> None:
         """内部データをクリアして - を表示"""
         self._datetime_value = None
         self.line_edit.setText(self._empty_string)
@@ -72,7 +72,7 @@ class DateTimeEdit(QWidget):
             self._set_valid_style(False)
             self._valid_input = False
 
-    def _set_valid_style(self, valid: bool):
+    def _set_valid_style(self, valid: bool) -> None:
         """赤枠表示の切り替え"""
         palette = self.line_edit.palette()
         if valid:
@@ -81,7 +81,7 @@ class DateTimeEdit(QWidget):
             palette.setColor(QPalette.ColorRole.Base, QColor(255, 220, 220))
         self.line_edit.setPalette(palette)
 
-    def _open_calendar(self):
+    def _open_calendar(self) -> None:
         """カレンダーをドロップダウン風に表示"""
         menu = QMenu(self)
 
@@ -93,7 +93,7 @@ class DateTimeEdit(QWidget):
         act.setDefaultWidget(cal)
         menu.addAction(act)
 
-        def on_date_selected(date: QDate):
+        def on_date_selected(date: QDate) -> None:
             # 既存の時刻を保持（なければ現在時刻）
             time_part = datetime.now().strftime("%H:%M:%S")
             if self._has_value:
@@ -110,7 +110,7 @@ class DateTimeEdit(QWidget):
         pos = self.calendar_button.mapToGlobal(self.calendar_button.rect().bottomLeft())
         menu.exec(pos)
 
-    def _toggle_edit_mode(self):
+    def _toggle_edit_mode(self) -> None:
         """編集モードの切り替え"""
         if not self._editing:
             # 編集開始
@@ -138,11 +138,11 @@ class DateTimeEdit(QWidget):
 
     # --- Public API ---
 
-    def clear(self):
+    def clear(self) -> None:
         """内部データをクリアする"""
         self._set_empty()
 
-    def set_datetime(self, dt: QDateTime | datetime | None):
+    def set_datetime(self, dt: QDateTime | datetime | None) -> None:
         """日時をセット"""
         if dt is None:
             self._set_empty()

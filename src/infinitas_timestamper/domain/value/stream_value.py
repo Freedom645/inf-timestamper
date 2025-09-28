@@ -3,12 +3,12 @@ from enum import StrEnum, unique
 
 @unique
 class StreamStatus(StrEnum):
-    BEFORE = "before"
-    """配信前"""
-    LIVE = "live"
-    """配信中"""
-    ENDED = "ended"
-    """配信終了"""
+    WAITING = "wait"
+    """記録開始待ち"""
+    RECORDING = "recording"
+    """記録中"""
+    COMPLETED = "ended"
+    """記録完了"""
 
 
 @unique
