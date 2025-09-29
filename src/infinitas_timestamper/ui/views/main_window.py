@@ -1,6 +1,7 @@
 from injector import inject
 from PySide6.QtWidgets import QMainWindow, QWidget, QVBoxLayout, QMessageBox, QApplication
 from PySide6.QtGui import QCloseEvent
+from PySide6.QtCore import QTimer
 
 from core.version import __version__
 from ui.factory.play_recording_widget_factory import PlayRecordingWidgetFactory
@@ -37,9 +38,10 @@ class MainWindow(QMainWindow):
 
         self.main_layout.addWidget(self.play_recording_widget)
 
-    def show(self) -> None:
+        QTimer.singleShot(0, self.check_update)
+
+    def check_update(self) -> None:
         message = self.vm.notify_update_result()
-        super().show()
 
         # 更新結果の通知
         if message:

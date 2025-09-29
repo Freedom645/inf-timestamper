@@ -1,11 +1,13 @@
 import sys
 import subprocess
+from PySide6.QtWidgets import QApplication
 
 from consts import GitHub, Application
-from entity.arguments import Arguments, Mode
-from entity.result import ExecutionResult, ExecutionStatus
+from domain.entity.arguments import Arguments, Mode
+from domain.entity.result import ExecutionResult, ExecutionStatus
 from service.app_updater import AppUpdater
 from service.github_accessor import GithubRepositoryAccessor
+from ui.main_window import MainWindow
 
 
 def check() -> ExecutionResult:
@@ -58,7 +60,11 @@ def main() -> None:
             case Mode.CHECK:
                 res = check()
             case Mode.UPDATE:
-                res = update(args)
+                # res = update(args)
+                app = QApplication(sys.argv)
+                window = MainWindow(Arguments.load_from_sysargs())
+                window.show()
+                sys.exit(app.exec())
             case _:
                 raise ValueError(f"Invalid mode: {args.mode}")
 

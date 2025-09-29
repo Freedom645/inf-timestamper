@@ -2,6 +2,8 @@ import requests
 
 from typing import TypedDict
 
+from domain.value.progress_value import ProgressCallback
+
 
 class LatestReleaseAsset(TypedDict):
     name: str
@@ -26,9 +28,17 @@ class GithubRepositoryAccessor:
         data: LatestRelease = resp.json()
         return data
 
-    def check_latest_version(self, asset_name: str) -> tuple[str, str | None]:
+    def check_latest_version(
+        self, asset_name: str, *, progress_callback: ProgressCallback | None = None
+    ) -> tuple[str, str | None]:
+        if progress_callback:
+            progress_callback(0)
+
         latest_release = self.get_latest_release()
         latest = latest_release["tag_name"].lstrip("v")
         url = next((a["browser_download_url"] for a in latest_release["assets"] if a["name"] == asset_name), None)
+
+        if progress_callback:
+            progress_callback(100)
 
         return latest, url

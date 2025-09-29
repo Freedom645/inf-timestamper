@@ -21,8 +21,8 @@ class Arguments(BaseModel):
     @staticmethod
     def load_from_sysargs() -> "Arguments":
         parser = argparse.ArgumentParser(description="Infinitas Timestamper updater")
-        group = parser.add_mutually_exclusive_group(required=True)
 
+        group = parser.add_mutually_exclusive_group(required=True)
         group.add_argument("--check", action="store_true", help="最新バージョンをチェックする")
         group.add_argument("--update", type=str, metavar="PATH", help="指定フォルダに最新バージョンを展開する")
 
