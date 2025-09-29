@@ -10,7 +10,7 @@ from service.github_accessor import GithubRepositoryAccessor
 
 
 class UpdateUseCase:
-    def __init__(self):
+    def __init__(self) -> None:
         self.extracted_path: Path | None = None
 
     def update(self, args: Arguments, progress_callback: StepProgressCallback) -> ExecutionResult:

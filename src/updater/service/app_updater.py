@@ -111,7 +111,7 @@ class AppUpdater:
 
     def copy_tree(
         self, src: Path, dst: Path, progress_callback: ProgressCallback | None = None, ignore: list[str] | None = None
-    ):
+    ) -> Path:
         """指定したディレクトリを再帰的にコピーする"""
         if progress_callback:
             progress_callback(0)

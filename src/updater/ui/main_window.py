@@ -13,12 +13,12 @@ class UpdaterThread(QThread):
     progress_changed = Signal(Step, int)
     finished_update = Signal(bool)
 
-    def __init__(self, args: Arguments, use_case: UpdateUseCase):
+    def __init__(self, args: Arguments, use_case: UpdateUseCase) -> None:
         super().__init__()
         self.args = args
         self.use_case = use_case
 
-    def run(self):
+    def run(self) -> None:
         result = self.use_case.update(self.args, lambda step, progress: self.progress_changed.emit(step, progress))
         self.finished_update.emit(result.status == ExecutionStatus.SUCCESS)
 
@@ -35,7 +35,7 @@ class MainWindow(QWidget):
 
         # 各ステップバーとラベル
         self.steps: dict[Step, QProgressBar] = {}
-        self.step_layouts = {}
+        self.step_layouts: dict[Step, QVBoxLayout] = {}
         for step in Step:
             label = QLabel(step.value)
             bar = QProgressBar()
@@ -46,17 +46,17 @@ class MainWindow(QWidget):
 
         QTimer.singleShot(100, self.start_update)
 
-    def start_update(self):
+    def start_update(self) -> None:
         self._thread = UpdaterThread(self.args, self.use_case)
         self._thread.progress_changed.connect(self.update_step)
         self._thread.finished_update.connect(self.on_finished)
         self._thread.start()
 
-    def update_step(self, name: Step, value: int):
+    def update_step(self, name: Step, value: int) -> None:
         if name in self.steps:
             self.steps[name].setValue(value)
 
-    def on_finished(self, success: bool):
+    def on_finished(self, success: bool) -> None:
         if success:
             for bar in self.steps.values():
                 bar.setValue(100)
