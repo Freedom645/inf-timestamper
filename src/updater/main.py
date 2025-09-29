@@ -31,7 +31,7 @@ def update(args: Arguments) -> ExecutionResult:
     return ExecutionResult(status=ExecutionStatus.SUCCESS, message="Update completed", data={"version": version})
 
 
-def main():
+def main() -> ExecutionResult:
     try:
         args = Arguments.load_from_sysargs()
         match args.mode:

@@ -28,14 +28,19 @@ jobs:
         shell: bash
         run: bash lint-all.bash
 
-      - name: Build with PyInstaller
+      - name: Build InfinitasTimestamper with PyInstaller
         run: |
           uv run pyinstaller InfinitasTimestamper.spec
+
+      - name: Build updater with PyInstaller
+        run: |
+          uv run pyinstaller updater.spec
 
       - name: Copy executable to dist folder
         run: |
           mkdir dist/InfinitasTimestamper
           copy dist\InfinitasTimestamper.exe dist\InfinitasTimestamper\
+          copy dist\updater.exe dist\InfinitasTimestamper\
 
       - name: Create zip
         run: |

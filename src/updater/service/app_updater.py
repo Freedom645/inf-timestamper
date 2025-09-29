@@ -1,4 +1,3 @@
-import os
 import zipfile
 import requests
 import shutil
@@ -24,14 +23,11 @@ class AppUpdater:
         backup_dir.mkdir(exist_ok=True)
 
         timestamp = datetime.now().strftime("%Y%m%d-%H%M%S")
-        backup_path = backup_dir / f"{ConstsAppUpdater.NAME}-{timestamp}.zip"
+        backup_path: Path = backup_dir / f"{ConstsAppUpdater.NAME}-{timestamp}.zip"
 
         with zipfile.ZipFile(backup_path, "w", zipfile.ZIP_DEFLATED) as zf:
-            for root, _, files in os.walk(self._app_dir):
-                if Path(root).resolve() == backup_dir.resolve():
-                    continue
-                for f in files:
-                    filepath = Path(root) / f
+            for filepath in self._app_dir.rglob("*"):
+                if filepath.is_file() and not filepath.is_relative_to(backup_dir):
                     arcname = filepath.relative_to(self._app_dir)
                     zf.write(filepath, arcname)
 
