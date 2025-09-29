@@ -1,7 +1,6 @@
 import zipfile
 import requests
 import shutil
-import tempfile
 
 from pathlib import Path
 from datetime import datetime
@@ -39,20 +38,48 @@ class AppUpdater:
 
         return backup_path
 
-    def update(self, url: str) -> None:
+    def download_app(self, url: str) -> Path:
         """アプリケーションを指定URLからダウンロードして展開する
 
         Args:
             url (str): ダウンロードするアプリケーションのURL
+
+        Returns:
+                Path: 展開したアプリケーションのディレクトリパス
         """
-        with tempfile.TemporaryDirectory() as temp_dir_str:
-            temp_dir = Path(temp_dir_str)
-            zip_path = temp_dir / f"downloaded_{datetime.now().strftime('%Y%m%d_%H%M%S')}.zip"
+        temp_dir = self._app_dir / ConstsAppUpdater.TEMP_DIR_NAME
+        temp_dir.mkdir(exist_ok=True)
 
-            with requests.get(url, stream=True) as r:
-                r.raise_for_status()
-                with open(zip_path, "wb") as f:
-                    shutil.copyfileobj(r.raw, f)
+        # 古いものは削除
+        for old_zip in temp_dir.glob("*"):
+            old_zip.unlink()
 
-            with zipfile.ZipFile(zip_path, "r") as zf:
-                zf.extractall(self._app_dir)
+        # ZIPダウンロード
+        zip_path = temp_dir / f"downloaded_{datetime.now().strftime('%Y%m%d_%H%M%S')}.zip"
+        with requests.get(url, stream=True) as r:
+            r.raise_for_status()
+            with open(zip_path, "wb") as f:
+                shutil.copyfileobj(r.raw, f)
+
+        # 展開
+        new_app_path: Path = temp_dir / "new_app"
+        with zipfile.ZipFile(zip_path, "r") as zf:
+            zf.extractall(new_app_path)
+
+        # 除外設定
+        def ignore_updater(dir: str, files: list[str]) -> set[str]:
+            ignored: set[str] = set()
+            if Path(dir).resolve() == new_app_path.resolve():
+                if "updater.exe" in files:
+                    ignored.add("updater.exe")
+            return ignored
+
+        # コピー
+        shutil.copytree(
+            new_app_path,
+            self._app_dir,
+            dirs_exist_ok=True,
+            ignore=ignore_updater,
+        )
+
+        return new_app_path

@@ -1,6 +1,7 @@
 import sys
+import subprocess
 
-from consts import GitHub
+from consts import GitHub, Application
 from entity.arguments import Arguments, Mode
 from entity.result import ExecutionResult, ExecutionStatus
 from service.app_updater import AppUpdater
@@ -15,23 +16,42 @@ def check() -> ExecutionResult:
 
 
 def update(args: Arguments) -> ExecutionResult:
-    if args.update_path is None:
-        raise ValueError("UpdatePath is None")
+    try:
+        if args.update_path is None:
+            raise ValueError("UpdatePath is None")
 
-    accessor = GithubRepositoryAccessor(repo=GitHub.REPO)
-    version, url = accessor.check_latest_version(asset_name=GitHub.ASSET_NAME)
+        accessor = GithubRepositoryAccessor(repo=GitHub.REPO)
+        version, url = accessor.check_latest_version(asset_name=GitHub.ASSET_NAME)
 
-    if url is None:
-        raise ValueError("No valid URL found for the latest release")
+        if url is None:
+            raise ValueError("No valid URL found for the latest release")
 
-    backuper = AppUpdater(app_dir=args.update_path)
-    backuper.backup_current_app()
+        backuper = AppUpdater(app_dir=args.update_path)
+        backuper.backup_current_app()
 
-    backuper.update(url=url)
-    return ExecutionResult(status=ExecutionStatus.SUCCESS, message="Update completed", data={"version": version})
+        downloaded_path = backuper.download_app(url=url)
+
+        callback_cmd = f"{args.update_path / Application.NAME}.exe --update-result success"
+        subprocess.Popen(
+            [
+                "replacer.exe",
+                "--source_file",
+                f"{downloaded_path}/updater.exe",
+                "--target_file",
+                f"{args.update_path}/updater.exe",
+                "--callback",
+                callback_cmd,
+            ]
+        )
+
+        return ExecutionResult(status=ExecutionStatus.SUCCESS, message="Update completed", data={"version": version})
+    except:
+        if args.update_path:
+            subprocess.Popen([f"{args.update_path / Application.NAME}.exe", "--update-result", "failed"])
+        raise
 
 
-def main() -> ExecutionResult:
+def main() -> None:
     try:
         args = Arguments.load_from_sysargs()
         match args.mode:
@@ -51,4 +71,4 @@ def main() -> ExecutionResult:
 
 
 if __name__ == "__main__":
-    res = main()
+    main()

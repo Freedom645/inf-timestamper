@@ -36,11 +36,16 @@ jobs:
         run: |
           uv run pyinstaller updater.spec
 
+      - name: Build replacer with PyInstaller
+        run: |
+          uv run pyinstaller replacer.spec
+
       - name: Copy executable to dist folder
         run: |
           mkdir dist/InfinitasTimestamper
           copy dist\InfinitasTimestamper.exe dist\InfinitasTimestamper\
           copy dist\updater.exe dist\InfinitasTimestamper\
+          copy dist\replacer.exe dist\InfinitasTimestamper\
 
       - name: Create zip
         run: |

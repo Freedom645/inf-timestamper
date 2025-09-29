@@ -6,3 +6,4 @@ class GitHub:
 class Application:
     NAME = "InfinitasTimestamper"
     BACKUP_DIR_NAME = "backups"
+    TEMP_DIR_NAME = "temp"
