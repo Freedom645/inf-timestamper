@@ -114,14 +114,6 @@ class FileSystemAppUpdater(IAppUpdater):
         return
 
     def finalize(self) -> None:
-        temp_dir = self._app_dir / Application.TEMP_DIR_NAME
-        if temp_dir.exists() and temp_dir.is_dir():
-            for child in temp_dir.iterdir():
-                if child.is_file() or child.is_symlink():
-                    child.unlink()
-                elif child.is_dir():
-                    shutil.rmtree(child)
-
         callback_cmd = f"{self._app_dir / Application.NAME}.exe --update-result success"
         subprocess.Popen(
             [

@@ -21,11 +21,11 @@ class MainWindow(QMainWindow):
         super().__init__()
         self.vm = vm
         self.play_recording_widget = play_recording_widget_factory(parent=self)
-        self.update_window = update_window_factory(parent=self)
+        self.update_window_factory = update_window_factory
 
         self.vm.get_settings()
 
-        self.setWindowTitle(f"INFINITAS TimeStamper {__version__}")
+        self.setWindowTitle(f"INFINITAS TimeStamper v{__version__}")
         self.setMinimumWidth(400)
         self.setMinimumHeight(500)
         file_menu = self.menuBar().addMenu("ファイル")
@@ -72,8 +72,9 @@ class MainWindow(QMainWindow):
         elif dialog_type == DialogType.QUESTION:
             reply = QMessageBox.question(self, "バージョン情報", message)
             if reply == QMessageBox.StandardButton.Yes:
-                self.update_window.show()
-                self.update_window.start_update()
+                window = self.update_window_factory(parent=self)
+                window.show()
+                window.start_update()
         else:  # dialog_type == DialogType.ERROR
             QMessageBox.critical(self, "バージョン情報", message)
 

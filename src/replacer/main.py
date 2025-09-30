@@ -12,7 +12,7 @@ def main() -> None:
     parser.add_argument("--source_file", type=str, required=True)
     parser.add_argument("--target_file", type=str, required=True)
     parser.add_argument("--callback", type=str, required=True)
-    parser.add_argument("--delay", type=int, default=1)
+    parser.add_argument("--delay", type=float, default=1.0)
     args = parser.parse_args(sys.argv[1:])
 
     source_file = Path(args.source_file).resolve()

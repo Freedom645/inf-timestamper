@@ -1,8 +1,10 @@
 from injector import inject
 from typing import Callable
 from PySide6.QtWidgets import QApplication, QWidget, QVBoxLayout, QProgressBar, QLabel, QMessageBox, QDialog
+from PySide6.QtGui import QCloseEvent
 
 from usecase.dto.app_updating import UpdateStep
+from ui.thread.updater_thread import UpdaterThread
 from ui.factory.updater_thread_factory import UpdaterThreadFactory
 
 
@@ -14,6 +16,7 @@ class UpdateWindow(QDialog):
         parent: QWidget | None = None,
     ):
         super().__init__(parent)
+        self._thread: UpdaterThread | None = None
         self._thread_factory = updater_thread_factory
 
         self.setWindowTitle("アップデート")
@@ -54,3 +57,9 @@ class UpdateWindow(QDialog):
             QApplication.quit()
         else:
             QMessageBox.critical(self, "エラー", "アップデート中にエラーが発生しました。")
+
+    def closeEvent(self, event: QCloseEvent) -> None:
+        if self._thread and self._thread.isRunning():
+            event.ignore()
+        else:
+            event.accept()

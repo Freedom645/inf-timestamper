@@ -1,4 +1,5 @@
 import logging
+from injector import inject
 from PySide6.QtCore import QThread, Signal
 
 from usecase.dto.app_updating import UpdateStep
@@ -9,6 +10,7 @@ class UpdaterThread(QThread):
     progress_changed = Signal(UpdateStep, int)
     finished_update = Signal(bool, object)  # 成功/失敗, コールバック関数 () -> None
 
+    @inject
     def __init__(self, logger: logging.Logger, use_case: AppUpdatingUseCase) -> None:
         super().__init__()
         self._use_case = use_case
