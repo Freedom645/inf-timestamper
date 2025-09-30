@@ -1,13 +1,10 @@
 from injector import inject
 from PySide6.QtCore import QObject
-from packaging import version
 from enum import StrEnum
 
 
 from core.arguments import ArgUpdateResult, Arguments
-from core.version import __version__
 from domain.entity.settings_entity import Settings
-from domain.entity.update_entity import ExecutionStatus
 from usecase.app_updating_use_case import AppUpdatingUseCase
 from usecase.settings_use_case import SettingsUseCase
 
@@ -44,22 +41,12 @@ class MainWindowViewModel(QObject):
                 return None
 
     def check_app_latest(self) -> tuple[DialogType, str]:
-        result = self._app_updating_use_case.check_latest_version()
+        current_version = self._app_updating_use_case.get_current_version()
+        latest_version_info = self._app_updating_use_case.check_latest_version()
 
-        latest_version_str = (result.data or {}).get("version")
-        if result.status != ExecutionStatus.SUCCESS or not latest_version_str:
-            return DialogType.ERROR, "エラーが発生しました。"
-
-        current_version = version.parse(__version__)
-        latest_version = version.parse(latest_version_str)
-
-        if latest_version > current_version:
+        if latest_version_info.version > current_version:
             return (
                 DialogType.QUESTION,
-                f"最新バージョン {latest_version} が利用可能です。更新しますか？<br>※アプリを再起動します。",
+                f"最新バージョン v{latest_version_info.version} が利用可能です。更新しますか？<br>※アプリを再起動します。",
             )
         return DialogType.INFO, "最新バージョンです。"
-
-    def update_app(self) -> None:
-        self._app_updating_use_case.update_app()
-        return

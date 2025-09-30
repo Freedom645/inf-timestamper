@@ -1,5 +1,5 @@
 class GitHub:
-    REPO = "Freedom645/infinitas-timestamper"
+    REPOSITORY = "Freedom645/infinitas-timestamper"
     ASSET_NAME = "InfinitasTimestamper.zip"
 
 

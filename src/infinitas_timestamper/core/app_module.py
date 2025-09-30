@@ -8,18 +8,23 @@ from core.arguments import Arguments
 from domain.entity.game_entity import PlayData
 from domain.value.base_path import BasePath
 from domain.entity.settings_entity import Settings
-from domain.entity.update_entity import UpdateExeCommand
 from domain.port.play_watcher import IPlayWatcher
 from domain.port.stream_gateway import IStreamGateway
-from domain.port.app_updater import IAppUpdater
 
 from ui.factory.play_recording_widget_factory import PlayRecordingWidgetFactory
+from ui.factory.update_window_factory import UpdateWindowFactory
+from ui.factory.updater_thread_factory import UpdaterThreadFactory
+from ui.thread.updater_thread import UpdaterThread
 from ui.views.play_recording_widget import PlayRecordingWidget
+from ui.views.update_window import UpdateWindow
+
 from usecase.repository.settings_repository import SettingsRepository
 from usecase.repository.stream_session_repository import StreamSessionRepository
 from usecase.repository.current_stream_session_repository import (
     CurrentStreamSessionRepository,
 )
+from usecase.repository.app_updater import IAppUpdater
+from usecase.repository.app_version_provider import IVersionProvider
 
 from infrastructure.reflux_file_watcher import RefluxFileWatcher
 from infrastructure.obs_connector_v5 import OBSConnectorV5
@@ -28,7 +33,8 @@ from infrastructure.file_stream_session_repository import FileStreamSessionRepos
 from infrastructure.in_memory_current_stream_session_repository import (
     InMemoryCurrentStreamSessionRepository,
 )
-from infrastructure.app_update_executer import AppUpdateExecuter
+from infrastructure.file_system_app_updater import FileSystemAppUpdater
+from infrastructure.github_accessor import GithubRepositoryAccessor
 
 
 class AppModule(Module):
@@ -46,7 +52,8 @@ class AppModule(Module):
             to=InMemoryCurrentStreamSessionRepository,
             scope=singleton,
         )
-        binder.bind(IAppUpdater, to=AppUpdateExecuter, scope=singleton)  # type: ignore
+        binder.bind(IAppUpdater, to=FileSystemAppUpdater, scope=singleton)  # type: ignore
+        binder.bind(IVersionProvider, to=GithubRepositoryAccessor, scope=singleton)  # type: ignore
 
     @singleton
     @provider
@@ -77,10 +84,16 @@ class AppModule(Module):
 
     @singleton
     @provider
-    def provide_update_exe_command(self, base_path: BasePath) -> UpdateExeCommand:
-        if getattr(sys, "frozen", False):
-            return UpdateExeCommand(execution=[str(base_path / "updater.exe")])
+    def provide_updater_thread_factory(self, injector: Injector) -> UpdaterThreadFactory:
+        def factory() -> UpdaterThread:
+            return injector.create_object(UpdaterThread)
 
-        # FIXME: 実行コマンドどうにかしたい
-        script_dir = Path("src") / "updater" / "main.py"
-        return UpdateExeCommand(execution=["uv", "run", str(script_dir)])
+        return factory
+
+    @singleton
+    @provider
+    def provide_update_window_factory(self, injector: Injector) -> UpdateWindowFactory:
+        def factory(parent: QWidget | None = None) -> UpdateWindow:
+            return injector.create_object(UpdateWindow, additional_kwargs={"parent": parent})
+
+        return factory

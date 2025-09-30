@@ -1,10 +1,11 @@
 from injector import inject
-from PySide6.QtWidgets import QMainWindow, QWidget, QVBoxLayout, QMessageBox, QApplication
+from PySide6.QtWidgets import QMainWindow, QWidget, QVBoxLayout, QMessageBox
 from PySide6.QtGui import QCloseEvent
 from PySide6.QtCore import QTimer
 
 from core.version import __version__
 from ui.factory.play_recording_widget_factory import PlayRecordingWidgetFactory
+from ui.factory.update_window_factory import UpdateWindowFactory
 from ui.view_models.main_window_view_model import DialogType, MainWindowViewModel
 from ui.views.settings_main_dialog import SettingsMainDialog
 
@@ -15,10 +16,12 @@ class MainWindow(QMainWindow):
         self,
         vm: MainWindowViewModel,
         play_recording_widget_factory: PlayRecordingWidgetFactory,
+        update_window_factory: UpdateWindowFactory,
     ):
         super().__init__()
         self.vm = vm
         self.play_recording_widget = play_recording_widget_factory(parent=self)
+        self.update_window = update_window_factory(parent=self)
 
         self.vm.get_settings()
 
@@ -69,8 +72,8 @@ class MainWindow(QMainWindow):
         elif dialog_type == DialogType.QUESTION:
             reply = QMessageBox.question(self, "バージョン情報", message)
             if reply == QMessageBox.StandardButton.Yes:
-                self.vm.update_app()
-                QApplication.quit()
+                self.update_window.show()
+                self.update_window.start_update()
         else:  # dialog_type == DialogType.ERROR
             QMessageBox.critical(self, "バージョン情報", message)
 
