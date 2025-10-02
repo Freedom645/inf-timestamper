@@ -15,7 +15,7 @@ from ui.factory.play_recording_widget_factory import PlayRecordingWidgetFactory
 from ui.factory.update_window_factory import UpdateWindowFactory
 from ui.factory.updater_thread_factory import UpdaterThreadFactory
 from ui.thread.updater_thread import UpdaterThread
-from ui.views.play_recording_widget import PlayRecordingWidget
+from ui.widgets.play_recording_widget import PlayRecordingWidget
 from ui.views.update_window import UpdateWindow
 
 from usecase.repository.settings_repository import SettingsRepository

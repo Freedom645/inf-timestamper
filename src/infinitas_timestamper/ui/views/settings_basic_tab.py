@@ -37,6 +37,7 @@ class SettingsBasicTab(QWidget):
 
         # タイムスタンプ
         self.format_template = DollarCompleterLineEdit([f"${f.value}" for f in FormatID])
+        self.format_template.textChanged.connect(self._update_preview)
         self.format_id_combo = QComboBox()
         for fmt in FormatID:
             display = f"{fmt.logical_name()} (${fmt.value})"

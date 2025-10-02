@@ -73,7 +73,7 @@ class PlayRecordingWidget(QWidget):
             [btn_layout],
             [QLabel("状態"), self.status],
             [QLabel("配信開始時間"), self.stream_start_time],
-            [QLabel("タイムスタンプ数", self.timestamp_count)],
+            [QLabel("タイムスタンプ数"), self.timestamp_count],
             [self.list_widget],
         ]
 

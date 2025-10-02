@@ -1,7 +1,7 @@
 from typing import Protocol
 from PySide6.QtWidgets import QWidget
 
-from ui.views.play_recording_widget import PlayRecordingWidget
+from ui.widgets.play_recording_widget import PlayRecordingWidget
 
 
 class PlayRecordingWidgetFactory(Protocol):
