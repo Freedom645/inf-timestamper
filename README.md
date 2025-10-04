@@ -1,5 +1,5 @@
 <div align="center">
-  <img src="./images/INF-TimeStamper.png" alt="アプリアイコン" width="100">
+  <img src="./images/INF-TIMESTAMPER.png" alt="アプリアイコン" width="100">
 </div>
 
 <h1 align="center">INF TimeStamper</h1>
