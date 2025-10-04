@@ -1,9 +1,9 @@
 class GitHub:
-    REPOSITORY = "Freedom645/inf-timestamper"
-    ASSET_NAME = "InfTimestamper.zip"
+    REPOSITORY = "Freedom645/inf-TimeStamper"
+    ASSET_NAME = "InfTimeStamper.zip"
 
 
 class Application:
-    NAME = "InfTimestamper"
+    NAME = "InfTimeStamper"
     BACKUP_DIR_NAME = "backups"
     TEMP_DIR_NAME = "temp"

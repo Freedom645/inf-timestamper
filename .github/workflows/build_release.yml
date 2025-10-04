@@ -28,9 +28,9 @@ jobs:
         shell: bash
         run: bash lint-all.bash
 
-      - name: Build InfTimestamper with PyInstaller
+      - name: Build InfTimeStamper with PyInstaller
         run: |
-          uv run pyinstaller InfTimestamper.spec
+          uv run pyinstaller InfTimeStamper.spec
 
       - name: Build replacer with PyInstaller
         run: |
@@ -38,19 +38,19 @@ jobs:
 
       - name: Copy executable to dist folder
         run: |
-          mkdir dist/InfTimestamper
-          copy dist\InfTimestamper.exe dist\InfTimestamper\
-          copy dist\replacer.exe dist\InfTimestamper\
+          mkdir dist/InfTimeStamper
+          copy dist\InfTimeStamper.exe dist\InfTimeStamper\
+          copy dist\replacer.exe dist\InfTimeStamper\
 
       - name: Create zip
         run: |
-          powershell Compress-Archive -Path dist\InfTimestamper\* -DestinationPath dist\InfTimestamper.zip
+          powershell Compress-Archive -Path dist\InfTimeStamper\* -DestinationPath dist\InfTimeStamper.zip
 
       - name: Create release and upload zip
         uses: softprops/action-gh-release@v1
         with:
           tag_name: ${{ github.ref_name }}
           name: Release ${{ github.ref_name }}
-          files: dist/InfTimestamper.zip
+          files: dist/InfTimeStamper.zip
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

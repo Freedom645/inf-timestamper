@@ -1,14 +1,31 @@
-# INF Timestamper
+<div align="center">
+  <img src="./images/INF-TimeStamper.png" alt="アプリアイコン" width="100">
+</div>
 
-本ツールは beatmania IIDX INFINITAS の YouTube 配信を行う配信者向けのタイムスタンプ自動生成ツールです。
+<h1 align="center">INF TimeStamper</h1>
+<p align="center">INFINITAS タイムスタンプ自動生成ツール</p>
 
-[Reflux](https://github.com/olji/Reflux) の出力ファイルを利用し、選曲タイミングに合わせて YouTube 配信アーカイブでジャンプできるタイムスタンプを記録及びコピー&ペーストを可能にします。
+## 概要
 
-![INF Timestamper使用イメージ](./images/usage_app_image.png)
+本ツールは beatmania IIDX INFINITAS の YouTube 配信を行う配信者向けのタイムスタンプ自動生成ツールです。<br>
+[Reflux](https://github.com/olji/Reflux) の出力ファイルを利用し、選曲タイミングに合わせてタイムスタンプを記録及びコピー機能を提供します。
+
+<div align="center">
+
+![INF TimeStamper使用イメージ](./images/usage_app_image.png)
+
+</div>
+
+YouTube 配信アーカイブの概要欄にタイムスタンプを掲載することで該当する動画時間にジャンプできるようになり、プレイの振り返りやリスナーのアーカイブ視聴の補助としてご活用できます。
+また、YouTube アカウントの条件を満たすことで[動画チャプター](https://support.google.com/youtube/answer/9884579?hl=ja)の設定としても利用可能です。
+
+<div align="center">
+<img src="./images/usage_app_youtube.jpeg" width="50%">
+</div>
 
 ## 動作環境
 
-- OS: Windows 10 / 11 (64bit)
+- OS: Windows 10 / 11 (64bit) で確認済み
 - 必須ソフト: [Reflux](https://github.com/olji/Reflux)
 - 任意ソフト: [OBS Studio](https://obsproject.com/) バージョン 28 以降
   - 配信開始/終了に合わせてタイムスタンプを自動記録したい場合に必要
@@ -17,10 +34,6 @@
 
 下記の手順で初期設定を行ってください。
 
-1. [Reflux](https://github.com/olji/Reflux) のインストール
-2. INF Timestamper (本ツール) のインストール
-3. INF Timestamper の設定
-
 ### 1. Reflux のインストール
 
 1. Reflux の[Release](https://github.com/olji/Reflux/releases)ページにアクセス
@@ -28,19 +41,19 @@
 3. Reflux._a.b.c_.7z をクリックしてダウンロード (*a.b.c*はバージョンになります)
 4. ダウンロードした 圧縮ファイルを任意の場所に展開
 
-### 2. INF Timestamper のインストール
+### 2. INF TimeStamper のインストール
 
-1. [Release](https://github.com/Freedom645/inf-timestamper/releases)ページにアクセス
+1. [Release](https://github.com/Freedom645/inf-TimeStamper/releases)ページにアクセス
 2. 最新バージョンの Assets を開く
-3. InfTimestamper.zip をクリックしてダウンロード
+3. InfTimeStamper.zip をクリックしてダウンロード
 4. ダウンロードした 圧縮ファイルを任意の場所に展開
 
-### 3. INF Timestamper の設定
+### 3. INF TimeStamper の設定
 
 ツールの使用にあたり最低限の設定手順になります。
 手順以外の設定項目については[その他の設定](#その他の設定)の章を参照ください。
 
-1. InfTimestamper を展開したフォルダ内の InfTimestamper.exe をクリックして起動
+1. InfTimeStamper を展開したフォルダ内の InfTimeStamper.exe をクリックして起動
 2. ツールバーの フォルダ > 設定 をクリックして、設定ウィンドウを開く
 3. 「基本設定」タブを開く
 4. 「参照」ボタンをクリックし、Reflux を展開したフォルダ (Reflux.exe があるフォルダ) を選択
@@ -53,7 +66,7 @@
 ```mermaid
 flowchart TD
     A[Reflux 起動] --> D
-    B[INF Timestamper 起動 ⏱] --> C[「記録開始」ボタン<br>クリック]
+    B[INF TimeStamper 起動 ⏱] --> C[「記録開始」ボタン<br>クリック]
     C --> D[INFINITAS をプレイ 🎮]
     D --> E[タイムスタンプをコピー 📋]
     E --> F[YouTube概要欄に貼り付け 📺]
@@ -92,7 +105,7 @@ flowchart TD
 
 ### OBS Studio との連携 (オプション機能)
 
-OBS Studio で配信している場合、INF Timestamper で連携設定することで「配信開始時間の自動設定」が可能です。
+OBS Studio で配信している場合、INF TimeStamper で連携設定することで**配信開始時間の自動設定が可能**です。
 連携を有効にした状態で「記録開始」をすると、待機状態となり OBS Studio の配信開始と同時にタイムスタンプの記録が開始されるようになります。また、配信終了と同時に記録停止されます。
 
 **注意:**
@@ -114,6 +127,8 @@ OBS Studio で配信している場合、INF Timestamper で連携設定する�
 
 </details>
 
+**INF TimeStamper の設定**
+
 1. 「配信ソフト連携」タブを開く
 2. 「OBS 連携を有効にする」のチェックを入れる
 3. ホスト、ポートを入力（「認証を有効にする」を設定した場合はパスワードも必要です）
@@ -122,6 +137,19 @@ OBS Studio で配信している場合、INF Timestamper で連携設定する�
 設定後に「接続テスト」をクリックすることで OBS に接続できるかテストできます。
 接続テストに成功すると OBS のバージョンと選択されているシーン名が表示されます。
 ![設定ウィンドウ OBS接続テスト結果](./images/usage_obs_settings_test.png)
+
+**OBS Studio 連携時の流れ**
+
+```mermaid
+flowchart TD
+    Reflux[Reflux 起動] --> OBS_START
+    OBS[OBS起動] --> TOOL_START
+    TOOL_LAUNCH[INF TimeStamper 起動 ⏱] --> TOOL_START[「記録開始」ボタン<br>クリック]
+    TOOL_START --> OBS_START[OBS配信開始 ⏺]
+    OBS_START --> INFINITAS[INFINITAS をプレイ 🎮]
+    INFINITAS --> TOOL_COPY[タイムスタンプをコピー 📋]
+    TOOL_COPY --> YOUTUBE[YouTube概要欄に貼り付け 📺]
+```
 
 ## 商標について
 
@@ -133,7 +161,7 @@ OBS Studio で配信している場合、INF Timestamper で連携設定する�
 
 本ソフトウェアは MIT License で配布しています。
 
-ただし、本ソフトウェアは以下のライブラリを利用しています：
+ただし、本ソフトウェアは以下のライブラリを利用しています。
 
 - PySide6 (LGPLv3)
 - Qt (LGPLv3)
