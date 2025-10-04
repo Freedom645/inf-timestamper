@@ -18,7 +18,7 @@ class Arguments(BaseModel):
 
     @staticmethod
     def load() -> "Arguments":
-        parser = argparse.ArgumentParser(description="Infinitas Timestamper")
+        parser = argparse.ArgumentParser(description="Inf Timestamper")
         parser.add_argument("--update-result", type=ArgUpdateResult, choices=list(ArgUpdateResult))
 
         args = parser.parse_args(sys.argv[1:])

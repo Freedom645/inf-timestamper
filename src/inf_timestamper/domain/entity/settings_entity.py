@@ -9,7 +9,7 @@ class SettingObs(BaseModel):
     """OBS Studio連携を有効にする"""
     host: str = "localhost"
     """OBS Studioのホスト"""
-    port: int = 4444
+    port: int = 4455
     """OBS Studioのポート"""
     password: str = ""
     """OBS Studioのパスワード"""

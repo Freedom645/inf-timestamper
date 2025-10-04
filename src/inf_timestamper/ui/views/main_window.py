@@ -1,9 +1,10 @@
 from injector import inject
 from PySide6.QtWidgets import QMainWindow, QWidget, QVBoxLayout, QMessageBox
-from PySide6.QtGui import QCloseEvent
+from PySide6.QtGui import QCloseEvent, QIcon
 from PySide6.QtCore import QTimer
 
 from core.version import __version__
+from domain.value.base_path import BasePath
 from ui.factory.play_recording_widget_factory import PlayRecordingWidgetFactory
 from ui.factory.update_window_factory import UpdateWindowFactory
 from ui.view_models.main_window_view_model import DialogType, MainWindowViewModel
@@ -14,6 +15,7 @@ class MainWindow(QMainWindow):
     @inject
     def __init__(
         self,
+        base_path: BasePath,
         vm: MainWindowViewModel,
         play_recording_widget_factory: PlayRecordingWidgetFactory,
         update_window_factory: UpdateWindowFactory,
@@ -25,9 +27,11 @@ class MainWindow(QMainWindow):
 
         self.vm.get_settings()
 
-        self.setWindowTitle(f"INFINITAS TimeStamper v{__version__}")
+        self.setWindowTitle(f"INF TimeStamper v{__version__}")
         self.setMinimumWidth(400)
         self.setMinimumHeight(500)
+        self.setWindowIcon(QIcon(str(base_path / "icon.ico")))
+
         file_menu = self.menuBar().addMenu("ファイル")
         file_menu.addAction("記録を開く", self.play_recording_widget.open_recording)
         file_menu.addAction("設定", self.open_settings)

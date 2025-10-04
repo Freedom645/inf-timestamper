@@ -1,5 +1,5 @@
 [project]
-name = "infinitas-timestamper"
+name = "inf-timestamper"
 version = "0.4.2"
 description = "INFINITAS向けタイムスタンプ生成ツール"
 readme = "README.md"
@@ -36,7 +36,7 @@ warn_unused_configs = true
 warn_redundant_casts = true
 no_implicit_optional = true
 strict_optional = true
-mypy_path = "src/infinitas_timestamper"
+mypy_path = "src/inf_timestamper"
 
 [tool.ruff]
 line-length = 120

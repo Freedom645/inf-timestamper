@@ -3,10 +3,10 @@
 block_cipher = None
 
 a = Analysis(
-    ["src/infinitas_timestamper/main.py"],
+    ["src/inf_timestamper/main.py"],
     pathex=[],
     binaries=[],
-    datas=[],
+    datas=[('icon.ico', './icon.ico')],
     hiddenimports=[],
     hookspath=[],
     hooksconfig={},
@@ -23,7 +23,7 @@ exe = EXE(
     a.binaries,
     a.datas,
     [],
-    name="InfinitasTimestamper",
+    name="InfTimestamper",
     debug=False,
     bootloader_ignore_signals=False,
     strip=False,
@@ -36,4 +36,5 @@ exe = EXE(
     target_arch=None,
     codesign_identity=None,
     entitlements_file=None,
+    icon='icon.ico',
 )
