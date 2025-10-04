@@ -1,6 +1,6 @@
 [project]
 name = "inf-timestamper"
-version = "0.4.2"
+version = "0.5.0"
 description = "INFINITAS向けタイムスタンプ生成ツール"
 readme = "README.md"
 requires-python = ">=3.13"
