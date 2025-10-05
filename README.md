@@ -3,12 +3,12 @@
 </div>
 
 <h1 align="center">INF TimeStamper</h1>
-<p align="center">INFINITAS タイムスタンプ自動生成ツール</p>
+<p align="center">- INFINITAS タイムスタンプ自動記録ツール -</p>
 
 ## 概要
 
-本ツールは beatmania IIDX INFINITAS の YouTube 配信を行う配信者向けのタイムスタンプ自動生成ツールです。<br>
-[Reflux](https://github.com/olji/Reflux) の出力ファイルを利用し、選曲タイミングに合わせてタイムスタンプを記録及びコピー機能を提供します。
+本ツールは beatmania IIDX INFINITAS の YouTube 配信を行う配信者向けのタイムスタンプ自動記録ツールです。<br>
+[Reflux](https://github.com/olji/Reflux) の出力ファイルを利用し、選曲タイミングに合わせてタイムスタンプの記録及びコピー機能を提供します。
 
 <div align="center">
 
@@ -16,8 +16,8 @@
 
 </div>
 
-YouTube 配信アーカイブの概要欄にタイムスタンプを掲載することで該当する動画時間にジャンプできるようになり、プレイの振り返りやリスナーのアーカイブ視聴の補助としてご活用できます。
-また、YouTube アカウントの条件を満たすことで[動画チャプター](https://support.google.com/youtube/answer/9884579?hl=ja)の設定としても利用可能です。
+記録されたタイムスタンプを YouTube 配信アーカイブの概要欄に掲載することで、**選曲タイミングの動画時間にジャンプできる**ようになり、プレイの振り返りやリスナのアーカイブ視聴の補助としてご活用できます。
+また、YouTube アカウントの条件を満たすことで[動画チャプター](https://support.google.com/youtube/answer/9884579?hl=ja)としても利用可能です。
 
 <div align="center">
 <img src="./images/usage_app_youtube.jpeg" width="50%">
@@ -63,14 +63,7 @@ YouTube 配信アーカイブの概要欄にタイムスタンプを掲載する
 
 基本的なツールの使用方法は下記になります。
 
-```mermaid
-flowchart TD
-    A[Reflux 起動] --> D
-    B[INF TimeStamper 起動 ⏱] --> C[「記録開始」ボタン<br>クリック]
-    C --> D[INFINITAS をプレイ 🎮]
-    D --> E[タイムスタンプをコピー 📋]
-    E --> F[YouTube概要欄に貼り付け 📺]
-```
+![基本使用フロー図](./images/usage_basic_flow.png)
 
 タイムスタンプが登録された状態で「コピー」ボタンをクリックすることで、クリップボードにタイムスタンプを一括コピーできます。
 コピーしたデータは YouTube ライブの概要欄等にペーストしてご利用ください。
@@ -138,18 +131,10 @@ OBS Studio で配信している場合、INF TimeStamper で連携設定する�
 接続テストに成功すると OBS のバージョンと選択されているシーン名が表示されます。
 ![設定ウィンドウ OBS接続テスト結果](./images/usage_obs_settings_test.png)
 
-**OBS Studio 連携時の流れ**
+**OBS Studio 連携時の流れ**<br>
+配信開始する前に INF TimeStamper の「記録開始」ボタンをクリックして待機状態にしておく必要があるため、ご注意ください。
 
-```mermaid
-flowchart TD
-    Reflux[Reflux 起動] --> OBS_START
-    OBS[OBS起動] --> TOOL_START
-    TOOL_LAUNCH[INF TimeStamper 起動 ⏱] --> TOOL_START[「記録開始」ボタン<br>クリック]
-    TOOL_START --> OBS_START[OBS配信開始 ⏺]
-    OBS_START --> INFINITAS[INFINITAS をプレイ 🎮]
-    INFINITAS --> TOOL_COPY[タイムスタンプをコピー 📋]
-    TOOL_COPY --> YOUTUBE[YouTube概要欄に貼り付け 📺]
-```
+![OBS Studio連携時フロー図](./images/usage_obs_flow.png)
 
 ## 商標について
 
