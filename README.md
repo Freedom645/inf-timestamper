@@ -4,9 +4,15 @@
 
 <h1 align="center">INF TimeStamper</h1>
 <p align="center">- INFINITAS タイムスタンプ自動記録ツール -</p>
+<div align="center">
+
+[![Release](https://img.shields.io/github/v/release/Freedom645/inf-timestamper)](https://github.com/Freedom645/inf-timestamper/releases/latest)
+[![Downloads](https://img.shields.io/github/downloads/Freedom645/inf-timestamper/total)](https://github.com/Freedom645/inf-timestamper/releases)
+[![License](https://img.shields.io/github/license/Freedom645/inf-timestamper)](https://github.com/Freedom645/inf-timestamper/blob/main/LICENSE)
+
+</div>
 
 ## 概要
-
 本ツールは beatmania IIDX INFINITAS の YouTube 配信を行う配信者向けのタイムスタンプ自動記録ツールです。<br>
 [Reflux](https://github.com/olji/Reflux) の出力ファイルを利用し、選曲タイミングに合わせてタイムスタンプの記録及びコピー機能を提供します。
 
