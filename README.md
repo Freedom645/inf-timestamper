@@ -9,6 +9,7 @@
 [![Release](https://img.shields.io/github/v/release/Freedom645/inf-timestamper)](https://github.com/Freedom645/inf-timestamper/releases/latest)
 [![Downloads](https://img.shields.io/github/downloads/Freedom645/inf-timestamper/total)](https://github.com/Freedom645/inf-timestamper/releases)
 [![License](https://img.shields.io/github/license/Freedom645/inf-timestamper)](https://github.com/Freedom645/inf-timestamper/blob/main/LICENSE)
+[![FOSSA Status](https://app.fossa.com/api/projects/git%2Bgithub.com%2FFreedom645%2Finf-timestamper.svg?type=shield)](https://app.fossa.com/projects/git%2Bgithub.com%2FFreedom645%2Finf-timestamper?ref=badge_shield)
 
 </div>
 
@@ -158,3 +159,6 @@ OBS Studio で配信している場合、INF TimeStamper で連携設定する�
 - Qt (LGPLv3)
 
 利用者は LGPLv3 に従って、PySide6 や Qt を差し替えて利用できます。
+
+
+[![FOSSA Status](https://app.fossa.com/api/projects/git%2Bgithub.com%2FFreedom645%2Finf-timestamper.svg?type=large)](https://app.fossa.com/projects/git%2Bgithub.com%2FFreedom645%2Finf-timestamper?ref=badge_large)
