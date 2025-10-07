@@ -9,6 +9,7 @@
 [![Release](https://img.shields.io/github/v/release/Freedom645/inf-timestamper)](https://github.com/Freedom645/inf-timestamper/releases/latest)
 [![Downloads](https://img.shields.io/github/downloads/Freedom645/inf-timestamper/total)](https://github.com/Freedom645/inf-timestamper/releases)
 [![License](https://img.shields.io/github/license/Freedom645/inf-timestamper)](https://github.com/Freedom645/inf-timestamper/blob/main/LICENSE)
+[![FOSSA Status](https://app.fossa.com/api/projects/git%2Bgithub.com%2FFreedom645%2Finf-timestamper.svg?type=shield)](https://app.fossa.com/projects/git%2Bgithub.com%2FFreedom645%2Finf-timestamper?ref=badge_shield)
 
 </div>
 
@@ -160,3 +161,5 @@ https://code.qt.io/cgit/pyside/pyside-setup.git/
 ユーザーは LGPLv3 の条件に従い、PySide6 を改変し、再リンクする権利を有します。
 
 LGPLv3 ライセンス全文は LICENSES/LGPL-3.0.txt を参照してください。
+
+[![FOSSA Status](https://app.fossa.com/api/projects/git%2Bgithub.com%2FFreedom645%2Finf-timestamper.svg?type=large)](https://app.fossa.com/projects/git%2Bgithub.com%2FFreedom645%2Finf-timestamper?ref=badge_large)
