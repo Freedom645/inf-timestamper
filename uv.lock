@@ -76,9 +76,7 @@ source = { virtual = "." }
 dependencies = [
     { name = "injector" },
     { name = "obs-websocket-py" },
-    { name = "obsws-python" },
     { name = "pydantic" },
-    { name = "pyinstaller" },
     { name = "pyperclip" },
     { name = "pyside6-essentials" },
     { name = "requests" },
@@ -88,6 +86,7 @@ dependencies = [
 [package.dev-dependencies]
 dev = [
     { name = "mypy" },
+    { name = "pyinstaller" },
     { name = "pyright" },
     { name = "ruff" },
     { name = "types-requests" },
@@ -98,9 +97,7 @@ dev = [
 requires-dist = [
     { name = "injector", specifier = ">=0.22.0" },
     { name = "obs-websocket-py", specifier = ">=1.0" },
-    { name = "obsws-python", specifier = ">=1.8.0" },
     { name = "pydantic", specifier = ">=2.11.9" },
-    { name = "pyinstaller", specifier = ">=6.16.0" },
     { name = "pyperclip", specifier = ">=1.10.0" },
     { name = "pyside6-essentials", specifier = ">=6.9.2" },
     { name = "requests", specifier = ">=2.32.5" },
@@ -110,6 +107,7 @@ requires-dist = [
 [package.metadata.requires-dev]
 dev = [
     { name = "mypy", specifier = ">=1.18.2" },
+    { name = "pyinstaller", specifier = ">=6.16.0" },
     { name = "pyright", specifier = ">=1.1.405" },
     { name = "ruff", specifier = ">=0.13.2" },
     { name = "types-requests", specifier = ">=2.32.4.20250913" },
@@ -190,18 +188,6 @@ dependencies = [
 ]
 wheels = [
     { url = "https://files.pythonhosted.org/packages/79/79/9d97d956d4ec2bf621770363bf5de02bf404abfe674be0cf4630f4b80878/obs_websocket_py-1.0-py3-none-any.whl", hash = "sha256:c563a57a551d3c07428fa066b5b3e6e5963f634fb0f54408a9b46ff5b7441d65", size = 8462, upload-time = "2023-02-20T22:49:11.522Z" },
-]
-
-[[package]]
-name = "obsws-python"
-version = "1.8.0"
-source = { registry = "https://pypi.org/simple" }
-dependencies = [
-    { name = "websocket-client" },
-]
-sdist = { url = "https://files.pythonhosted.org/packages/d6/2f/624af34a5b0f09fbf858bf6743521a8626d712671ac49573e625ad1c97d3/obsws_python-1.8.0.tar.gz", hash = "sha256:e082894f80deb0836861fdc3c222e497308c8f66328da6075baba5b456a20971", size = 28727, upload-time = "2025-07-01T08:24:11.652Z" }
-wheels = [
-    { url = "https://files.pythonhosted.org/packages/97/4b/537f3d372f065b2aeeac3812228066eb70f47436adf88aaacc94eb5fd4e1/obsws_python-1.8.0-py3-none-any.whl", hash = "sha256:537bde416e149b6f59e0b2f31761d4a40329feafec171bde6fc1346ab8516e28", size = 30819, upload-time = "2025-07-01T08:24:10.086Z" },
 ]
 
 [[package]]

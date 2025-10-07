@@ -14,6 +14,7 @@
 </div>
 
 ## 概要
+
 本ツールは beatmania IIDX INFINITAS の YouTube 配信を行う配信者向けのタイムスタンプ自動記録ツールです。<br>
 [Reflux](https://github.com/olji/Reflux) の出力ファイルを利用し、選曲タイミングに合わせてタイムスタンプの記録及びコピー機能を提供します。
 
@@ -151,14 +152,14 @@ OBS Studio で配信している場合、INF TimeStamper で連携設定する�
 
 ## License
 
-本ソフトウェアは MIT License で配布しています。
+本ソフトウェアは PySide6 (Qt for Python) を利用しています。
 
-ただし、本ソフトウェアは以下のライブラリを利用しています。
+PySide6 は LGPLv3 のもとでライセンスされています。
+PySide6 のソースコードは以下で入手可能です:
+https://code.qt.io/cgit/pyside/pyside-setup.git/
 
-- PySide6 (LGPLv3)
-- Qt (LGPLv3)
+ユーザーは LGPLv3 の条件に従い、PySide6 を改変し、再リンクする権利を有します。
 
-利用者は LGPLv3 に従って、PySide6 や Qt を差し替えて利用できます。
-
+LGPLv3 ライセンス全文は LICENSES/LGPL-3.0.txt を参照してください。
 
 [![FOSSA Status](https://app.fossa.com/api/projects/git%2Bgithub.com%2FFreedom645%2Finf-timestamper.svg?type=large)](https://app.fossa.com/projects/git%2Bgithub.com%2FFreedom645%2Finf-timestamper?ref=badge_large)

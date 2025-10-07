@@ -1,8 +1,8 @@
 import logging
-from uuid import UUID
 from injector import inject
-from typing import Any, Callable
-import obsws_python as obsV5
+from typing import Callable, Any
+from uuid import UUID
+from obswebsocket import obsws, events, requests
 
 from domain.port.stream_gateway import IStreamGateway
 from domain.value.stream_value import StreamEventType
@@ -12,63 +12,32 @@ OBS_WEBSOCKET_OUTPUT_STARTED = "OBS_WEBSOCKET_OUTPUT_STARTED"
 OBS_WEBSOCKET_OUTPUT_STOPPING = "OBS_WEBSOCKET_OUTPUT_STOPPING"
 OBS_WEBSOCKET_OUTPUT_STOPPED = "OBS_WEBSOCKET_OUTPUT_STOPPED"
 
-EVENT_MAP = {
-    OBS_WEBSOCKET_OUTPUT_STARTED: StreamEventType.STREAM_STARTED,
-    OBS_WEBSOCKET_OUTPUT_STOPPED: StreamEventType.STREAM_ENDED,
-}
-
 
 class OBSConnectorV5(IStreamGateway):
     @inject
     def __init__(self, logger: logging.Logger) -> None:
-        self._callbacks: dict[UUID, Callable[[StreamEventType], None]] = {}
         self._logger = logger
-
-        self.req_client: obsV5.ReqClient | None = None
-        self.event_client: obsV5.EventClient | None = None
+        self._callbacks: dict[UUID, Callable[[StreamEventType], None]] = {}
 
     def connect(self, host: str, port: int, password: str) -> None:
-        self.req_client = obsV5.ReqClient(host=host, port=port, password=password)
-        self.event_client = obsV5.EventClient(host=host, port=port, password=password)
+        self.ws = obsws(host, port, password)
+        self.ws.connect()
 
-        def on_stream_state_changed(status: Any) -> None:
-            for state, event_enum in EVENT_MAP.items():
-                if status.output_state == state:
-                    self._notify(event_enum)
-
-        def on_exit_started(data: Any) -> None:
-            if self.event_client:
-                self.event_client.unsubscribe()
-
-        if self._is_streaming(self.req_client):
+        if self._is_streaming():
             self._notify(StreamEventType.STREAM_STARTED)
-
-        self.event_client.callback.register([on_stream_state_changed, on_exit_started])  # type: ignore
-        self.event_client.subscribe()
+        self.ws.register(self._on_stream_changed_event, events.StreamStateChanged)  # type: ignore
 
     def disconnect(self) -> None:
-        if self.event_client:
-            try:
-                self.event_client.disconnect()
-            finally:
-                self.event_client = None
-
-        if self.req_client:
-            try:
-                self.req_client.disconnect()
-            finally:
-                self.req_client = None
+        self.ws.disconnect()
 
     def test_connect(self, host: str, port: int, password: str) -> tuple[str, str]:
         try:
-            req_client = obsV5.ReqClient(host=host, port=port, password=password, timeout=5)
-
-            res = req_client.get_current_program_scene()
-            program_scene: Any = res.current_program_scene_name  # type: ignore
-
-            res = req_client.get_version()
-            obs_version: Any = res.obs_version  # type: ignore
-            req_client.disconnect()
+            ws = obsws(host, port, password)
+            ws.connect()
+            print(ws.call(requests.GetCurrentProgramScene()))  # type: ignore
+            program_scene: Any = ws.call(requests.GetCurrentProgramScene()).getCurrentProgramSceneName()  # type: ignore
+            obs_version: Any = ws.call(requests.GetVersion()).getObsVersion()  # type: ignore
+            ws.disconnect()
 
             return obs_version, program_scene  # type: ignore
         except TimeoutError as e:
@@ -87,11 +56,17 @@ class OBSConnectorV5(IStreamGateway):
         if id in self._callbacks:
             del self._callbacks[id]
 
+    def _is_streaming(self) -> bool:
+        return self.ws.call(requests.GetStreamStatus()).getOutputActive()  # type: ignore
+
+    def _on_stream_changed_event(self, event) -> None:  # type: ignore
+        output_state: str = event.getOutputState()  # type: ignore
+        if output_state == OBS_WEBSOCKET_OUTPUT_STARTED:
+            self._notify(StreamEventType.STREAM_STARTED)
+        elif output_state == OBS_WEBSOCKET_OUTPUT_STOPPED:
+            self._notify(StreamEventType.STREAM_ENDED)
+
     def _notify(self, evt: StreamEventType) -> None:
         callbacks = list(self._callbacks.values())
         for callback in callbacks:
             callback(evt)
-
-    def _is_streaming(self, req_client: obsV5.ReqClient) -> bool:
-        status = req_client.get_stream_status()
-        return status.output_active  # type: ignore

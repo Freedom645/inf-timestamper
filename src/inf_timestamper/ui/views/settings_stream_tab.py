@@ -12,7 +12,9 @@ from PySide6.QtGui import QIntValidator, QCloseEvent
 from PySide6.QtCore import QThread, Qt
 
 from domain.entity.settings_entity import SettingObs
-from infrastructure.obs_connector_v5 import OBSConnectorV5
+from infrastructure.obs_connector_v4 import OBSConnectorV4
+
+# from infrastructure.obs_connector_v5 import OBSConnectorV5
 from ui.views.utils import FunctionRunner
 
 
@@ -62,7 +64,8 @@ class SettingsStreamTab(QWidget):
         self.obs_test_btn.setEnabled(enabled)
 
     def _test_obs_connection(self) -> str:
-        connector = OBSConnectorV5(logging.getLogger("app"))
+        connector = OBSConnectorV4(logging.getLogger("app"))
+        # connector = OBSConnectorV5(logging.getLogger("app"))
         try:
             obs_version, program_scene = connector.test_connect(
                 host=self.obs_host.text(),
