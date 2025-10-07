@@ -7,10 +7,13 @@ clients: set[websockets.ServerConnection] = set()  # 接続中クライアント
 
 
 def generate_success_response(
+    request_id: int,
     request_type: str, data: dict[Any, Any]
 ) -> dict[Any, Any]:
     return {
+        "op": 7,
         "d": {
+            "requestId": request_id,
             "requestStatus": {"result": True},
             "requestType": request_type,
             "responseData": data,
@@ -19,7 +22,7 @@ def generate_success_response(
 
 
 def generate_event_request(event_type: str, data: dict[Any, Any]) -> dict[Any, Any]:
-    return {"d": {"eventType": event_type, "eventData": data}}
+    return {"op": 5, "d": {"eventType": event_type, "eventData": data}}
 
 
 async def handle_client(websocket: websockets.ServerConnection) -> None:
@@ -30,10 +33,10 @@ async def handle_client(websocket: websockets.ServerConnection) -> None:
             "op": 0,
             "d": {
                 "rpcVersion": 1,
-                "authentication": {
-                    "challenge": "challenge",
-                    "salt": "salt",
-                },
+                # "authentication": {
+                #     "challenge": "challenge",
+                #     "salt": "salt",
+                # },
             },
         }
         await websocket.send(json.dumps(server_hello))
@@ -45,21 +48,22 @@ async def handle_client(websocket: websockets.ServerConnection) -> None:
             if data.get("op") == 1:
                 response = {
                     "op": 2,
-                    "d": {"negotiatedRpcVersion": "mock-dummy-version"},
+                    "d": {"negotiatedRpcVersion": 1},
                 }
             if data.get("op") == 6:
+                request_id = data.get("d").get("requestId")
                 request_type = data.get("d").get("requestType")
                 if request_type == "GetCurrentProgramScene":
                     response = generate_success_response(
-                        request_type, {"CurrentProgramSceneName": "dummy scene"}
+                        request_id, request_type, {"currentProgramSceneName": "dummy scene"}
                     )
                 if request_type == "GetVersion":
                     response = generate_success_response(
-                        request_type, {"ObsVersion": "dummy version"}
+                        request_id, request_type, {"obsVersion": "dummy version"}
                     )
                 if request_type == "GetStreamStatus":
                     response = generate_success_response(
-                        request_type, {"OutputActive": False}
+                        request_id, request_type, {"outputActive": False}
                     )
             if response:
                 print(f"Response: {response}")
@@ -84,11 +88,11 @@ async def event_dispatcher() -> None:
         event = None
         if user_input == "start":
             event = generate_event_request(
-                "StreamStateChanged", {"output_state": "OBS_WEBSOCKET_OUTPUT_STARTED"}
+                "StreamStateChanged", {"outputState": "OBS_WEBSOCKET_OUTPUT_STARTED"}
             )
         elif user_input == "stop":
             event = generate_event_request(
-                "StreamStateChanged", {"output_state": "OBS_WEBSOCKET_OUTPUT_STOPPED"}
+                "StreamStateChanged", {"outputState": "OBS_WEBSOCKET_OUTPUT_STOPPED"}
             )
         elif user_input == "exit":
             print("Exiting...")

@@ -30,21 +30,14 @@ jobs:
 
       - name: Build InfTimeStamper with PyInstaller
         run: |
-          uv run pyinstaller InfTimeStamper.spec
+          uv run pyinstaller InfTimeStamper.spec --noconfirm
 
       - name: Build replacer with PyInstaller
         run: |
-          uv run pyinstaller replacer.spec
-
-      - name: Copy executable to dist folder
-        run: |
-          mkdir dist/InfTimeStamper
-          copy dist\InfTimeStamper.exe dist\InfTimeStamper\
-          copy dist\replacer.exe dist\InfTimeStamper\
+          uv run pyinstaller replacer.spec --noconfirm
 
       - name: Create zip
-        run: |
-          powershell Compress-Archive -Path dist\InfTimeStamper\* -DestinationPath dist\InfTimeStamper.zip
+        run: bash buiild.bash
 
       - name: Create release and upload zip
         uses: softprops/action-gh-release@v1
