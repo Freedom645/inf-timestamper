@@ -37,7 +37,7 @@ jobs:
           uv run pyinstaller replacer.spec --noconfirm
 
       - name: Create zip
-        run: bash buiild.bash
+        run: bash build.bash
 
       - name: Create release and upload zip
         uses: softprops/action-gh-release@v1
