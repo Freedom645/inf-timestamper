@@ -189,6 +189,11 @@ class PlayRecordingWidget(QWidget):
         self.timestamp_count.setText(str(session.count_timestamp()))
         self._timestamp_item_map.clear()
         self.list_widget.clear()
+
+        if self.settings.timestamp.include_start_label:
+            start_item = QListWidgetItem(self.settings.timestamp.start_label, self.list_widget)
+            self.list_widget.addItem(start_item)
+
         for timestamp in session.timestamps:
             self._vm.timestamp_upsert_signal.emit(session, timestamp)
 
