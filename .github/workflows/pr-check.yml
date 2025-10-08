@@ -1,0 +1,80 @@
+name: Pull Request Checks
+
+on:
+  pull_request:
+    branches:
+      - main
+      - develop
+  push:
+    branches:
+      - develop
+
+jobs:
+  lint-and-build:
+    runs-on: windows-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v5
+
+      - name: Set up Python
+        uses: actions/setup-python@v6
+        with:
+          python-version: "3.13"
+
+      - name: Install uv
+        run: pip install uv
+
+      - name: Cache uv environment
+        uses: actions/cache@v4
+        with:
+          path: |
+            .venv
+            .uv
+          key: ${{ runner.os }}-py${{ steps.setup-python.outputs.python-version }}-${{ hashFiles('uv.lock') }}
+          restore-keys: |
+            ${{ runner.os }}-py${{ steps.setup-python.outputs.python-version }}-
+
+      - name: Install dependencies
+        run: uv sync --all-extras --dev
+
+      # ---------- Reviewdog セットアップ ----------
+      - name: Install reviewdog
+        uses: reviewdog/action-setup@v1
+        with:
+          reviewdog_version: latest
+
+      # ---------- Ruff ----------
+      - name: Ruff Lint (via Reviewdog)
+        run: |
+          uv run ruff check . --format=github | reviewdog -f=github -name="ruff" -reporter=github-pr-review -level=warning
+        env:
+          REVIEWDOG_GITHUB_API_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      # ---------- MyPy ----------
+      - name: MyPy Type Check (via Reviewdog)
+        run: |
+          uv run mypy . --explicit-package-bases --show-column-numbers --no-error-summary | reviewdog -f=mypy -name="mypy" -reporter=github-pr-review -level=error
+        env:
+          REVIEWDOG_GITHUB_API_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      # ---------- Pyright ----------
+      - name: Pyright Type Check (via Reviewdog)
+        run: |
+          uv run pyright --outputjson | reviewdog -f=pyright -name="pyright" -reporter=github-pr-review -level=error
+        env:
+          REVIEWDOG_GITHUB_API_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      # ---------- ビルド確認 ----------
+      - name: Test build with PyInstaller (InfTimeStamper)
+        run: uv run pyinstaller InfTimeStamper.spec --noconfirm
+
+      - name: Test build with PyInstaller (replacer)
+        run: uv run pyinstaller replacer.spec --noconfirm
+
+      - name: Verify executables exist
+        shell: pwsh
+        run: |
+          if (!(Test-Path dist/InfTimeStamper.exe)) { Write-Host "❌ InfTimeStamper build failed"; exit 1 }
+          if (!(Test-Path dist/replacer.exe)) { Write-Host "❌ replacer build failed"; exit 1 }
+          Write-Host "✅ Build verification passed"
