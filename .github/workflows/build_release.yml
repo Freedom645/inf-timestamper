@@ -24,20 +24,11 @@ jobs:
       - name: Install dependencies
         run: uv sync --all-extras --dev
 
-      - name: Run lint and type checks
-        shell: bash
-        run: bash lint-all.bash
-
-      - name: Build InfTimeStamper with PyInstaller
-        run: |
-          uv run pyinstaller InfTimeStamper.spec --noconfirm
-
-      - name: Build replacer with PyInstaller
-        run: |
-          uv run pyinstaller replacer.spec --noconfirm
+      - name: Build applications
+        run: bash build.bash
 
       - name: Create zip
-        run: bash build.bash
+        run: powershell -c Compress-Archive -Path "dist/InfTimeStamper/*" -DestinationPath dist/InfTimeStamper.zip -Force
 
       - name: Create release and upload zip
         uses: softprops/action-gh-release@v1

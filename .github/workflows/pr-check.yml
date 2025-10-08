@@ -67,15 +67,12 @@ jobs:
           REVIEWDOG_GITHUB_API_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
       # ---------- ビルド確認 ----------
-      - name: Test build with PyInstaller (InfTimeStamper)
-        run: uv run pyinstaller InfTimeStamper.spec --noconfirm
-
-      - name: Test build with PyInstaller (replacer)
-        run: uv run pyinstaller replacer.spec --noconfirm
+      - name: Test build with PyInstaller
+        run: bash build.bash
 
       - name: Verify executables exist
         shell: pwsh
         run: |
-          if (!(Test-Path dist/InfTimeStamper.exe)) { Write-Host "❌ InfTimeStamper build failed"; exit 1 }
-          if (!(Test-Path dist/replacer.exe)) { Write-Host "❌ replacer build failed"; exit 1 }
+          if (!(Test-Path dist/InfTimeStamper/InfTimeStamper.exe)) { Write-Host "❌ InfTimeStamper build failed"; exit 1 }
+          if (!(Test-Path dist/InfTimeStamper/replacer.exe)) { Write-Host "❌ replacer build failed"; exit 1 }
           Write-Host "✅ Build verification passed"
