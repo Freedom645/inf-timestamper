@@ -10,7 +10,9 @@ from PySide6.QtWidgets import (
     QFileDialog,
     QTextEdit,
     QComboBox,
+    QCheckBox,
 )
+from PySide6.QtCore import Qt
 
 from domain.entity.game_entity import ChartDetail, PlayData, PlayResult
 from domain.entity.game_format import FormatID, GameTimestampFormatter
@@ -35,6 +37,11 @@ class SettingsBasicTab(QWidget):
         dir_layout.addWidget(self.reflux_dir)
         dir_layout.addWidget(browse_btn)
 
+        self.format_start_label_enabled = QCheckBox("配信開始ラベルを含める")
+        self.format_start_label_enabled.checkStateChanged.connect(self._on_format_start_label_enabled_changed)
+        self.format_start_label = QLineEdit("00:00 配信開始")
+        self.format_start_label.textChanged.connect(self._update_preview)
+
         # タイムスタンプ
         self.format_template = DollarCompleterLineEdit([f"${f.value}" for f in FormatID])
         self.format_template.textChanged.connect(self._update_preview)
@@ -53,13 +60,22 @@ class SettingsBasicTab(QWidget):
         self.format_preview.setReadOnly(True)
 
         # レイアウトへ追加
-        layout.addWidget(QLabel("Refluxフォルダ"), 0, 0)
-        layout.addLayout(dir_layout, 0, 1)
-        layout.addWidget(QLabel("タイムスタンプフォーマット"), 1, 0, 1, 2)
-        layout.addWidget(self.format_template, 2, 0, 1, 2)
-        layout.addLayout(format_layout, 3, 0, 1, 2)
-        layout.addWidget(QLabel("プレビュー"), 4, 0)
-        layout.addWidget(self.format_preview, 4, 1)
+        layout_set = [
+            [QLabel("Refluxフォルダ"), dir_layout],
+            [QLabel("タイムスタンプフォーマット")],
+            [self.format_start_label_enabled, self.format_start_label],
+            [self.format_template],
+            [format_layout],
+            [QLabel("プレビュー"), self.format_preview],
+        ]
+        for row, item in enumerate(layout_set):
+            for col, widget in enumerate(item):
+                row_span = 1
+                column_span = 2 if len(item) == 1 else 1
+                if isinstance(widget, QHBoxLayout):
+                    layout.addLayout(widget, row, col, row_span, column_span)
+                else:
+                    layout.addWidget(widget, row, col, row_span, column_span)
 
         self.setLayout(layout)
 
@@ -67,6 +83,10 @@ class SettingsBasicTab(QWidget):
         dir_path = QFileDialog.getExistingDirectory(self, "Refluxフォルダを選択")
         if dir_path:
             self.reflux_dir.setText(dir_path)
+
+    def _on_format_start_label_enabled_changed(self, _: Qt.CheckState) -> None:
+        self.format_start_label.setEnabled(self.format_start_label_enabled.isChecked())
+        self._update_preview()
 
     def _insert_format_template(self) -> None:
         cursor_pos = self.format_template.cursorPosition()
@@ -82,19 +102,30 @@ class SettingsBasicTab(QWidget):
     def _update_preview(self) -> None:
         formatter = GameTimestampFormatter(self.format_template.text())
 
-        rendered = "\n".join(
-            formatter.format(SAMPLE_SESSION_DATA, timestamp) for timestamp in SAMPLE_SESSION_DATA.timestamps
-        )
+        lines: list[str] = []
+        if self.format_start_label_enabled.isChecked():
+            lines.append(self.format_start_label.text())
+
+        lines.extend(formatter.format(SAMPLE_SESSION_DATA, timestamp) for timestamp in SAMPLE_SESSION_DATA.timestamps)
+
+        rendered = "\n".join(lines)
         self.format_preview.setPlainText(rendered)
 
     def set_settings(self, reflux_settings: SettingReflux, timestamp_settings: SettingTimestampFormat) -> None:
         self.reflux_dir.setText(str(reflux_settings.directory))
+        self.format_start_label_enabled.setChecked(timestamp_settings.include_start_label)
+        self.format_start_label.setText(timestamp_settings.start_label)
+        self.format_start_label.setEnabled(timestamp_settings.include_start_label)
         self.format_template.setText(timestamp_settings.template)
         self._update_preview()
 
     def get_settings(self) -> tuple[SettingReflux, SettingTimestampFormat]:
         reflux = SettingReflux(directory=Path(self.reflux_dir.text()))
-        timestamp = SettingTimestampFormat(template=self.format_template.text())
+        timestamp = SettingTimestampFormat(
+            include_start_label=self.format_start_label_enabled.isChecked(),
+            start_label=self.format_start_label.text(),
+            template=self.format_template.text(),
+        )
         return reflux, timestamp
 
 

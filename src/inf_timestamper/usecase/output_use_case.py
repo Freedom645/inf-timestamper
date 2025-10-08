@@ -36,6 +36,8 @@ class OutputUseCase:
             formatter = GameTimestampFormatter(self.settings.timestamp.template)
 
             lines: list[str] = []
+            if self.settings.timestamp.include_start_label:
+                lines.append(self.settings.timestamp.start_label)
             for timestamp in stream_session.timestamps:
                 line = formatter.format(stream_session, timestamp)
                 lines.append(line)

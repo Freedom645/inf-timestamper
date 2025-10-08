@@ -24,6 +24,11 @@ class SettingYoutube(BaseModel):
 
 
 class SettingTimestampFormat(BaseModel):
+    include_start_label: bool = True
+    """開始ラベルを含める"""
+    start_label: str = "00:00 配信開始"
+    """開始ラベルのテキスト"""
+
     template: str = (
         f"${FormatID.TIMESTAMP} ${FormatID.TITLE} [Lv.${FormatID.LEVEL}] "
         f"(DJ LEVEL: ${FormatID.DJ_LEVEL}, EXスコア: ${FormatID.EX_SCORE}, ランプ: ${FormatID.CLEAR_LAMP})"
