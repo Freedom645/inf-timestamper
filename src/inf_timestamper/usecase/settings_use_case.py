@@ -1,7 +1,7 @@
 from injector import inject
 
 from domain.entity.settings_entity import Settings
-from usecase.repository.settings_repository import SettingsRepository
+from domain.repository.settings_repository import SettingsRepository
 
 
 class SettingsUseCase:

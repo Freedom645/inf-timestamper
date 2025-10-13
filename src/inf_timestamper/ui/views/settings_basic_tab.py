@@ -60,7 +60,7 @@ class SettingsBasicTab(QWidget):
         self.format_preview.setReadOnly(True)
 
         # レイアウトへ追加
-        layout_set = [
+        layout_set: list[list[QWidget | QHBoxLayout]] = [
             [QLabel("Refluxフォルダ"), dir_layout],
             [QLabel("タイムスタンプフォーマット")],
             [self.format_start_label_enabled, self.format_start_label],

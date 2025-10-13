@@ -10,7 +10,7 @@ from pathlib import Path
 from core.consts import Application
 from domain.value.base_path import BasePath
 from usecase.dto.app_updating import ProgressCallback, VersionInfo
-from usecase.repository.app_updater import IAppUpdater
+from domain.repository.app_updater import IAppUpdater
 
 
 class FileSystemAppUpdater(IAppUpdater):
