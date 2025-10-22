@@ -11,7 +11,7 @@ from domain.port.stream_gateway import IStreamGateway
 from domain.value.stream_value import StreamEventType
 from domain.value.stream_value import StreamStatus
 from usecase.presenter.play_recording_presenter import PlayRecordingPresenter
-from usecase.repository.current_stream_session_repository import CurrentStreamSessionRepository
+from domain.repository.current_stream_session_repository import CurrentStreamSessionRepository
 
 
 class PlayRecordingUseCase:
@@ -206,3 +206,6 @@ class PlayRecordingUseCase:
         current_session.start_time = start_date_time
 
         return current_session
+
+    def get_current_session(self) -> StreamSession[PlayData]:
+        return self._current_session_repository.get()

@@ -1,7 +1,7 @@
 from injector import inject
 
 from domain.entity.settings_entity import Settings
-from usecase.repository.settings_repository import SettingsRepository
+from domain.repository.settings_repository import SettingsRepository, ChangedCallback
 
 
 class SettingsUseCase:
@@ -17,5 +17,8 @@ class SettingsUseCase:
         return self._settings
 
     def save_settings(self, settings: Settings) -> None:
-        self._settings_repository.save(settings)
         self._settings.bind_settings(settings)
+        self._settings_repository.save(settings)
+
+    def subscribe_to_changes(self, callback: ChangedCallback) -> None:
+        self._settings_repository.subscribe(callback)

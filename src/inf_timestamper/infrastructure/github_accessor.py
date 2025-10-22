@@ -4,7 +4,7 @@ from typing import TypedDict
 from pydantic import HttpUrl
 
 from core.consts import GitHub
-from usecase.repository.app_version_provider import IVersionProvider
+from domain.repository.app_version_provider import IVersionProvider
 from usecase.dto.app_updating import VersionInfo
 
 

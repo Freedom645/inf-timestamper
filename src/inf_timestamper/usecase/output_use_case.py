@@ -7,8 +7,8 @@ from domain.entity.game_entity import PlayData
 from domain.entity.game_format import GameTimestampFormatter
 from domain.entity.settings_entity import Settings
 from domain.entity.stream_entity import StreamSession
-from usecase.repository.current_stream_session_repository import CurrentStreamSessionRepository
-from usecase.repository.stream_session_repository import StreamSessionRepository
+from domain.repository.current_stream_session_repository import CurrentStreamSessionRepository
+from domain.repository.stream_session_repository import StreamSessionRepository
 
 
 class OutputUseCase:

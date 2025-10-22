@@ -4,8 +4,8 @@ from packaging import version
 
 from core.version import __version__
 from usecase.dto.app_updating import StepProgressCallback, UpdateStep, VersionInfo
-from usecase.repository.app_version_provider import IVersionProvider
-from usecase.repository.app_updater import IAppUpdater
+from domain.repository.app_version_provider import IVersionProvider
+from domain.repository.app_updater import IAppUpdater
 
 
 class AppUpdatingUseCase:

@@ -1,6 +1,6 @@
 from domain.entity.game_entity import PlayData
 from domain.entity.stream_entity import StreamSession
-from usecase.repository.current_stream_session_repository import (
+from domain.repository.current_stream_session_repository import (
     CurrentStreamSessionRepository,
 )
 

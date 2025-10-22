@@ -18,13 +18,13 @@ from ui.thread.updater_thread import UpdaterThread
 from ui.widgets.play_recording_widget import PlayRecordingWidget
 from ui.views.update_window import UpdateWindow
 
-from usecase.repository.settings_repository import SettingsRepository
-from usecase.repository.stream_session_repository import StreamSessionRepository
-from usecase.repository.current_stream_session_repository import (
+from domain.repository.settings_repository import SettingsRepository
+from domain.repository.stream_session_repository import StreamSessionRepository
+from domain.repository.current_stream_session_repository import (
     CurrentStreamSessionRepository,
 )
-from usecase.repository.app_updater import IAppUpdater
-from usecase.repository.app_version_provider import IVersionProvider
+from domain.repository.app_updater import IAppUpdater
+from domain.repository.app_version_provider import IVersionProvider
 
 from infrastructure.reflux_file_watcher import RefluxFileWatcher
 
