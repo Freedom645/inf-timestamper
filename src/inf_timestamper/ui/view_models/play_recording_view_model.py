@@ -6,9 +6,11 @@ from PySide6.QtCore import Signal, QObject, QTimer, QDateTime
 
 from domain.entity.game_entity import PlayData
 from domain.entity.stream_entity import StreamSession, Timestamp
+from domain.entity.settings_entity import Settings
 from domain.value.stream_value import StreamStatus
 from usecase.output_use_case import OutputUseCase
 from usecase.play_recording_use_case import PlayRecordingUseCase
+from usecase.settings_use_case import SettingsUseCase
 
 
 class PlayRecordingViewModel(QObject):
@@ -27,11 +29,14 @@ class PlayRecordingViewModel(QObject):
         logger: logging.Logger,
         play_recording_use_case: PlayRecordingUseCase,
         output_use_case: OutputUseCase,
+        settings_use_case: SettingsUseCase,
     ) -> None:
         QObject.__init__(self)
         self._logger = logger
         self._play_recording_use_case = play_recording_use_case
         self._output_use_case = output_use_case
+        self._settings_use_case = settings_use_case
+        self._settings_use_case.subscribe_to_changes(self.settings_changed)
 
     def stream_started(self, session: StreamSession[PlayData]) -> None:
         self._emit_status_changed(session.stream_status)
@@ -45,6 +50,11 @@ class PlayRecordingViewModel(QObject):
 
     def timestamp_updated(self, session: StreamSession[PlayData], timestamp: Timestamp[PlayData]) -> None:
         self.timestamp_upsert_signal.emit(session, timestamp)
+
+    def settings_changed(self, _: Settings) -> None:
+        self._logger.info("設定が変更されました。現在のセッションを再発行します。")
+        current_session = self._play_recording_use_case.get_current_session()
+        self.play_record_overwrite_signal.emit(current_session)
 
     def on_open_recording(self, file_path: Path) -> None:
         """記録ファイルを開く"""

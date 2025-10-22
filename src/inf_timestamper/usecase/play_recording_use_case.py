@@ -206,3 +206,6 @@ class PlayRecordingUseCase:
         current_session.start_time = start_date_time
 
         return current_session
+
+    def get_current_session(self) -> StreamSession[PlayData]:
+        return self._current_session_repository.get()

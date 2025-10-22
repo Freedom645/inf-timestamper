@@ -2,7 +2,7 @@ from injector import inject
 
 from domain.value.base_path import BasePath
 from domain.entity.settings_entity import Settings
-from domain.repository.settings_repository import SettingsRepository
+from domain.repository.settings_repository import ChangedCallback, SettingsRepository
 from infrastructure.file_accessor import FileAccessor
 
 
@@ -11,6 +11,7 @@ class FileSettingsRepository(SettingsRepository):
     def __init__(self, file_accessor: FileAccessor, base_path: BasePath):
         self._file_accessor = file_accessor
         self._file_path = base_path / "settings.json"
+        self._callbacks: list[ChangedCallback] = []
 
     def load(self) -> Settings:
         data = self._file_accessor.load_as_text(self._file_path, default=None)
@@ -21,3 +22,8 @@ class FileSettingsRepository(SettingsRepository):
 
     def save(self, setting: Settings) -> None:
         self._file_accessor.save_as_text(self._file_path, setting.model_dump_json(indent=2))
+        for callback in self._callbacks:
+            callback(setting)
+
+    def subscribe(self, callback: ChangedCallback) -> None:
+        self._callbacks.append(callback)
