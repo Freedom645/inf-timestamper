@@ -1,13 +1,13 @@
 from pydantic import BaseModel
 
 from domain.entity.stream_entity import TimestampData
-from domain.value.inf_game_value import DJ_LEVEL, ClearLamp
+from domain.value.inf_game_value import DJ_LEVEL, InfClearLamp
 
 
-class PlayResult(BaseModel):
+class InfPlayResult(BaseModel):
     dj_level: DJ_LEVEL = DJ_LEVEL.F
     """DJ LEVEL (AAA ~ F)"""
-    lamp: ClearLamp = ClearLamp.NO_PLAY
+    lamp: InfClearLamp = InfClearLamp.NO_PLAY
     """クリアランプ"""
     gauge: str = ""
     """ゲージオプション"""
@@ -49,7 +49,7 @@ class PlayResult(BaseModel):
         return self.miss_count - self.combo_break
 
 
-class ChartDetail(BaseModel):
+class InfChartDetail(BaseModel):
     title: str = ""
     """楽曲名"""
     level: int = -1
@@ -70,14 +70,16 @@ class ChartDetail(BaseModel):
     """ノーツ数"""
 
 
-class PlayData(TimestampData):
+class InfPlayData(TimestampData):
     key: str
     """一意なキー"""
-    chart_detail: ChartDetail | None = None
+    chart_detail: InfChartDetail | None = None
     """譜面情報"""
-    play_result: PlayResult | None = None
+    play_result: InfPlayResult | None = None
     """プレイ結果"""
 
-    def equals_without_result(self, other: "PlayData") -> bool:
+    def equals_without_result(self, other: TimestampData) -> bool:
         """プレイ結果を除いた同一性を判定する"""
+        if not isinstance(other, InfPlayData):
+            return False
         return self.key == other.key

@@ -1,6 +1,6 @@
 from enum import StrEnum
 
-from domain.entity.inf_game_entity import PlayData
+from domain.entity.inf_game_entity import InfPlayData
 from domain.entity.stream_entity import StreamSession, Timestamp
 from domain.entity.timestamp_formatter import AbstractGameTimestampFormatter, TimestampExtractorMixin
 
@@ -68,15 +68,15 @@ FORMAT_ID_LOGICAL_NAMES = {
 }
 
 
-class InfGameTimestampFormatter(TimestampExtractorMixin, AbstractGameTimestampFormatter[PlayData, InfFormatID]):
+class InfGameTimestampFormatter(TimestampExtractorMixin, AbstractGameTimestampFormatter[InfPlayData, InfFormatID]):
     def format_ids(self) -> list[InfFormatID]:
         return list(InfFormatID)
 
     def extract_value(
         self,
         identifier: InfFormatID,
-        session: StreamSession[PlayData],
-        timestamp: Timestamp[PlayData],
+        session: StreamSession[InfPlayData],
+        timestamp: Timestamp[InfPlayData],
     ) -> str:
         if identifier is InfFormatID.TIMESTAMP:
             return self.extract_timestamp(session, timestamp)

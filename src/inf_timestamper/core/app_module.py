@@ -5,7 +5,7 @@ from pathlib import Path
 from PySide6.QtWidgets import QWidget
 
 from core.arguments import Arguments
-from domain.entity.inf_game_entity import PlayData
+from domain.entity.inf_game_entity import InfPlayData
 from domain.value.base_path import BasePath
 from domain.entity.settings_entity import Settings
 from domain.port.play_watcher import IPlayWatcher
@@ -43,7 +43,7 @@ class AppModule(Module):
     def configure(self, binder: Binder) -> None:
         binder.bind(SettingsRepository, to=FileSettingsRepository, scope=singleton)  # type: ignore
         binder.bind(
-            StreamSessionRepository[PlayData],  # type: ignore
+            StreamSessionRepository[InfPlayData],  # type: ignore
             to=FileStreamSessionRepository,
             scope=singleton,
         )
@@ -51,7 +51,7 @@ class AppModule(Module):
         # binder.bind(IStreamGateway, to=OBSConnectorV4, scope=singleton)  # type: ignore
         binder.bind(IStreamGateway, to=OBSConnectorV5, scope=singleton)  # type: ignore
         binder.bind(
-            CurrentStreamSessionRepository[PlayData],  # type: ignore
+            CurrentStreamSessionRepository[InfPlayData],  # type: ignore
             to=InMemoryCurrentStreamSessionRepository,
             scope=singleton,
         )

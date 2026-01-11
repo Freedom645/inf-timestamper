@@ -2,20 +2,20 @@ from pathlib import Path
 from injector import inject
 from datetime import datetime
 
-from domain.entity.inf_game_entity import PlayData
+from domain.entity.inf_game_entity import InfPlayData
 from domain.entity.stream_entity import StreamSession
 from domain.value.base_path import BasePath
 from domain.repository.stream_session_repository import StreamSessionRepository
 from infrastructure.file_accessor import FileAccessor
 
 
-class FileStreamSessionRepository(StreamSessionRepository[PlayData]):
+class FileStreamSessionRepository(StreamSessionRepository[InfPlayData]):
     @inject
     def __init__(self, file_accessor: FileAccessor, base_path: BasePath):
         self._file_accessor = file_accessor
         self._sessions_path = base_path / "sessions"
 
-    def save(self, stream_session: StreamSession[PlayData]) -> None:
+    def save(self, stream_session: StreamSession[InfPlayData]) -> None:
         if not self._sessions_path.exists():
             self._sessions_path.mkdir(exist_ok=True)
 
@@ -27,9 +27,9 @@ class FileStreamSessionRepository(StreamSessionRepository[PlayData]):
 
         self._file_accessor.save_as_text(file_path, json_str)
 
-    def load(self, path: Path) -> StreamSession[PlayData] | None:
+    def load(self, path: Path) -> StreamSession[InfPlayData] | None:
         json_str = self._file_accessor.load_as_text(path)
         if not json_str:
             return None
 
-        return StreamSession[PlayData].model_validate_json(json_str)
+        return StreamSession[InfPlayData].model_validate_json(json_str)

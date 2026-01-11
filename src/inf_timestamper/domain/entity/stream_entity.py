@@ -1,4 +1,4 @@
-from abc import ABC
+from abc import ABC, abstractmethod
 from uuid import UUID, uuid4
 from typing import Generic, TypeVar
 from pydantic import BaseModel, Field
@@ -7,7 +7,9 @@ from datetime import datetime, timedelta
 from domain.value.stream_value import StreamStatus
 
 
-class TimestampData(ABC, BaseModel): ...
+class TimestampData(ABC, BaseModel):
+    @abstractmethod
+    def equals_without_result(self, other: "TimestampData") -> bool: ...
 
 
 T = TypeVar("T", bound=TimestampData)

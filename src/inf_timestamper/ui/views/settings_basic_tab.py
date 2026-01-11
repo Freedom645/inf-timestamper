@@ -14,11 +14,11 @@ from PySide6.QtWidgets import (
 )
 from PySide6.QtCore import Qt
 
-from domain.entity.inf_game_entity import ChartDetail, PlayData, PlayResult
+from domain.entity.inf_game_entity import InfChartDetail, InfPlayData, InfPlayResult
 from domain.entity.inf_game_format import InfFormatID, InfGameTimestampFormatter
 from domain.entity.settings_entity import SettingReflux, SettingTimestampFormat
 from domain.entity.stream_entity import StreamSession, Timestamp
-from domain.value.inf_game_value import DJ_LEVEL, ClearLamp
+from domain.value.inf_game_value import DJ_LEVEL, InfClearLamp
 from ui.widgets.dollar_completer_line_edit import DollarCompleterLineEdit
 
 
@@ -129,14 +129,14 @@ class SettingsBasicTab(QWidget):
         return reflux, timestamp
 
 
-def create_sample_data() -> StreamSession[PlayData]:
+def create_sample_data() -> StreamSession[InfPlayData]:
     start_time = datetime.now()
     timestamps = [
-        Timestamp[PlayData](
+        Timestamp[InfPlayData](
             occurred_at=start_time + timedelta(minutes=2, seconds=4),
-            data=PlayData(
+            data=InfPlayData(
                 key="test_1",
-                chart_detail=ChartDetail(
+                chart_detail=InfChartDetail(
                     title="BLUE ZONE",
                     level=7,
                     artist="Natsh & TAKAKI",
@@ -147,10 +147,10 @@ def create_sample_data() -> StreamSession[PlayData]:
                     difficulty="SPN",
                     note_count=654,
                 ),
-                play_result=PlayResult(
+                play_result=InfPlayResult(
                     dj_level=DJ_LEVEL.AAA,
                     gauge="EX HARD",
-                    lamp=ClearLamp.PERFECT,
+                    lamp=InfClearLamp.PERFECT,
                     p_great=512,
                     great=42,
                     good=0,
@@ -162,11 +162,11 @@ def create_sample_data() -> StreamSession[PlayData]:
                 ),
             ),
         ),
-        Timestamp[PlayData](
+        Timestamp[InfPlayData](
             occurred_at=start_time + timedelta(minutes=4, seconds=31),
-            data=PlayData(
+            data=InfPlayData(
                 key="test_2",
-                chart_detail=ChartDetail(
+                chart_detail=InfChartDetail(
                     title="天空の日没",
                     level=10,
                     artist="Cube",
@@ -177,9 +177,9 @@ def create_sample_data() -> StreamSession[PlayData]:
                     difficulty="SPH",
                     note_count=990,
                 ),
-                play_result=PlayResult(
+                play_result=InfPlayResult(
                     dj_level=DJ_LEVEL.A,
-                    lamp=ClearLamp.CLEAR,
+                    lamp=InfClearLamp.CLEAR,
                     gauge="OFF",
                     p_great=624,
                     great=243,
@@ -192,11 +192,11 @@ def create_sample_data() -> StreamSession[PlayData]:
                 ),
             ),
         ),
-        Timestamp[PlayData](
+        Timestamp[InfPlayData](
             occurred_at=start_time + timedelta(minutes=7, seconds=12),
-            data=PlayData(
+            data=InfPlayData(
                 key="test_3",
-                chart_detail=ChartDetail(
+                chart_detail=InfChartDetail(
                     title="Sample Paradise",
                     level=12,
                     artist="Mamon",
@@ -207,9 +207,9 @@ def create_sample_data() -> StreamSession[PlayData]:
                     difficulty="SPL",
                     note_count=2184,
                 ),
-                play_result=PlayResult(
+                play_result=InfPlayResult(
                     dj_level=DJ_LEVEL.A,
-                    lamp=ClearLamp.FAILED,
+                    lamp=InfClearLamp.FAILED,
                     gauge="HARD",
                     p_great=1987,
                     great=123,
@@ -223,7 +223,7 @@ def create_sample_data() -> StreamSession[PlayData]:
             ),
         ),
     ]
-    return StreamSession[PlayData](start_time=start_time, timestamps=timestamps)
+    return StreamSession[InfPlayData](start_time=start_time, timestamps=timestamps)
 
 
 SAMPLE_SESSION_DATA = create_sample_data()

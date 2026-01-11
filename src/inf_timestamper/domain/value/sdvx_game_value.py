@@ -1,7 +1,7 @@
 from enum import StrEnum
 
 
-class ClearLamp(StrEnum):
+class SDVXClearLamp(StrEnum):
     FAILED = "failed"
     CLEAR = "clear"
     HARD = "hard"

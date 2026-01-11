@@ -3,7 +3,7 @@ from pathlib import Path
 from injector import inject
 import pyperclip
 
-from domain.entity.inf_game_entity import PlayData
+from domain.entity.inf_game_entity import InfPlayData
 from domain.entity.inf_game_format import InfGameTimestampFormatter
 from domain.entity.settings_entity import Settings
 from domain.entity.stream_entity import StreamSession
@@ -16,9 +16,9 @@ class OutputUseCase:
     def __init__(
         self,
         logger: logging.Logger,
-        stream_session_repository: StreamSessionRepository[PlayData],
+        stream_session_repository: StreamSessionRepository[InfPlayData],
         settings: Settings,
-        current_session: CurrentStreamSessionRepository[PlayData],
+        current_session: CurrentStreamSessionRepository[InfPlayData],
     ):
         self._logger = logger
         self._stream_session_repository = stream_session_repository
@@ -51,14 +51,14 @@ class OutputUseCase:
             self._logger.exception(e)
             return False
 
-    def save_stream_session(self, stream_session: StreamSession[PlayData]) -> None:
+    def save_stream_session(self, stream_session: StreamSession[InfPlayData]) -> None:
         try:
             self._stream_session_repository.save(stream_session)
         except Exception as e:
             self._logger.error("配信セッションの保存に失敗しました")
             self._logger.exception(e)
 
-    def load_stream_session(self, file_path: Path) -> StreamSession[PlayData]:
+    def load_stream_session(self, file_path: Path) -> StreamSession[InfPlayData]:
         try:
             session = self._stream_session_repository.load(file_path)
         except Exception as e:

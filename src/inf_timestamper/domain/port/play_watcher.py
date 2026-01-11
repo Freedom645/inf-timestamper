@@ -3,7 +3,7 @@ from enum import StrEnum
 from typing import Callable
 from uuid import UUID
 
-from domain.entity.inf_game_entity import PlayData
+from domain.entity.inf_game_entity import InfPlayData
 
 
 class WatchType(StrEnum):
@@ -19,7 +19,7 @@ class IPlayWatcher(ABC):
     def stop(self) -> None: ...
 
     @abstractmethod
-    def subscribe(self, id: UUID, callback: Callable[[WatchType, PlayData], None]) -> None: ...
+    def subscribe(self, id: UUID, callback: Callable[[WatchType, InfPlayData], None]) -> None: ...
 
     @abstractmethod
     def unsubscribe(self, id: UUID) -> None: ...

@@ -19,7 +19,7 @@ from PySide6.QtCore import QThread
 from datetime import datetime
 from injector import inject
 
-from domain.entity.inf_game_entity import PlayData
+from domain.entity.inf_game_entity import InfPlayData
 from domain.entity.inf_game_format import InfGameTimestampFormatter
 from domain.entity.settings_entity import Settings
 from domain.entity.stream_entity import StreamSession, Timestamp
@@ -169,7 +169,9 @@ class PlayRecordingWidget(QWidget):
         else:
             self.stream_start_time.clear()
 
-    def _on_timestamp_upsert_signal(self, session: StreamSession[PlayData], timestamp: Timestamp[PlayData]) -> None:
+    def _on_timestamp_upsert_signal(
+        self, session: StreamSession[InfPlayData], timestamp: Timestamp[InfPlayData]
+    ) -> None:
         self.timestamp_count.setText(str(session.count_timestamp()))
 
         formatter = InfGameTimestampFormatter(self.settings.timestamp.template)
@@ -184,7 +186,7 @@ class PlayRecordingWidget(QWidget):
         self.list_widget.addItem(self._timestamp_item_map[timestamp.id])
         self.list_widget.scrollToBottom()
 
-    def _on_overwrite_signal(self, session: StreamSession[PlayData]) -> None:
+    def _on_overwrite_signal(self, session: StreamSession[InfPlayData]) -> None:
         self._on_start_time_changed(session.start_time)
         self.timestamp_count.setText(str(session.count_timestamp()))
         self._timestamp_item_map.clear()

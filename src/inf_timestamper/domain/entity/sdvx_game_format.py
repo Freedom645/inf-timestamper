@@ -1,6 +1,6 @@
 from enum import StrEnum
 
-from domain.entity.sdvx_game_entity import PlayData
+from domain.entity.sdvx_game_entity import SDVXPlayData
 from domain.entity.stream_entity import StreamSession, Timestamp
 from domain.entity.timestamp_formatter import AbstractGameTimestampFormatter, TimestampExtractorMixin
 
@@ -32,15 +32,15 @@ SDVX_FORMAT_ID_LOGICAL_NAMES = {
 }
 
 
-class SDVXGameTimestampFormatter(TimestampExtractorMixin, AbstractGameTimestampFormatter[PlayData, SDVXFormatID]):
+class SDVXGameTimestampFormatter(TimestampExtractorMixin, AbstractGameTimestampFormatter[SDVXPlayData, SDVXFormatID]):
     def format_ids(self) -> list[SDVXFormatID]:
         return list(SDVXFormatID)
 
     def extract_value(
         self,
         identifier: SDVXFormatID,
-        session: StreamSession[PlayData],
-        timestamp: Timestamp[PlayData],
+        session: StreamSession[SDVXPlayData],
+        timestamp: Timestamp[SDVXPlayData],
     ) -> str:
         if identifier is SDVXFormatID.TIMESTAMP:
             return self.extract_timestamp(session, timestamp)
