@@ -15,7 +15,7 @@ from PySide6.QtWidgets import (
 from PySide6.QtCore import Qt
 
 from domain.entity.inf_game_entity import ChartDetail, PlayData, PlayResult
-from domain.entity.inf_game_format import FormatID, GameTimestampFormatter
+from domain.entity.inf_game_format import InfFormatID, InfGameTimestampFormatter
 from domain.entity.settings_entity import SettingReflux, SettingTimestampFormat
 from domain.entity.stream_entity import StreamSession, Timestamp
 from domain.value.inf_game_value import DJ_LEVEL, ClearLamp
@@ -43,10 +43,10 @@ class SettingsBasicTab(QWidget):
         self.format_start_label.textChanged.connect(self._update_preview)
 
         # タイムスタンプ
-        self.format_template = DollarCompleterLineEdit([f"${f.value}" for f in FormatID])
+        self.format_template = DollarCompleterLineEdit([f"${f.value}" for f in InfFormatID])
         self.format_template.textChanged.connect(self._update_preview)
         self.format_id_combo = QComboBox()
-        for fmt in FormatID:
+        for fmt in InfFormatID:
             display = f"{fmt.logical_name()} (${fmt.value})"
             self.format_id_combo.addItem(display, userData=fmt)
         add_button = QPushButton("追加")
@@ -92,7 +92,7 @@ class SettingsBasicTab(QWidget):
         cursor_pos = self.format_template.cursorPosition()
         text = self.format_template.text()
 
-        fmt: FormatID = self.format_id_combo.currentData()
+        fmt: InfFormatID = self.format_id_combo.currentData()
         placeholder = f"${fmt}"
 
         new_text = text[:cursor_pos] + placeholder + text[cursor_pos:]
@@ -100,7 +100,7 @@ class SettingsBasicTab(QWidget):
         self.format_template.setCursorPosition(cursor_pos + len(placeholder))
 
     def _update_preview(self) -> None:
-        formatter = GameTimestampFormatter(self.format_template.text())
+        formatter = InfGameTimestampFormatter(self.format_template.text())
 
         lines: list[str] = []
         if self.format_start_label_enabled.isChecked():

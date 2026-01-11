@@ -1,7 +1,8 @@
 from pydantic import BaseModel, Field
 from pathlib import Path
 
-from domain.entity.inf_game_format import FormatID
+from domain.entity.inf_game_format import InfFormatID
+from domain.entity.sdvx_game_format import SDVXFormatID
 
 
 class SettingObs(BaseModel):
@@ -30,9 +31,20 @@ class SettingTimestampFormat(BaseModel):
     """開始ラベルのテキスト"""
 
     template: str = (
-        f"${FormatID.TIMESTAMP} ${FormatID.TITLE} [Lv.${FormatID.LEVEL}] "
-        f"(DJ LEVEL: ${FormatID.DJ_LEVEL}, EXスコア: ${FormatID.EX_SCORE}, ランプ: ${FormatID.CLEAR_LAMP})"
+        f"${InfFormatID.TIMESTAMP} ${InfFormatID.TITLE} [Lv.${InfFormatID.LEVEL}] "
+        f"(DJ LEVEL: ${InfFormatID.DJ_LEVEL}, EXスコア: ${InfFormatID.EX_SCORE}, ランプ: ${InfFormatID.CLEAR_LAMP})"
     )
+    """タイムスタンプの表示フォーマット"""
+
+
+class SettingSdvx(BaseModel):
+    sdvx_helper_directory: Path = Path()
+    """SDVX Helperのディレクトリ"""
+    include_start_label: bool = True
+    """開始ラベルを含める"""
+    start_label: str = "00:00 配信開始"
+    """開始ラベルのテキスト"""
+    template: str = f"${SDVXFormatID.TIMESTAMP} ${SDVXFormatID.TITLE} [Lv.${SDVXFormatID.LEVEL}] ${SDVXFormatID.SCORE} (${SDVXFormatID.CLEAR_LAMP})"
     """タイムスタンプの表示フォーマット"""
 
 
@@ -41,12 +53,14 @@ class Settings(BaseModel):
     reflux: SettingReflux = Field(default_factory=SettingReflux)
     youtube: SettingYoutube = Field(default_factory=SettingYoutube)
     timestamp: SettingTimestampFormat = Field(default_factory=SettingTimestampFormat)
+    sdvx: SettingSdvx = Field(default_factory=SettingSdvx)
 
     def reset_settings(self) -> "Settings":
         self.obs = SettingObs()
         self.reflux = SettingReflux()
         self.youtube = SettingYoutube()
         self.timestamp = SettingTimestampFormat()
+        self.sdvx = SettingSdvx()
         return self
 
     def bind_settings(self, other: "Settings") -> "Settings":
@@ -54,4 +68,5 @@ class Settings(BaseModel):
         self.reflux = other.reflux
         self.youtube = other.youtube
         self.timestamp = other.timestamp
+        self.sdvx = other.sdvx
         return self

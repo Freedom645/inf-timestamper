@@ -20,7 +20,7 @@ from datetime import datetime
 from injector import inject
 
 from domain.entity.inf_game_entity import PlayData
-from domain.entity.inf_game_format import GameTimestampFormatter
+from domain.entity.inf_game_format import InfGameTimestampFormatter
 from domain.entity.settings_entity import Settings
 from domain.entity.stream_entity import StreamSession, Timestamp
 from domain.value.base_path import BasePath
@@ -172,7 +172,7 @@ class PlayRecordingWidget(QWidget):
     def _on_timestamp_upsert_signal(self, session: StreamSession[PlayData], timestamp: Timestamp[PlayData]) -> None:
         self.timestamp_count.setText(str(session.count_timestamp()))
 
-        formatter = GameTimestampFormatter(self.settings.timestamp.template)
+        formatter = InfGameTimestampFormatter(self.settings.timestamp.template)
         label = formatter.format(session, timestamp)
 
         if timestamp.id in self._timestamp_item_map:

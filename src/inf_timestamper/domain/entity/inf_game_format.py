@@ -1,11 +1,11 @@
 from enum import StrEnum
-from string import Template
 
 from domain.entity.inf_game_entity import PlayData
 from domain.entity.stream_entity import StreamSession, Timestamp
+from domain.entity.timestamp_formatter import AbstractGameTimestampFormatter, TimestampExtractorMixin
 
 
-class FormatID(StrEnum):
+class InfFormatID(StrEnum):
     TIMESTAMP = "timestamp"
     TITLE = "title"
     LEVEL = "level"
@@ -40,119 +40,102 @@ class FormatID(StrEnum):
 
 
 FORMAT_ID_LOGICAL_NAMES = {
-    FormatID.TIMESTAMP: "タイムスタンプ",
-    FormatID.TITLE: "タイトル",
-    FormatID.LEVEL: "レベル",
-    FormatID.ARTIST: "アーティスト",
-    FormatID.GENRE: "ジャンル",
-    FormatID.BPM: "BPM",
-    FormatID.MIN_BPM: "最小BPM",
-    FormatID.MAX_BPM: "最大BPM",
-    FormatID.DIFFICULTY: "難易度",
-    FormatID.NOTE_COUNT: "ノーツ数",
-    FormatID.DJ_LEVEL: "DJ LEVEL",
-    FormatID.CLEAR_LAMP: "クリアランプ",
-    FormatID.GAUGE: "ゲージ",
-    FormatID.EX_SCORE: "EXスコア",
-    FormatID.MISS_COUNT: "ミスカウント",
-    FormatID.MISS_POOR: "見逃しPOOR",
-    FormatID.EMPTY_POOR: "空POOR",
-    FormatID.P_GREAT: "P-GREAT",
-    FormatID.GREAT: "GREAT",
-    FormatID.GOOD: "GOOD",
-    FormatID.BAD: "BAD",
-    FormatID.POOR: "POOR",
-    FormatID.FAST: "FAST",
-    FormatID.SLOW: "SLOW",
-    FormatID.COMBO_BREAK: "COMBO BREAK",
+    InfFormatID.TIMESTAMP: "タイムスタンプ",
+    InfFormatID.TITLE: "タイトル",
+    InfFormatID.LEVEL: "レベル",
+    InfFormatID.ARTIST: "アーティスト",
+    InfFormatID.GENRE: "ジャンル",
+    InfFormatID.BPM: "BPM",
+    InfFormatID.MIN_BPM: "最小BPM",
+    InfFormatID.MAX_BPM: "最大BPM",
+    InfFormatID.DIFFICULTY: "難易度",
+    InfFormatID.NOTE_COUNT: "ノーツ数",
+    InfFormatID.DJ_LEVEL: "DJ LEVEL",
+    InfFormatID.CLEAR_LAMP: "クリアランプ",
+    InfFormatID.GAUGE: "ゲージ",
+    InfFormatID.EX_SCORE: "EXスコア",
+    InfFormatID.MISS_COUNT: "ミスカウント",
+    InfFormatID.MISS_POOR: "見逃しPOOR",
+    InfFormatID.EMPTY_POOR: "空POOR",
+    InfFormatID.P_GREAT: "P-GREAT",
+    InfFormatID.GREAT: "GREAT",
+    InfFormatID.GOOD: "GOOD",
+    InfFormatID.BAD: "BAD",
+    InfFormatID.POOR: "POOR",
+    InfFormatID.FAST: "FAST",
+    InfFormatID.SLOW: "SLOW",
+    InfFormatID.COMBO_BREAK: "COMBO BREAK",
 }
 
 
-class GameTimestampFormatter:
-    def __init__(self, format_str: str, default_value: dict[FormatID, str] = {}) -> None:
-        self.template = Template(format_str)
-        self.default_value = default_value
+class InfGameTimestampFormatter(TimestampExtractorMixin, AbstractGameTimestampFormatter[PlayData, InfFormatID]):
+    def format_ids(self) -> list[InfFormatID]:
+        return list(InfFormatID)
 
-    def format(self, session: StreamSession[PlayData], timestamp: Timestamp[PlayData]) -> str:
-        mapping: dict[str, str] = {}
-        for identifier in FormatID:
-            try:
-                mapping[identifier.value] = self._extract_value(identifier, session, timestamp)
-            except Exception:
-                # FIXME: 握り潰しちゃっているので検知方法など考えたい
-                mapping[identifier.value] = self.default_value.get(identifier, "")
-
-        return self.template.safe_substitute(mapping)
-
-    def _extract_value(
+    def extract_value(
         self,
-        identifier: FormatID,
+        identifier: InfFormatID,
         session: StreamSession[PlayData],
         timestamp: Timestamp[PlayData],
     ) -> str:
-        match identifier:
-            case FormatID.TIMESTAMP:
-                if session.start_time is None:
-                    return str(timestamp.occurred_at.strftime("%Y/%m/%d %H:%M:%S"))
-                return str(timestamp.get_elapse(session.start_time))
-            case _:
-                pass
+        if identifier is InfFormatID.TIMESTAMP:
+            return self.extract_timestamp(session, timestamp)
 
-        if timestamp.data.chart_detail:
+        if cd := timestamp.data.chart_detail:
             match identifier:
-                case FormatID.TITLE:
-                    return timestamp.data.chart_detail.title
-                case FormatID.LEVEL:
-                    return str(timestamp.data.chart_detail.level)
-                case FormatID.ARTIST:
-                    return timestamp.data.chart_detail.artist
-                case FormatID.GENRE:
-                    return timestamp.data.chart_detail.genre
-                case FormatID.BPM:
-                    return timestamp.data.chart_detail.bpm
-                case FormatID.MIN_BPM:
-                    return timestamp.data.chart_detail.min_bpm
-                case FormatID.MAX_BPM:
-                    return timestamp.data.chart_detail.max_bpm
-                case FormatID.DIFFICULTY:
-                    return timestamp.data.chart_detail.difficulty
-                case FormatID.NOTE_COUNT:
-                    return str(timestamp.data.chart_detail.note_count)
+                case InfFormatID.TITLE:
+                    return cd.title
+                case InfFormatID.LEVEL:
+                    return str(cd.level)
+                case InfFormatID.ARTIST:
+                    return cd.artist
+                case InfFormatID.GENRE:
+                    return cd.genre
+                case InfFormatID.BPM:
+                    return cd.bpm
+                case InfFormatID.MIN_BPM:
+                    return cd.min_bpm
+                case InfFormatID.MAX_BPM:
+                    return cd.max_bpm
+                case InfFormatID.DIFFICULTY:
+                    return cd.difficulty
+                case InfFormatID.NOTE_COUNT:
+                    return str(cd.note_count)
                 case _:
                     pass
 
-        if timestamp.data.play_result:
+        if pr := timestamp.data.play_result:
             match identifier:
-                case FormatID.DJ_LEVEL:
-                    return timestamp.data.play_result.dj_level.name
-                case FormatID.CLEAR_LAMP:
-                    return timestamp.data.play_result.lamp.name
-                case FormatID.EX_SCORE:
-                    return str(timestamp.data.play_result.ex_score)
-                case FormatID.MISS_COUNT:
-                    return str(timestamp.data.play_result.miss_count)
-                case FormatID.MISS_POOR:
-                    return str(timestamp.data.play_result.miss_poor)
-                case FormatID.EMPTY_POOR:
-                    return str(timestamp.data.play_result.empty_poor)
-                case FormatID.GAUGE:
-                    return timestamp.data.play_result.gauge
-                case FormatID.P_GREAT:
-                    return str(timestamp.data.play_result.p_great)
-                case FormatID.GREAT:
-                    return str(timestamp.data.play_result.great)
-                case FormatID.GOOD:
-                    return str(timestamp.data.play_result.good)
-                case FormatID.BAD:
-                    return str(timestamp.data.play_result.bad)
-                case FormatID.POOR:
-                    return str(timestamp.data.play_result.poor)
-                case FormatID.FAST:
-                    return str(timestamp.data.play_result.fast)
-                case FormatID.SLOW:
-                    return str(timestamp.data.play_result.slow)
-                case FormatID.COMBO_BREAK:
-                    return str(timestamp.data.play_result.combo_break)
+                case InfFormatID.DJ_LEVEL:
+                    return pr.dj_level.name
+                case InfFormatID.CLEAR_LAMP:
+                    return pr.lamp.name
+                case InfFormatID.EX_SCORE:
+                    return str(pr.ex_score)
+                case InfFormatID.MISS_COUNT:
+                    return str(pr.miss_count)
+                case InfFormatID.MISS_POOR:
+                    return str(pr.miss_poor)
+                case InfFormatID.EMPTY_POOR:
+                    return str(pr.empty_poor)
+                case InfFormatID.GAUGE:
+                    return pr.gauge
+                case InfFormatID.P_GREAT:
+                    return str(pr.p_great)
+                case InfFormatID.GREAT:
+                    return str(pr.great)
+                case InfFormatID.GOOD:
+                    return str(pr.good)
+                case InfFormatID.BAD:
+                    return str(pr.bad)
+                case InfFormatID.POOR:
+                    return str(pr.poor)
+                case InfFormatID.FAST:
+                    return str(pr.fast)
+                case InfFormatID.SLOW:
+                    return str(pr.slow)
+                case InfFormatID.COMBO_BREAK:
+                    return str(pr.combo_break)
                 case _:
                     pass
         return ""

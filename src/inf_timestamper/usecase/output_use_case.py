@@ -4,7 +4,7 @@ from injector import inject
 import pyperclip
 
 from domain.entity.inf_game_entity import PlayData
-from domain.entity.inf_game_format import GameTimestampFormatter
+from domain.entity.inf_game_format import InfGameTimestampFormatter
 from domain.entity.settings_entity import Settings
 from domain.entity.stream_entity import StreamSession
 from domain.repository.current_stream_session_repository import CurrentStreamSessionRepository
@@ -33,7 +33,7 @@ class OutputUseCase:
             return False
 
         try:
-            formatter = GameTimestampFormatter(self.settings.timestamp.template)
+            formatter = InfGameTimestampFormatter(self.settings.timestamp.template)
 
             lines: list[str] = []
             if self.settings.timestamp.include_start_label:
