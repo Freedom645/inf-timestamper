@@ -14,11 +14,11 @@ from PySide6.QtWidgets import (
 )
 from PySide6.QtCore import Qt
 
-from domain.entity.game_entity import ChartDetail, PlayData, PlayResult
-from domain.entity.game_format import FormatID, GameTimestampFormatter
+from domain.entity.inf_game_entity import ChartDetail, PlayData, PlayResult
+from domain.entity.inf_game_format import FormatID, GameTimestampFormatter
 from domain.entity.settings_entity import SettingReflux, SettingTimestampFormat
 from domain.entity.stream_entity import StreamSession, Timestamp
-from domain.value.game_value import DJ_LEVEL, ClearLamp
+from domain.value.inf_game_value import DJ_LEVEL, ClearLamp
 from ui.widgets.dollar_completer_line_edit import DollarCompleterLineEdit
 
 

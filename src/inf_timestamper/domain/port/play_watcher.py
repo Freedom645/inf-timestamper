@@ -3,7 +3,7 @@ from enum import StrEnum
 from typing import Callable
 from uuid import UUID
 
-from domain.entity.game_entity import PlayData
+from domain.entity.inf_game_entity import PlayData
 
 
 class WatchType(StrEnum):

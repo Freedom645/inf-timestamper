@@ -1,7 +1,7 @@
 from pydantic import BaseModel, Field
 from pathlib import Path
 
-from domain.entity.game_format import FormatID
+from domain.entity.inf_game_format import FormatID
 
 
 class SettingObs(BaseModel):

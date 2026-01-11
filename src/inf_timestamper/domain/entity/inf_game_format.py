@@ -1,7 +1,7 @@
 from enum import StrEnum
 from string import Template
 
-from domain.entity.game_entity import PlayData
+from domain.entity.inf_game_entity import PlayData
 from domain.entity.stream_entity import StreamSession, Timestamp
 
 

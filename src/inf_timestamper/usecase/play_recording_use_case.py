@@ -3,7 +3,7 @@ from injector import inject
 from datetime import datetime
 from typing import Callable
 
-from domain.entity.game_entity import PlayData
+from domain.entity.inf_game_entity import PlayData
 from domain.entity.settings_entity import Settings
 from domain.entity.stream_entity import StreamSession, Timestamp
 from domain.port.play_watcher import IPlayWatcher, WatchType

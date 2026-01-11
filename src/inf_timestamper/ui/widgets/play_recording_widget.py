@@ -19,8 +19,8 @@ from PySide6.QtCore import QThread
 from datetime import datetime
 from injector import inject
 
-from domain.entity.game_entity import PlayData
-from domain.entity.game_format import GameTimestampFormatter
+from domain.entity.inf_game_entity import PlayData
+from domain.entity.inf_game_format import GameTimestampFormatter
 from domain.entity.settings_entity import Settings
 from domain.entity.stream_entity import StreamSession, Timestamp
 from domain.value.base_path import BasePath

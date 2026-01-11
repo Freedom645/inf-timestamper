@@ -2,7 +2,7 @@ from pathlib import Path
 from injector import inject
 from datetime import datetime
 
-from domain.entity.game_entity import PlayData
+from domain.entity.inf_game_entity import PlayData
 from domain.entity.stream_entity import StreamSession
 from domain.value.base_path import BasePath
 from domain.repository.stream_session_repository import StreamSessionRepository
