@@ -3,6 +3,7 @@ from pathlib import Path
 
 from domain.entity.inf_game_format import InfFormatID
 from domain.entity.sdvx_game_format import SDVXFormatID
+from domain.value.stream_value import StreamKind
 
 
 class SettingObs(BaseModel):
@@ -54,6 +55,8 @@ class Settings(BaseModel):
     youtube: SettingYoutube = Field(default_factory=SettingYoutube)
     timestamp: SettingTimestampFormat = Field(default_factory=SettingTimestampFormat)
     sdvx: SettingSdvx = Field(default_factory=SettingSdvx)
+    stream_kind: StreamKind = StreamKind.INF
+    """配信の種類"""
 
     def reset_settings(self) -> "Settings":
         self.obs = SettingObs()
@@ -61,6 +64,7 @@ class Settings(BaseModel):
         self.youtube = SettingYoutube()
         self.timestamp = SettingTimestampFormat()
         self.sdvx = SettingSdvx()
+        self.stream_kind = StreamKind.INF
         return self
 
     def bind_settings(self, other: "Settings") -> "Settings":
@@ -69,4 +73,5 @@ class Settings(BaseModel):
         self.youtube = other.youtube
         self.timestamp = other.timestamp
         self.sdvx = other.sdvx
+        self.stream_kind = other.stream_kind
         return self

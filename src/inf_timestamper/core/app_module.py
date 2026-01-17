@@ -5,7 +5,6 @@ from pathlib import Path
 from PySide6.QtWidgets import QWidget
 
 from core.arguments import Arguments
-from domain.entity.inf_game_entity import InfPlayData
 from domain.value.base_path import BasePath
 from domain.entity.settings_entity import Settings
 from domain.port.play_watcher import IPlayWatcher

@@ -19,6 +19,7 @@ from domain.entity.inf_game_format import InfFormatID, InfGameTimestampFormatter
 from domain.entity.settings_entity import SettingReflux, SettingTimestampFormat
 from domain.entity.stream_entity import StreamSession, Timestamp
 from domain.value.inf_game_value import DJ_LEVEL, InfClearLamp
+from domain.value.stream_value import StreamKind
 from ui.widgets.dollar_completer_line_edit import DollarCompleterLineEdit
 
 
@@ -223,7 +224,7 @@ def create_sample_data() -> StreamSession:
             ),
         ),
     ]
-    return StreamSession(start_time=start_time, timestamps=timestamps)
+    return StreamSession(kind=StreamKind.INF, start_time=start_time, timestamps=timestamps)
 
 
 SAMPLE_SESSION_DATA = create_sample_data()

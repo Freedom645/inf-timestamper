@@ -1,12 +1,17 @@
+from injector import inject
+
 from domain.entity.stream_entity import StreamSession
+from domain.entity.settings_entity import Settings
 from domain.repository.current_stream_session_repository import (
     CurrentStreamSessionRepository,
 )
 
 
 class InMemoryCurrentStreamSessionRepository(CurrentStreamSessionRepository):
-    def __init__(self) -> None:
-        self._session = StreamSession()
+    @inject
+    def __init__(self, settings: Settings) -> None:
+        self._settings = settings
+        self._session = StreamSession(kind=settings.stream_kind)
 
     def get(self) -> StreamSession:
         return self._session
@@ -15,5 +20,5 @@ class InMemoryCurrentStreamSessionRepository(CurrentStreamSessionRepository):
         self._session = stream_session
 
     def reset(self) -> StreamSession:
-        self._session = StreamSession()
+        self._session = StreamSession(kind=self._settings.stream_kind)
         return self._session

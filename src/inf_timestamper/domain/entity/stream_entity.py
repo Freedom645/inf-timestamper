@@ -3,7 +3,7 @@ from uuid import UUID, uuid4
 from pydantic import BaseModel, Field
 from datetime import datetime, timedelta
 
-from domain.value.stream_value import StreamStatus
+from domain.value.stream_value import StreamKind, StreamStatus
 
 
 class TimestampData(ABC, BaseModel):
@@ -26,6 +26,8 @@ class Timestamp(BaseModel):
 
 
 class StreamSession(BaseModel):
+    kind: StreamKind
+    """セッションの種類"""
     id: UUID = Field(default_factory=uuid4)
     """セッションID"""
     stream_status: StreamStatus = StreamStatus.WAITING
