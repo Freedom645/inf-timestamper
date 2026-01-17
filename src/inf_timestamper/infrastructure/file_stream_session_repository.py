@@ -2,20 +2,19 @@ from pathlib import Path
 from injector import inject
 from datetime import datetime
 
-from domain.entity.inf_game_entity import InfPlayData
 from domain.entity.stream_entity import StreamSession
 from domain.value.base_path import BasePath
 from domain.repository.stream_session_repository import StreamSessionRepository
 from infrastructure.file_accessor import FileAccessor
 
 
-class FileStreamSessionRepository(StreamSessionRepository[InfPlayData]):
+class FileStreamSessionRepository(StreamSessionRepository):
     @inject
     def __init__(self, file_accessor: FileAccessor, base_path: BasePath):
         self._file_accessor = file_accessor
         self._sessions_path = base_path / "sessions"
 
-    def save(self, stream_session: StreamSession[InfPlayData]) -> None:
+    def save(self, stream_session: StreamSession) -> None:
         if not self._sessions_path.exists():
             self._sessions_path.mkdir(exist_ok=True)
 
@@ -27,9 +26,14 @@ class FileStreamSessionRepository(StreamSessionRepository[InfPlayData]):
 
         self._file_accessor.save_as_text(file_path, json_str)
 
-    def load(self, path: Path) -> StreamSession[InfPlayData] | None:
+        old_file_name = file_date.strftime("%Y-%m-%d_%H-%M-%S.json")
+        old_file_path = self._sessions_path / old_file_name
+        if old_file_path.exists():
+            old_file_path.unlink()
+
+    def load(self, path: Path) -> StreamSession | None:
         json_str = self._file_accessor.load_as_text(path)
         if not json_str:
             return None
 
-        return StreamSession[InfPlayData].model_validate_json(json_str)
+        return StreamSession.model_validate_json(json_str)

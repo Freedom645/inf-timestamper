@@ -129,10 +129,10 @@ class SettingsBasicTab(QWidget):
         return reflux, timestamp
 
 
-def create_sample_data() -> StreamSession[InfPlayData]:
+def create_sample_data() -> StreamSession:
     start_time = datetime.now()
     timestamps = [
-        Timestamp[InfPlayData](
+        Timestamp(
             occurred_at=start_time + timedelta(minutes=2, seconds=4),
             data=InfPlayData(
                 key="test_1",
@@ -162,7 +162,7 @@ def create_sample_data() -> StreamSession[InfPlayData]:
                 ),
             ),
         ),
-        Timestamp[InfPlayData](
+        Timestamp(
             occurred_at=start_time + timedelta(minutes=4, seconds=31),
             data=InfPlayData(
                 key="test_2",
@@ -192,7 +192,7 @@ def create_sample_data() -> StreamSession[InfPlayData]:
                 ),
             ),
         ),
-        Timestamp[InfPlayData](
+        Timestamp(
             occurred_at=start_time + timedelta(minutes=7, seconds=12),
             data=InfPlayData(
                 key="test_3",
@@ -223,7 +223,7 @@ def create_sample_data() -> StreamSession[InfPlayData]:
             ),
         ),
     ]
-    return StreamSession[InfPlayData](start_time=start_time, timestamps=timestamps)
+    return StreamSession(start_time=start_time, timestamps=timestamps)
 
 
 SAMPLE_SESSION_DATA = create_sample_data()

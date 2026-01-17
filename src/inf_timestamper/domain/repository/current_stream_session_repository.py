@@ -1,17 +1,14 @@
 from abc import ABC, abstractmethod
-from typing import TypeVar, Generic
 
-from domain.entity.stream_entity import StreamSession, TimestampData
-
-T = TypeVar("T", bound=TimestampData)
+from domain.entity.stream_entity import StreamSession
 
 
-class CurrentStreamSessionRepository(ABC, Generic[T]):
+class CurrentStreamSessionRepository(ABC):
     @abstractmethod
-    def get(self) -> StreamSession[T]: ...
+    def get(self) -> StreamSession: ...
 
     @abstractmethod
-    def set(self, stream_session: StreamSession[T]) -> None: ...
+    def set(self, stream_session: StreamSession) -> None: ...
 
     @abstractmethod
-    def reset(self) -> StreamSession[T]: ...
+    def reset(self) -> StreamSession: ...

@@ -1,16 +1,18 @@
-from __future__ import annotations
-from abc import ABC, abstractmethod
-from string import Template
-from typing import TypeVar, Generic
 from enum import StrEnum
+from abc import abstractmethod
+from string import Template
+from typing import Protocol, TypeVar, Generic
 
-from domain.entity.stream_entity import StreamSession, Timestamp, TimestampData
+from domain.entity.stream_entity import StreamSession, Timestamp
 
-TPlayData = TypeVar("TPlayData", bound=TimestampData)
 TFormatID = TypeVar("TFormatID", bound=StrEnum)
 
 
-class AbstractGameTimestampFormatter(Generic[TPlayData, TFormatID], ABC):
+class GameTimestampFormatter(Protocol):
+    def format(self, session: StreamSession, timestamp: Timestamp) -> str: ...
+
+
+class GameTimestampFormatterBase(GameTimestampFormatter, Generic[TFormatID]):
     def __init__(
         self,
         format_str: str,
@@ -19,11 +21,18 @@ class AbstractGameTimestampFormatter(Generic[TPlayData, TFormatID], ABC):
         self.template = Template(format_str)
         self.default_value = default_value or {}
 
-    def format(
+    @abstractmethod
+    def format_ids(self) -> list[TFormatID]: ...
+
+    @abstractmethod
+    def extract_value(
         self,
-        session: StreamSession[TPlayData],
-        timestamp: Timestamp[TPlayData],
-    ) -> str:
+        identifier: TFormatID,
+        session: StreamSession,
+        timestamp: Timestamp,
+    ) -> str: ...
+
+    def format(self, session: StreamSession, timestamp: Timestamp) -> str:
         mapping: dict[str, str] = {}
 
         for identifier in self.format_ids():
@@ -34,28 +43,9 @@ class AbstractGameTimestampFormatter(Generic[TPlayData, TFormatID], ABC):
 
         return self.template.safe_substitute(mapping)
 
-    @abstractmethod
-    def format_ids(self) -> list[TFormatID]:
-        """使用する FormatID 一覧"""
-        raise NotImplementedError
-
-    @abstractmethod
-    def extract_value(
-        self,
-        identifier: TFormatID,
-        session: StreamSession[TPlayData],
-        timestamp: Timestamp[TPlayData],
-    ) -> str:
-        """identifier から値を取り出す"""
-        raise NotImplementedError
-
 
 class TimestampExtractorMixin:
-    def extract_timestamp(
-        self,
-        session: StreamSession[TPlayData],
-        timestamp: Timestamp[TPlayData],
-    ) -> str:
+    def extract_timestamp(self, session: StreamSession, timestamp: Timestamp) -> str:
         if session.start_time is None:
             return timestamp.occurred_at.strftime("%Y/%m/%d %H:%M:%S")
         return str(timestamp.get_elapse(session.start_time))
