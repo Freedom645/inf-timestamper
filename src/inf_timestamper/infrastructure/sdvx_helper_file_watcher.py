@@ -7,13 +7,7 @@ from uuid import UUID
 from time import sleep
 from watchdog.observers import Observer
 from watchdog.observers.api import BaseObserver
-from watchdog.events import (
-    FileSystemEventHandler,
-    DirModifiedEvent,
-    FileModifiedEvent,
-    DirCreatedEvent,
-    FileCreatedEvent,
-)
+from watchdog.events import FileSystemEventHandler, DirModifiedEvent, FileModifiedEvent
 
 from domain.entity.sdvx_game_entity import SDVXChartDetail, SDVXPlayData, SDVXPlayResult
 from domain.value.sdvx_game_value import SDVXClearLamp
@@ -55,18 +49,14 @@ class SDVXHelperFileWatcher(FileSystemEventHandler, IPlayWatcher):
         self._callbacks: dict[UUID, Callable[[WatchType, SDVXPlayData], None]] = {}
         self._last_status = PlayState.SELECT
 
-    def on_created(self, event: DirCreatedEvent | FileCreatedEvent) -> None:
-        self._logger.debug(f"Created event detected: {event.src_path}")
-        pass
-
     def on_modified(self, event: DirModifiedEvent | FileModifiedEvent) -> None:
-        self._logger.debug(f"Modified event detected: {event.src_path}")
-
         try:
             if isinstance(event.src_path, bytes):
                 src_path = Path(event.src_path.decode())
             else:
                 src_path = Path(event.src_path)
+
+            self._logger.debug(f"Modified event detected: {src_path}")
 
             if not src_path.is_file() or src_path.name not in ["select_jacket.png", "history_cursong.xml"]:
                 return

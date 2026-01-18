@@ -6,9 +6,11 @@ from PySide6.QtWidgets import QWidget
 
 from core.arguments import Arguments
 from domain.value.base_path import BasePath
+from domain.value.stream_value import StreamKind
 from domain.entity.settings_entity import Settings
 from domain.entity.inf_game_format import InfGameTimestampFormatter
 from domain.entity.sdvx_game_format import SDVXGameTimestampFormatter
+from domain.entity.timestamp_formatter import GameTimestampFormatter
 from domain.port.play_watcher import IPlayWatcher
 from domain.port.stream_gateway import IStreamGateway
 from domain.factory.game_formatter_factory import GameTimestampFormatterFactory
@@ -83,17 +85,15 @@ class AppModule(Module):
     @provider
     def provide_game_formatter_factory(self, injector: Injector) -> GameTimestampFormatterFactory:
         settings = injector.get(Settings)
-        return lambda kind: next(
-            (
-                f
-                for f in [
-                    InfGameTimestampFormatter(settings.timestamp.template),
-                    SDVXGameTimestampFormatter(settings.sdvx.template),
-                ]
-                if f.stream_kind() == kind
-            ),
-            None,
-        )
+
+        def factory(kind: StreamKind) -> GameTimestampFormatter | None:
+            instance: list[GameTimestampFormatter] = [
+                InfGameTimestampFormatter(settings.timestamp.template),
+                SDVXGameTimestampFormatter(settings.sdvx.template),
+            ]
+            return next((f for f in instance if f.stream_kind() == kind), None)
+
+        return factory
 
     @singleton
     @multiprovider
