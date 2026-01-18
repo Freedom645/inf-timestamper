@@ -3,6 +3,7 @@ from enum import StrEnum
 from domain.entity.sdvx_game_entity import SDVXPlayData
 from domain.entity.stream_entity import StreamSession, Timestamp
 from domain.entity.timestamp_formatter import GameTimestampFormatterBase, TimestampExtractorMixin
+from domain.value.stream_value import StreamKind
 
 
 class SDVXFormatID(StrEnum):
@@ -35,6 +36,9 @@ SDVX_FORMAT_ID_LOGICAL_NAMES = {
 
 
 class SDVXGameTimestampFormatter(TimestampExtractorMixin, GameTimestampFormatterBase[SDVXFormatID]):
+    def stream_kind(self) -> StreamKind:
+        return StreamKind.SDVX
+
     def format_ids(self) -> list[SDVXFormatID]:
         return list(SDVXFormatID)
 

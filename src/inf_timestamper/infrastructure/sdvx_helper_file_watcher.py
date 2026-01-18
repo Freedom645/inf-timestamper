@@ -7,7 +7,13 @@ from uuid import UUID
 from time import sleep
 from watchdog.observers import Observer
 from watchdog.observers.api import BaseObserver
-from watchdog.events import FileSystemEventHandler, DirModifiedEvent, FileModifiedEvent
+from watchdog.events import (
+    FileSystemEventHandler,
+    DirModifiedEvent,
+    FileModifiedEvent,
+    DirCreatedEvent,
+    FileCreatedEvent,
+)
 
 from domain.entity.sdvx_game_entity import SDVXChartDetail, SDVXPlayData, SDVXPlayResult
 from domain.value.sdvx_game_value import SDVXClearLamp
@@ -49,8 +55,13 @@ class SDVXHelperFileWatcher(FileSystemEventHandler, IPlayWatcher):
         self._callbacks: dict[UUID, Callable[[WatchType, SDVXPlayData], None]] = {}
         self._last_status = PlayState.SELECT
 
+    def on_created(self, event: DirCreatedEvent | FileCreatedEvent) -> None:
+        self._logger.debug(f"Created event detected: {event.src_path}")
+        pass
+
     def on_modified(self, event: DirModifiedEvent | FileModifiedEvent) -> None:
-        status = self._last_status
+        self._logger.debug(f"Modified event detected: {event.src_path}")
+
         try:
             if isinstance(event.src_path, bytes):
                 src_path = Path(event.src_path.decode())
@@ -64,16 +75,18 @@ class SDVXHelperFileWatcher(FileSystemEventHandler, IPlayWatcher):
             if src_path.name == "select_jacket.png" and self._last_status == PlayState.SELECT:
                 # 選曲中にジャケット更新：プレイ開始
                 self._last_status = PlayState.PLAY
-                # FIXME: ファイル書き込みにラグがあるため、少し待つ
-                sleep(0.3)
             elif src_path.name == "history_cursong.xml" and self._last_status == PlayState.PLAY:
                 # プレイ中に履歴更新：リザルト表示～選曲に戻る
                 self._last_status = PlayState.SELECT
             else:
                 return
 
+            # FIXME: ファイル書き込みにラグがあるため、少し待つ
+            sleep(1.0)
+
+            self._logger.info(f"Reflux play state changed to: {self._last_status}")
             play_data = self._read_history_cursong_xml(
-                self._settings.sdvx.sdvx_helper_directory / "history_cursong.xml"
+                self._settings.sdvx.sdvx_helper_directory / "out" / "history_cursong.xml"
             )
             if self._last_status == PlayState.PLAY:
                 play_data.play_result = None
@@ -84,8 +97,6 @@ class SDVXHelperFileWatcher(FileSystemEventHandler, IPlayWatcher):
         except Exception as e:
             self._logger.error("RefluxFileWatcherの処理に失敗しました")
             self._logger.exception(e)
-        finally:
-            self._last_status = status
 
     def _read_history_cursong_xml(self, directory: Path) -> SDVXPlayData:
         try:
@@ -114,7 +125,7 @@ class SDVXHelperFileWatcher(FileSystemEventHandler, IPlayWatcher):
 
             return SDVXPlayData(key=f"{title}_{difficulty}", chart_detail=chart_detail, play_result=play_result)
         except Exception as e:
-            raise RuntimeError("latest.jsonの読み込みに失敗しました。") from e
+            raise RuntimeError("history_cursong.xmlの読み込みに失敗しました。") from e
 
     def kind(self) -> StreamKind:
         return StreamKind.SDVX

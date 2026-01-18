@@ -7,8 +7,11 @@ from PySide6.QtWidgets import QWidget
 from core.arguments import Arguments
 from domain.value.base_path import BasePath
 from domain.entity.settings_entity import Settings
+from domain.entity.inf_game_format import InfGameTimestampFormatter
+from domain.entity.sdvx_game_format import SDVXGameTimestampFormatter
 from domain.port.play_watcher import IPlayWatcher
 from domain.port.stream_gateway import IStreamGateway
+from domain.factory.game_formatter_factory import GameTimestampFormatterFactory
 
 from ui.factory.play_recording_widget_factory import PlayRecordingWidgetFactory
 from ui.factory.update_window_factory import UpdateWindowFactory
@@ -75,6 +78,22 @@ class AppModule(Module):
     @provider
     def provide_arguments(self) -> Arguments:
         return Arguments.load()
+
+    @singleton
+    @provider
+    def provide_game_formatter_factory(self, injector: Injector) -> GameTimestampFormatterFactory:
+        settings = injector.get(Settings)
+        return lambda kind: next(
+            (
+                f
+                for f in [
+                    InfGameTimestampFormatter(settings.timestamp.template),
+                    SDVXGameTimestampFormatter(settings.sdvx.template),
+                ]
+                if f.stream_kind() == kind
+            ),
+            None,
+        )
 
     @singleton
     @multiprovider

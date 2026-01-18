@@ -9,7 +9,7 @@ from domain.value.stream_value import StreamKind
 class TimestampDTO(BaseModel):
     id: UUID
     occurred_at: datetime
-    data: dict[str, str | dict[str, str | int]]
+    data: dict[str, str | dict[str, str | int | None] | None]
 
 
 class StreamSessionDTO(BaseModel):

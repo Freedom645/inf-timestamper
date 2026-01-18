@@ -3,13 +3,9 @@ from pathlib import Path
 from injector import inject
 import pyperclip
 
-from domain.entity.timestamp_formatter import GameTimestampFormatter
-from domain.entity.inf_game_entity import InfPlayData
-from domain.entity.inf_game_format import InfGameTimestampFormatter
-from domain.entity.sdvx_game_entity import SDVXPlayData
-from domain.entity.sdvx_game_format import SDVXGameTimestampFormatter
 from domain.entity.settings_entity import Settings
 from domain.entity.stream_entity import StreamSession
+from domain.factory.game_formatter_factory import GameTimestampFormatterFactory
 from domain.repository.current_stream_session_repository import CurrentStreamSessionRepository
 from domain.repository.stream_session_repository import StreamSessionRepository
 
@@ -22,11 +18,13 @@ class OutputUseCase:
         stream_session_repository: StreamSessionRepository,
         settings: Settings,
         current_session: CurrentStreamSessionRepository,
+        game_formatter_factory: GameTimestampFormatterFactory,
     ):
         self._logger = logger
         self._stream_session_repository = stream_session_repository
         self._current_session = current_session
         self.settings = settings
+        self._game_formatter_factory = game_formatter_factory
 
     def copy_to_clipboard(self) -> bool:
         stream_session = self._current_session.get()
@@ -36,27 +34,11 @@ class OutputUseCase:
             return False
 
         try:
-            if len(stream_session.timestamps) == 0:
-                self._logger.warning(
-                    f"タイムスタンプが存在しないため、クリップボードへのコピーをスキップします ID: {stream_session.id}, 開始時間: {stream_session.start_time}"
-                )
-                return False
-
-            sample_data = stream_session.timestamps[0].data
-
-            formatter: GameTimestampFormatter | None = None
             lines: list[str] = []
-            if isinstance(sample_data, InfPlayData):
-                formatter = InfGameTimestampFormatter(self.settings.timestamp.template)
-                if self.settings.timestamp.include_start_label:
-                    lines.append(self.settings.timestamp.start_label)
-            elif isinstance(sample_data, SDVXPlayData):  # pyright: ignore[reportUnnecessaryIsInstance]
-                formatter = SDVXGameTimestampFormatter(self.settings.sdvx.template)
-                if self.settings.sdvx.include_start_label:
-                    lines.append(self.settings.sdvx.start_label)
-            else:
+            formatter = self._game_formatter_factory(stream_session.kind)
+            if formatter is None:
                 self._logger.error(
-                    f"不明なゲーム形式のタイムスタンプデータです ID: {stream_session.id}, 形式: {type(sample_data)}"
+                    f"不明な配信種類のタイムスタンプデータです ID: {stream_session.id}, 種類: {stream_session.kind}"
                 )
                 return False
 

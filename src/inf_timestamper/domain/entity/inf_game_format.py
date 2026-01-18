@@ -3,6 +3,7 @@ from enum import StrEnum
 from domain.entity.inf_game_entity import InfPlayData
 from domain.entity.stream_entity import StreamSession, Timestamp
 from domain.entity.timestamp_formatter import GameTimestampFormatterBase, TimestampExtractorMixin
+from domain.value.stream_value import StreamKind
 
 
 class InfFormatID(StrEnum):
@@ -69,6 +70,9 @@ FORMAT_ID_LOGICAL_NAMES = {
 
 
 class InfGameTimestampFormatter(TimestampExtractorMixin, GameTimestampFormatterBase[InfFormatID]):
+    def stream_kind(self) -> StreamKind:
+        return StreamKind.INF
+
     def format_ids(self) -> list[InfFormatID]:
         return list(InfFormatID)
 

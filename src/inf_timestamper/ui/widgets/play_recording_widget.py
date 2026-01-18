@@ -19,10 +19,10 @@ from PySide6.QtCore import QThread
 from datetime import datetime
 from injector import inject
 
-from domain.entity.inf_game_format import InfGameTimestampFormatter
 from domain.entity.settings_entity import Settings
 from domain.entity.stream_entity import StreamSession, Timestamp
 from domain.value.base_path import BasePath
+from domain.factory.game_formatter_factory import GameTimestampFormatterFactory
 from ui.view_models.play_recording_view_model import PlayRecordingViewModel
 from ui.views.utils import FunctionRunner
 from ui.widgets.date_time_edit import DateTimeEdit
@@ -33,6 +33,7 @@ class PlayRecordingWidget(QWidget):
     def __init__(
         self,
         play_recording_view_model: PlayRecordingViewModel,
+        game_formatter_factory: GameTimestampFormatterFactory,
         base_path: BasePath,
         settings: Settings,
         parent: QWidget | None = None,
@@ -41,6 +42,7 @@ class PlayRecordingWidget(QWidget):
         self._vm = play_recording_view_model
         self.base_path = base_path
         self.settings = settings
+        self._game_formatter_factory = game_formatter_factory
 
         self._thread: QThread | None = None
         self._timestamp_item_map: dict[UUID, QListWidgetItem] = {}
@@ -171,7 +173,10 @@ class PlayRecordingWidget(QWidget):
     def _on_timestamp_upsert_signal(self, session: StreamSession, timestamp: Timestamp) -> None:
         self.timestamp_count.setText(str(session.count_timestamp()))
 
-        formatter = InfGameTimestampFormatter(self.settings.timestamp.template)
+        formatter = self._game_formatter_factory(session.kind)
+        if formatter is None:
+            return
+
         label = formatter.format(session, timestamp)
 
         if timestamp.id in self._timestamp_item_map:

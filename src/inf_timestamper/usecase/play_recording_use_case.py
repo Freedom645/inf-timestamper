@@ -54,7 +54,7 @@ class PlayRecordingUseCase:
                 )
             else:
                 self._logger.info("OBS Studio連携が無効のため、配信接続をスキップします")
-                stream_session.start_recording(datetime.now())
+                stream_session.start_recording(datetime.now(), self._settings.basic.stream_kind)
 
             self._play_watcher = next(
                 (watcher for watcher in self._play_watchers if watcher.kind() == stream_session.kind), None
@@ -85,7 +85,7 @@ class PlayRecordingUseCase:
                 if stream_session.stream_status != StreamStatus.BEFORE_STREAM:
                     self._logger.warning("セッションが配信待機中ではないため、記録開始をスキップしました")
                     return
-                stream_session.start_recording(datetime.now())
+                stream_session.start_recording(datetime.now(), self._settings.basic.stream_kind)
                 presenter.stream_started(stream_session)
             elif event == StreamEventType.STREAM_ENDED:
                 self.stop_recording()

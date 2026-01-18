@@ -4,11 +4,14 @@ from string import Template
 from typing import Protocol, TypeVar, Generic
 
 from domain.entity.stream_entity import StreamSession, Timestamp
+from domain.value.stream_value import StreamKind
 
 TFormatID = TypeVar("TFormatID", bound=StrEnum)
 
 
 class GameTimestampFormatter(Protocol):
+    def stream_kind(self) -> StreamKind: ...
+
     def format(self, session: StreamSession, timestamp: Timestamp) -> str: ...
 
 

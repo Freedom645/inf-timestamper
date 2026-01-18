@@ -44,12 +44,13 @@ class StreamSession(BaseModel):
         self.stream_status = StreamStatus.BEFORE_STREAM
         return self
 
-    def start_recording(self, start_time: datetime) -> "StreamSession":
+    def start_recording(self, start_time: datetime, kind: StreamKind) -> "StreamSession":
         """記録を開始する"""
         if self.stream_status not in [StreamStatus.WAITING, StreamStatus.BEFORE_STREAM]:
             raise ValueError(f"セッションはすでに開始しています {self.stream_status}")
 
         self.start_time = start_time
+        self.kind = kind
         self.stream_status = StreamStatus.RECORDING
         return self
 
