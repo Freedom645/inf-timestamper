@@ -22,8 +22,7 @@ class FileStreamSessionRepository(StreamSessionRepository):
             self._sessions_path.mkdir(exist_ok=True)
 
         file_date = stream_session.start_time or datetime.now()
-        prefix = stream_session.kind.value + "_" if stream_session.kind else ""
-        file_name = prefix + file_date.strftime("%Y-%m-%d_%H-%M-%S.json")
+        file_name = stream_session.kind.value + "_" + file_date.strftime("%Y-%m-%d_%H-%M-%S.json")
 
         file_path = self._sessions_path / file_name
         json_str = self._mapper.from_domain(stream_session).model_dump_json()

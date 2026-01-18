@@ -49,9 +49,6 @@ class StreamSessionMapper(DTOMapperMixin[StreamSessionDTO, StreamSession]):
         )
 
     def from_domain(self, entity: StreamSession) -> StreamSessionDTO:
-        if len(entity.timestamps) == 0:
-            raise ValueError("タイムスタンプが存在しないため、DTOへの変換ができません。")
-
         converter = next((c for c in self._converters if entity.kind in c.kind()), None)
         if converter is None:
             raise ValueError(f"不明な形式が指定されました。 kind={entity.kind}")

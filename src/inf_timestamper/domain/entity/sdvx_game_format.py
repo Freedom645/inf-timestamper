@@ -11,6 +11,7 @@ class SDVXFormatID(StrEnum):
     LEVEL = "level"
     DIFFICULTY = "difficulty"
     SCORE = "score"
+    SCORE_SHORT = "score_short"
     EX_SCORE = "ex_score"
     CLEAR_LAMP = "clear_lamp"
 
@@ -28,6 +29,7 @@ SDVX_FORMAT_ID_LOGICAL_NAMES = {
     SDVXFormatID.DIFFICULTY: "難易度",
     SDVXFormatID.CLEAR_LAMP: "クリアランプ",
     SDVXFormatID.SCORE: "スコア",
+    SDVXFormatID.SCORE_SHORT: "スコア（短縮表示）",
     SDVXFormatID.EX_SCORE: "EXスコア",
 }
 
@@ -62,6 +64,8 @@ class SDVXGameTimestampFormatter(TimestampExtractorMixin, GameTimestampFormatter
                     return str(pr.ex_score)
                 case SDVXFormatID.SCORE:
                     return str(pr.score)
+                case SDVXFormatID.SCORE_SHORT:
+                    return str(pr.score // 1_000)
                 case _:
                     pass
         return ""
