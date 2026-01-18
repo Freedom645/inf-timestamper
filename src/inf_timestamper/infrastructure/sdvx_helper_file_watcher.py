@@ -5,6 +5,7 @@ from typing import Callable
 from pathlib import Path
 from uuid import UUID
 from time import sleep
+from datetime import datetime, timedelta
 from watchdog.observers import Observer
 from watchdog.observers.api import BaseObserver
 from watchdog.events import FileSystemEventHandler, DirModifiedEvent, FileModifiedEvent
@@ -48,6 +49,7 @@ class SDVXHelperFileWatcher(FileSystemEventHandler, IPlayWatcher):
         self._observer: BaseObserver | None = None
         self._callbacks: dict[UUID, Callable[[WatchType, SDVXPlayData], None]] = {}
         self._last_status = PlayState.SELECT
+        self._last_modify = datetime.min
 
     def on_modified(self, event: DirModifiedEvent | FileModifiedEvent) -> None:
         try:
@@ -58,23 +60,33 @@ class SDVXHelperFileWatcher(FileSystemEventHandler, IPlayWatcher):
 
             self._logger.debug(f"Modified event detected: {src_path}")
 
-            if not src_path.is_file() or src_path.name not in ["select_jacket.png", "history_cursong.xml"]:
+            if not src_path.is_file():
+                return
+
+            if not (src_path.name == "select_jacket.png" and self._last_status == PlayState.SELECT) and not (
+                src_path.name == "history_cursong.xml" and self._last_status == PlayState.PLAY
+            ):
+                return
+
+            if self._last_modify + timedelta(seconds=10) > datetime.now():
+                # 10秒以内の連続イベントは無視する
                 return
 
             # ステータス遷移
-            if src_path.name == "select_jacket.png" and self._last_status == PlayState.SELECT:
+            if self._last_status == PlayState.SELECT:
                 # 選曲中にジャケット更新：プレイ開始
                 self._last_status = PlayState.PLAY
-            elif src_path.name == "history_cursong.xml" and self._last_status == PlayState.PLAY:
+                # FIXME: ファイル書き込みにラグがあるため、少し待つ
+                sleep(2.0)
+            elif self._last_status == PlayState.PLAY:
                 # プレイ中に履歴更新：リザルト表示～選曲に戻る
                 self._last_status = PlayState.SELECT
+                # FIXME: ファイル書き込みにラグがあるため、少し待つ
+                sleep(5.0)
             else:
                 return
 
-            # FIXME: ファイル書き込みにラグがあるため、少し待つ
-            sleep(1.0)
-
-            self._logger.info(f"Reflux play state changed to: {self._last_status}")
+            self._logger.info(f"SDVX play state changed to: {self._last_status}, source file: {src_path.name}")
             play_data = self._read_history_cursong_xml(
                 self._settings.sdvx.sdvx_helper_directory / "out" / "history_cursong.xml"
             )
@@ -84,8 +96,9 @@ class SDVXHelperFileWatcher(FileSystemEventHandler, IPlayWatcher):
             elif self._last_status == PlayState.SELECT:
                 self._notify(WatchType.MODIFY, play_data)
 
+            self._last_modify = datetime.now()
         except Exception as e:
-            self._logger.error("RefluxFileWatcherの処理に失敗しました")
+            self._logger.error("SDVXHelperFileWatcherの処理に失敗しました")
             self._logger.exception(e)
 
     def _read_history_cursong_xml(self, directory: Path) -> SDVXPlayData:
