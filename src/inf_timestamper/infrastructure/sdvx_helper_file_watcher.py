@@ -11,6 +11,7 @@ from watchdog.events import FileSystemEventHandler, DirModifiedEvent, FileModifi
 
 from domain.entity.sdvx_game_entity import SDVXChartDetail, SDVXPlayData, SDVXPlayResult
 from domain.value.sdvx_game_value import SDVXClearLamp
+from domain.value.stream_value import StreamKind
 from domain.entity.settings_entity import Settings
 from domain.port.play_watcher import IPlayWatcher, WatchType
 from infrastructure.file_accessor import FileAccessor
@@ -114,6 +115,9 @@ class SDVXHelperFileWatcher(FileSystemEventHandler, IPlayWatcher):
             return SDVXPlayData(key=f"{title}_{difficulty}", chart_detail=chart_detail, play_result=play_result)
         except Exception as e:
             raise RuntimeError("latest.jsonの読み込みに失敗しました。") from e
+
+    def kind(self) -> StreamKind:
+        return StreamKind.SDVX
 
     def start(self) -> None:
         self._last_status = PlayState.SELECT

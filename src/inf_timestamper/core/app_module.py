@@ -26,6 +26,7 @@ from domain.repository.app_updater import IAppUpdater
 from domain.repository.app_version_provider import IVersionProvider
 
 from infrastructure.reflux_file_watcher import RefluxFileWatcher
+from infrastructure.sdvx_helper_file_watcher import SDVXHelperFileWatcher
 
 # from infrastructure.obs_connector_v4 import OBSConnectorV4
 from infrastructure.obs_connector_v5 import OBSConnectorV5
@@ -46,7 +47,7 @@ class AppModule(Module):
             to=FileStreamSessionRepository,
             scope=singleton,
         )
-        binder.bind(IPlayWatcher, to=RefluxFileWatcher, scope=singleton)  # type: ignore
+        binder.multibind(list[IPlayWatcher], to=[RefluxFileWatcher, SDVXHelperFileWatcher], scope=singleton)  # type: ignore
         # binder.bind(IStreamGateway, to=OBSConnectorV4, scope=singleton)  # type: ignore
         binder.bind(IStreamGateway, to=OBSConnectorV5, scope=singleton)  # type: ignore
         binder.bind(

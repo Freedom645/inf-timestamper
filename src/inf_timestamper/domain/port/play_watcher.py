@@ -4,6 +4,7 @@ from typing import Callable
 from uuid import UUID
 
 from domain.entity.stream_entity import TimestampData
+from domain.value.stream_value import StreamKind
 
 
 class WatchType(StrEnum):
@@ -12,6 +13,9 @@ class WatchType(StrEnum):
 
 
 class IPlayWatcher(ABC):
+    @abstractmethod
+    def kind(self) -> StreamKind: ...
+
     @abstractmethod
     def start(self) -> None: ...
 

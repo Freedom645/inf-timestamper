@@ -21,15 +21,17 @@ class PlayRecordingUseCase:
         logger: logging.Logger,
         settings: Settings,
         current_session_repository: CurrentStreamSessionRepository,
-        play_watcher: IPlayWatcher,
+        play_watchers: list[IPlayWatcher],
         stream_gateway: IStreamGateway,
     ) -> None:
         self._logger = logger
 
         self._settings = settings
         self._current_session_repository = current_session_repository
-        self._play_watcher = play_watcher
+        self._play_watchers = play_watchers
         self._stream_gateway = stream_gateway
+
+        self._play_watcher: IPlayWatcher | None = None
 
     def start_recording(self, presenter: PlayRecordingPresenter) -> StreamSession:
         self._logger.info("プレイ記録を開始します")
@@ -53,6 +55,12 @@ class PlayRecordingUseCase:
             else:
                 self._logger.info("OBS Studio連携が無効のため、配信接続をスキップします")
                 stream_session.start_recording(datetime.now())
+
+            self._play_watcher = next(
+                (watcher for watcher in self._play_watchers if watcher.kind() == stream_session.kind), None
+            )
+            if self._play_watcher is None:
+                raise RuntimeError(f"対応する監視モジュールが見つかりません kind: {stream_session.kind}")
 
             self._play_watcher.subscribe(
                 stream_session.id, self._generate_timestamp_callback(stream_session, presenter)
@@ -128,13 +136,16 @@ class PlayRecordingUseCase:
             return stream_session
 
         stream_session.complete_recording()
-        try:
-            self._logger.info("プレイ監視を停止します")
-            self._play_watcher.stop()
-            self._play_watcher.unsubscribe(stream_session.id)
-        except Exception as e:
-            self._logger.error("プレイ監視の停止に失敗しました")
-            self._logger.exception(e)
+        if self._play_watcher:
+            try:
+                self._logger.info("プレイ監視を停止します")
+                self._play_watcher.stop()
+                self._play_watcher.unsubscribe(stream_session.id)
+            except Exception as e:
+                self._logger.error("プレイ監視の停止に失敗しました")
+                self._logger.exception(e)
+        else:
+            self._logger.warning("プレイ監視モジュールが存在しないため、停止をスキップしました")
 
         try:
             self._logger.info("配信切断します")
@@ -156,6 +167,9 @@ class PlayRecordingUseCase:
         stream_session.resume_recording()
 
         try:
+            if self._play_watcher is None:
+                raise RuntimeError(f"対応する監視モジュールが見つかりません kind: {stream_session.kind}")
+
             self._play_watcher.subscribe(
                 stream_session.id, self._generate_timestamp_callback(stream_session, presenter)
             )

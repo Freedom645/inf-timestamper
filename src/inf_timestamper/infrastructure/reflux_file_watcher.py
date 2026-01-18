@@ -13,6 +13,7 @@ from domain.entity.inf_game_entity import InfChartDetail, InfPlayData, InfPlayRe
 from domain.entity.settings_entity import Settings
 from domain.port.play_watcher import IPlayWatcher, WatchType
 from domain.value.inf_game_value import DJ_LEVEL, InfClearLamp
+from domain.value.stream_value import StreamKind
 from infrastructure.file_accessor import FileAccessor
 
 
@@ -170,6 +171,9 @@ class RefluxFileWatcher(FileSystemEventHandler, IPlayWatcher):
             )
         except Exception as e:
             raise RuntimeError("latest.jsonの読み込みに失敗しました。") from e
+
+    def kind(self) -> StreamKind:
+        return StreamKind.INF
 
     def start(self) -> None:
         self._last_status = PlayState.OFF.value
