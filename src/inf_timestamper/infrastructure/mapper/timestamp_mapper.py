@@ -1,3 +1,5 @@
+from abc import ABC, abstractmethod
+
 from domain.entity.stream_entity import StreamSession, Timestamp
 from domain.entity.inf_game_entity import InfPlayData
 from domain.entity.sdvx_game_entity import SDVXPlayData
@@ -6,7 +8,12 @@ from infrastructure.mapper.mapper_mixin import DTOMapperMixin
 from infrastructure.dto.stream_session_dto import StreamSessionDTO, TimestampDTO
 
 
-class InfTimestampConverter(DTOMapperMixin[TimestampDTO, Timestamp]):
+class TimestampConverter(ABC, DTOMapperMixin[TimestampDTO, Timestamp]):
+    @abstractmethod
+    def kind(self) -> list[StreamKind | None]: ...
+
+
+class InfTimestampConverter(TimestampConverter):
     def kind(self) -> list[StreamKind | None]:
         return [StreamKind.INF, None]
 
@@ -17,7 +24,7 @@ class InfTimestampConverter(DTOMapperMixin[TimestampDTO, Timestamp]):
         return TimestampDTO(id=entity.id, occurred_at=entity.occurred_at, data=entity.data.model_dump())
 
 
-class SDVXTimestampConverter(DTOMapperMixin[TimestampDTO, Timestamp]):
+class SDVXTimestampConverter(TimestampConverter):
     def kind(self) -> list[StreamKind | None]:
         return [StreamKind.SDVX]
 
@@ -29,9 +36,9 @@ class SDVXTimestampConverter(DTOMapperMixin[TimestampDTO, Timestamp]):
 
 
 class StreamSessionMapper(DTOMapperMixin[StreamSessionDTO, StreamSession]):
-    def __init__(self):
+    def __init__(self) -> None:
         super().__init__()
-        self._converters = [InfTimestampConverter(), SDVXTimestampConverter()]
+        self._converters: list[TimestampConverter] = [InfTimestampConverter(), SDVXTimestampConverter()]
 
     def to_domain(self, dto: StreamSessionDTO) -> StreamSession:
         converter = next((c for c in self._converters if dto.kind in c.kind()), None)

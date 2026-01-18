@@ -1,5 +1,5 @@
 import sys
-from injector import Injector, Module, Binder, singleton, provider
+from injector import Injector, Module, Binder, singleton, provider, multiprovider
 from pathlib import Path
 
 from PySide6.QtWidgets import QWidget
@@ -47,7 +47,7 @@ class AppModule(Module):
             to=FileStreamSessionRepository,
             scope=singleton,
         )
-        binder.multibind(list[IPlayWatcher], to=[RefluxFileWatcher, SDVXHelperFileWatcher], scope=singleton)  # type: ignore
+        # binder.multibind(list[IPlayWatcher], to=[RefluxFileWatcher, SDVXHelperFileWatcher], scope=singleton)  # type: ignore
         # binder.bind(IStreamGateway, to=OBSConnectorV4, scope=singleton)  # type: ignore
         binder.bind(IStreamGateway, to=OBSConnectorV5, scope=singleton)  # type: ignore
         binder.bind(
@@ -75,6 +75,11 @@ class AppModule(Module):
     @provider
     def provide_arguments(self) -> Arguments:
         return Arguments.load()
+
+    @singleton
+    @multiprovider
+    def provide_play_watchers(self, injector: Injector) -> list[IPlayWatcher]:
+        return [injector.create_object(RefluxFileWatcher), injector.create_object(SDVXHelperFileWatcher)]
 
     @singleton
     @provider
