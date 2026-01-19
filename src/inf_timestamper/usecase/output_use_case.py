@@ -5,6 +5,7 @@ import pyperclip
 
 from domain.entity.settings_entity import Settings
 from domain.entity.stream_entity import StreamSession
+from domain.value.stream_value import StreamKind
 from domain.factory.game_formatter_factory import GameTimestampFormatterFactory
 from domain.repository.current_stream_session_repository import CurrentStreamSessionRepository
 from domain.repository.stream_session_repository import StreamSessionRepository
@@ -41,6 +42,11 @@ class OutputUseCase:
                     f"不明な配信種類のタイムスタンプデータです ID: {stream_session.id}, 種類: {stream_session.kind}"
                 )
                 return False
+
+            if stream_session.kind == StreamKind.SDVX and self.settings.sdvx.include_start_label:
+                lines.append(self.settings.sdvx.start_label)
+            elif stream_session.kind == StreamKind.INF and self.settings.timestamp.include_start_label:
+                lines.append(self.settings.timestamp.start_label)
 
             for timestamp in stream_session.timestamps:
                 line = formatter.format(stream_session, timestamp)
