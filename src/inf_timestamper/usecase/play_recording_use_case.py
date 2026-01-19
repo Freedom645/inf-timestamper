@@ -42,7 +42,7 @@ class PlayRecordingUseCase:
                 raise ValueError(f"セッションはすでに開始しています {stream_session.stream_status}")
 
             if self._settings.obs.is_enabled:
-                stream_session.wait_stream()
+                stream_session.wait_stream(self._settings.basic.stream_kind)
                 self._logger.info("配信接続します")
                 self._stream_gateway.subscribe(
                     stream_session.id, self._generate_stream_event_callback(stream_session, presenter)

@@ -37,10 +37,11 @@ class StreamSession(BaseModel):
     timestamps: list[Timestamp] = []
     """タイムスタンプのリスト"""
 
-    def wait_stream(self) -> "StreamSession":
+    def wait_stream(self, kind: StreamKind) -> "StreamSession":
         """配信待機状態にする"""
         if self.stream_status != StreamStatus.WAITING:
             raise ValueError(f"セッションは記録開始待ちではありません {self.stream_status}")
+        self.kind = kind
         self.stream_status = StreamStatus.BEFORE_STREAM
         return self
 
