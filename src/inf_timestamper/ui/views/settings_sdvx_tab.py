@@ -157,7 +157,7 @@ def create_sample_data() -> StreamSession:
             ),
         ),
     ]
-    return StreamSession(kind=StreamKind.INF, start_time=start_time, timestamps=timestamps)
+    return StreamSession(kind=StreamKind.SDVX, start_time=start_time, timestamps=timestamps)
 
 
 SAMPLE_SESSION_DATA = create_sample_data()
