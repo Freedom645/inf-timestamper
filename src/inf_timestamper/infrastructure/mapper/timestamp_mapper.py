@@ -43,7 +43,8 @@ class StreamSessionMapper(DTOMapperMixin[StreamSessionDTO, StreamSession]):
     def to_domain(self, dto: StreamSessionDTO) -> StreamSession:
         converter = next((c for c in self._converters if dto.kind in c.kind()), None)
         if converter is None:
-            raise ValueError(f"不明な形式が指定されました。 kind={dto.kind}")
+            supported = [k for c in self._converters for k in c.kind()]
+            raise ValueError(f"不明な形式が指定されました。 kind={dto.kind}, サポート: {supported}")
 
         timestamps = [converter.to_domain(ts) for ts in dto.timestamps]
 
@@ -58,7 +59,8 @@ class StreamSessionMapper(DTOMapperMixin[StreamSessionDTO, StreamSession]):
     def from_domain(self, entity: StreamSession) -> StreamSessionDTO:
         converter = next((c for c in self._converters if entity.kind in c.kind()), None)
         if converter is None:
-            raise ValueError(f"不明な形式が指定されました。 kind={entity.kind}")
+            supported = [k for c in self._converters for k in c.kind()]
+            raise ValueError(f"不明な形式が指定されました。 kind={entity.kind}, サポート: {supported}")
 
         timestamps_dto = [converter.from_domain(ts) for ts in entity.timestamps]
 

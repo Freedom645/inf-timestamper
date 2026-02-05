@@ -31,8 +31,7 @@ class FileStreamSessionRepository(StreamSessionRepository):
 
         old_file_name = file_date.strftime("%Y-%m-%d_%H-%M-%S.json")
         old_file_path = self._sessions_path / old_file_name
-        if old_file_path.exists():
-            old_file_path.unlink()
+        old_file_path.unlink(missing_ok=True)
 
     def load(self, path: Path) -> StreamSession | None:
         json_dict = self._file_accessor.load_as_json(path)
