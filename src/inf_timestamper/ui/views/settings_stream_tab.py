@@ -51,6 +51,7 @@ class SettingsStreamTab(QWidget):
                 column_span = 2 if len(widgets) == 1 else 1
                 layout.addWidget(widget, row, col, row_span, column_span)
 
+        layout.setRowStretch(layout.rowCount(), 1)
         self.setLayout(layout)
 
     def _on_obs_enabled_changed(self, state: Qt.CheckState) -> None:

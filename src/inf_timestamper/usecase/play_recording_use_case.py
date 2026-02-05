@@ -3,7 +3,7 @@ from injector import inject
 from datetime import datetime
 from typing import Callable
 
-from domain.entity.game_entity import PlayData
+from domain.entity.stream_entity import TimestampData
 from domain.entity.settings_entity import Settings
 from domain.entity.stream_entity import StreamSession, Timestamp
 from domain.port.play_watcher import IPlayWatcher, WatchType
@@ -20,18 +20,20 @@ class PlayRecordingUseCase:
         self,
         logger: logging.Logger,
         settings: Settings,
-        current_session_repository: CurrentStreamSessionRepository[PlayData],
-        play_watcher: IPlayWatcher,
+        current_session_repository: CurrentStreamSessionRepository,
+        play_watchers: list[IPlayWatcher],
         stream_gateway: IStreamGateway,
     ) -> None:
         self._logger = logger
 
         self._settings = settings
         self._current_session_repository = current_session_repository
-        self._play_watcher = play_watcher
+        self._play_watchers = play_watchers
         self._stream_gateway = stream_gateway
 
-    def start_recording(self, presenter: PlayRecordingPresenter) -> StreamSession[PlayData]:
+        self._play_watcher: IPlayWatcher | None = None
+
+    def start_recording(self, presenter: PlayRecordingPresenter) -> StreamSession:
         self._logger.info("プレイ記録を開始します")
 
         try:
@@ -40,7 +42,7 @@ class PlayRecordingUseCase:
                 raise ValueError(f"セッションはすでに開始しています {stream_session.stream_status}")
 
             if self._settings.obs.is_enabled:
-                stream_session.wait_stream()
+                stream_session.wait_stream(self._settings.basic.stream_kind)
                 self._logger.info("配信接続します")
                 self._stream_gateway.subscribe(
                     stream_session.id, self._generate_stream_event_callback(stream_session, presenter)
@@ -52,7 +54,13 @@ class PlayRecordingUseCase:
                 )
             else:
                 self._logger.info("OBS Studio連携が無効のため、配信接続をスキップします")
-                stream_session.start_recording(datetime.now())
+                stream_session.start_recording(datetime.now(), self._settings.basic.stream_kind)
+
+            self._play_watcher = next(
+                (watcher for watcher in self._play_watchers if watcher.kind() == stream_session.kind), None
+            )
+            if self._play_watcher is None:
+                raise RuntimeError(f"対応する監視モジュールが見つかりません kind: {stream_session.kind}")
 
             self._play_watcher.subscribe(
                 stream_session.id, self._generate_timestamp_callback(stream_session, presenter)
@@ -68,7 +76,7 @@ class PlayRecordingUseCase:
             raise
 
     def _generate_stream_event_callback(
-        self, stream_session: StreamSession[PlayData], presenter: PlayRecordingPresenter
+        self, stream_session: StreamSession, presenter: PlayRecordingPresenter
     ) -> Callable[[StreamEventType], None]:
         def _on_stream_event(event: StreamEventType) -> None:
             self._logger.info(f"配信イベント受信: {event.name}")
@@ -77,7 +85,7 @@ class PlayRecordingUseCase:
                 if stream_session.stream_status != StreamStatus.BEFORE_STREAM:
                     self._logger.warning("セッションが配信待機中ではないため、記録開始をスキップしました")
                     return
-                stream_session.start_recording(datetime.now())
+                stream_session.start_recording(datetime.now(), self._settings.basic.stream_kind)
                 presenter.stream_started(stream_session)
             elif event == StreamEventType.STREAM_ENDED:
                 self.stop_recording()
@@ -86,11 +94,11 @@ class PlayRecordingUseCase:
         return _on_stream_event
 
     def _generate_timestamp_callback(
-        self, stream_session: StreamSession[PlayData], presenter: PlayRecordingPresenter
-    ) -> Callable[[WatchType, PlayData], None]:
+        self, stream_session: StreamSession, presenter: PlayRecordingPresenter
+    ) -> Callable[[WatchType, TimestampData], None]:
         """タイムスタンプイベントのコールバック関数を生成する"""
 
-        def on_timestamp_event(watch_type: WatchType, play_data: PlayData) -> None:
+        def on_timestamp_event(watch_type: WatchType, play_data: TimestampData) -> None:
             self._logger.info(f"タイムスタンプイベント受信 {watch_type.name}: {play_data}")
             if stream_session.stream_status != StreamStatus.RECORDING:
                 self._logger.warning("セッションが記録中ではないため、タイムスタンプの追加/更新をスキップしました")
@@ -98,7 +106,7 @@ class PlayRecordingUseCase:
 
             if watch_type == WatchType.REGISTER:
                 # タイムスタンプの新規登録
-                timestamp = Timestamp[PlayData](data=play_data)
+                timestamp = Timestamp(data=play_data)
                 stream_session.add_timestamp(timestamp)
                 presenter.timestamp_added(stream_session, timestamp)
 
@@ -115,7 +123,7 @@ class PlayRecordingUseCase:
 
         return on_timestamp_event
 
-    def stop_recording(self) -> StreamSession[PlayData]:
+    def stop_recording(self) -> StreamSession:
         self._logger.info("記録を停止します")
         stream_session = self._current_session_repository.get()
 
@@ -128,13 +136,16 @@ class PlayRecordingUseCase:
             return stream_session
 
         stream_session.complete_recording()
-        try:
-            self._logger.info("プレイ監視を停止します")
-            self._play_watcher.stop()
-            self._play_watcher.unsubscribe(stream_session.id)
-        except Exception as e:
-            self._logger.error("プレイ監視の停止に失敗しました")
-            self._logger.exception(e)
+        if self._play_watcher:
+            try:
+                self._logger.info("プレイ監視を停止します")
+                self._play_watcher.stop()
+                self._play_watcher.unsubscribe(stream_session.id)
+            except Exception as e:
+                self._logger.error("プレイ監視の停止に失敗しました")
+                self._logger.exception(e)
+        else:
+            self._logger.warning("プレイ監視モジュールが存在しないため、停止をスキップしました")
 
         try:
             self._logger.info("配信切断します")
@@ -146,7 +157,7 @@ class PlayRecordingUseCase:
 
         return stream_session
 
-    def resume_recording(self, presenter: PlayRecordingPresenter) -> StreamSession[PlayData]:
+    def resume_recording(self, presenter: PlayRecordingPresenter) -> StreamSession:
         self._logger.info("プレイ記録を再開します")
         stream_session = self._current_session_repository.get()
 
@@ -156,6 +167,9 @@ class PlayRecordingUseCase:
         stream_session.resume_recording()
 
         try:
+            if self._play_watcher is None:
+                raise RuntimeError(f"対応する監視モジュールが見つかりません kind: {stream_session.kind}")
+
             self._play_watcher.subscribe(
                 stream_session.id, self._generate_timestamp_callback(stream_session, presenter)
             )
@@ -189,7 +203,7 @@ class PlayRecordingUseCase:
         session = self._current_session_repository.get()
         return len(session.timestamps) > 0 or session.start_time is not None
 
-    def reset_recording(self) -> StreamSession[PlayData]:
+    def reset_recording(self) -> StreamSession:
         self._logger.info("プレイ記録をリセットします")
         stream_session = self._current_session_repository.get()
         if stream_session.stream_status != StreamStatus.COMPLETED:
@@ -199,7 +213,7 @@ class PlayRecordingUseCase:
         self._logger.info(f"プレイ記録をリセットしました 新しいセッションID: {new_session.id}")
         return new_session
 
-    def edit_start_time(self, start_date_time: datetime | None) -> StreamSession[PlayData] | None:
+    def edit_start_time(self, start_date_time: datetime | None) -> StreamSession | None:
         current_session = self._current_session_repository.get()
 
         self._logger.info(f"セッションの開始時間を更新します {current_session.start_time} -> {start_date_time}")
@@ -207,5 +221,5 @@ class PlayRecordingUseCase:
 
         return current_session
 
-    def get_current_session(self) -> StreamSession[PlayData]:
+    def get_current_session(self) -> StreamSession:
         return self._current_session_repository.get()

@@ -4,7 +4,6 @@ from injector import inject
 from datetime import datetime
 from PySide6.QtCore import Signal, QObject, QTimer, QDateTime
 
-from domain.entity.game_entity import PlayData
 from domain.entity.stream_entity import StreamSession, Timestamp
 from domain.entity.settings_entity import Settings
 from domain.value.stream_value import StreamStatus
@@ -20,8 +19,8 @@ class PlayRecordingViewModel(QObject):
 
     status_label_changed = Signal(str)
     start_time_changed = Signal(object)
-    timestamp_upsert_signal = Signal(StreamSession[PlayData], Timestamp[PlayData])
-    play_record_overwrite_signal = Signal(StreamSession[PlayData])
+    timestamp_upsert_signal = Signal(StreamSession, Timestamp)
+    play_record_overwrite_signal = Signal(StreamSession)
 
     @inject
     def __init__(
@@ -38,17 +37,17 @@ class PlayRecordingViewModel(QObject):
         self._settings_use_case = settings_use_case
         self._settings_use_case.subscribe_to_changes(self.settings_changed)
 
-    def stream_started(self, session: StreamSession[PlayData]) -> None:
+    def stream_started(self, session: StreamSession) -> None:
         self._emit_status_changed(session.stream_status)
         self.start_time_changed.emit(session.start_time)
 
-    def stream_ended(self, session: StreamSession[PlayData]) -> None:
+    def stream_ended(self, session: StreamSession) -> None:
         self._emit_status_changed(session.stream_status)
 
-    def timestamp_added(self, session: StreamSession[PlayData], timestamp: Timestamp[PlayData]) -> None:
+    def timestamp_added(self, session: StreamSession, timestamp: Timestamp) -> None:
         self.timestamp_upsert_signal.emit(session, timestamp)
 
-    def timestamp_updated(self, session: StreamSession[PlayData], timestamp: Timestamp[PlayData]) -> None:
+    def timestamp_updated(self, session: StreamSession, timestamp: Timestamp) -> None:
         self.timestamp_upsert_signal.emit(session, timestamp)
 
     def settings_changed(self, _: Settings) -> None:

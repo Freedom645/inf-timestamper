@@ -1,6 +1,10 @@
 import json
+import logging
+import xml.etree.ElementTree as ET
+
 from pathlib import Path
 from typing import TypeVar, Any
+from injector import inject
 
 T = TypeVar("T")
 
@@ -8,6 +12,10 @@ ENCODING = "utf-8"
 
 
 class FileAccessor:
+    @inject
+    def __init__(self, logger: logging.Logger) -> None:
+        self._logger = logger
+
     def load_as_json(self, path: Path) -> Any | None:
         if not path.exists():
             return None
@@ -39,3 +47,13 @@ class FileAccessor:
     def save_as_text(self, path: Path, data: str) -> None:
         with open(path, "w", encoding=ENCODING) as f:
             f.write(data)
+
+    def load_as_xml(self, path: Path) -> ET.ElementTree | None:
+        if not path.exists() or not path.is_file():
+            return None
+
+        try:
+            return ET.parse(path)  # type: ignore
+        except ET.ParseError as e:
+            self._logger.error(f"XMLファイルの読み込みに失敗しました {path}: {e}")
+            return None

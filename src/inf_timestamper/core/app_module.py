@@ -1,15 +1,19 @@
 import sys
-from injector import Injector, Module, Binder, singleton, provider
+from injector import Injector, Module, Binder, singleton, provider, multiprovider
 from pathlib import Path
 
 from PySide6.QtWidgets import QWidget
 
 from core.arguments import Arguments
-from domain.entity.game_entity import PlayData
 from domain.value.base_path import BasePath
+from domain.value.stream_value import StreamKind
 from domain.entity.settings_entity import Settings
+from domain.entity.inf_game_format import InfGameTimestampFormatter
+from domain.entity.sdvx_game_format import SDVXGameTimestampFormatter
+from domain.entity.timestamp_formatter import GameTimestampFormatter
 from domain.port.play_watcher import IPlayWatcher
 from domain.port.stream_gateway import IStreamGateway
+from domain.factory.game_formatter_factory import GameTimestampFormatterFactory
 
 from ui.factory.play_recording_widget_factory import PlayRecordingWidgetFactory
 from ui.factory.update_window_factory import UpdateWindowFactory
@@ -27,8 +31,8 @@ from domain.repository.app_updater import IAppUpdater
 from domain.repository.app_version_provider import IVersionProvider
 
 from infrastructure.reflux_file_watcher import RefluxFileWatcher
+from infrastructure.sdvx_helper_file_watcher import SDVXHelperFileWatcher
 
-# from infrastructure.obs_connector_v4 import OBSConnectorV4
 from infrastructure.obs_connector_v5 import OBSConnectorV5
 from infrastructure.file_setting_repository import FileSettingsRepository
 from infrastructure.file_stream_session_repository import FileStreamSessionRepository
@@ -43,15 +47,13 @@ class AppModule(Module):
     def configure(self, binder: Binder) -> None:
         binder.bind(SettingsRepository, to=FileSettingsRepository, scope=singleton)  # type: ignore
         binder.bind(
-            StreamSessionRepository[PlayData],  # type: ignore
+            StreamSessionRepository,  # type: ignore
             to=FileStreamSessionRepository,
             scope=singleton,
         )
-        binder.bind(IPlayWatcher, to=RefluxFileWatcher, scope=singleton)  # type: ignore
-        # binder.bind(IStreamGateway, to=OBSConnectorV4, scope=singleton)  # type: ignore
         binder.bind(IStreamGateway, to=OBSConnectorV5, scope=singleton)  # type: ignore
         binder.bind(
-            CurrentStreamSessionRepository[PlayData],  # type: ignore
+            CurrentStreamSessionRepository,  # type: ignore
             to=InMemoryCurrentStreamSessionRepository,
             scope=singleton,
         )
@@ -75,6 +77,25 @@ class AppModule(Module):
     @provider
     def provide_arguments(self) -> Arguments:
         return Arguments.load()
+
+    @singleton
+    @provider
+    def provide_game_formatter_factory(self, injector: Injector) -> GameTimestampFormatterFactory:
+        settings = injector.get(Settings)
+
+        def factory(kind: StreamKind) -> GameTimestampFormatter | None:
+            instance: list[GameTimestampFormatter] = [
+                InfGameTimestampFormatter(settings.timestamp.template),
+                SDVXGameTimestampFormatter(settings.sdvx.template),
+            ]
+            return next((f for f in instance if f.stream_kind() == kind), None)
+
+        return factory
+
+    @singleton
+    @multiprovider
+    def provide_play_watchers(self, injector: Injector) -> list[IPlayWatcher]:
+        return [injector.create_object(RefluxFileWatcher), injector.create_object(SDVXHelperFileWatcher)]
 
     @singleton
     @provider

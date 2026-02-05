@@ -3,10 +3,10 @@ from pathlib import Path
 from injector import inject
 import pyperclip
 
-from domain.entity.game_entity import PlayData
-from domain.entity.game_format import GameTimestampFormatter
 from domain.entity.settings_entity import Settings
 from domain.entity.stream_entity import StreamSession
+from domain.value.stream_value import StreamKind
+from domain.factory.game_formatter_factory import GameTimestampFormatterFactory
 from domain.repository.current_stream_session_repository import CurrentStreamSessionRepository
 from domain.repository.stream_session_repository import StreamSessionRepository
 
@@ -16,14 +16,16 @@ class OutputUseCase:
     def __init__(
         self,
         logger: logging.Logger,
-        stream_session_repository: StreamSessionRepository[PlayData],
+        stream_session_repository: StreamSessionRepository,
         settings: Settings,
-        current_session: CurrentStreamSessionRepository[PlayData],
+        current_session: CurrentStreamSessionRepository,
+        game_formatter_factory: GameTimestampFormatterFactory,
     ):
         self._logger = logger
         self._stream_session_repository = stream_session_repository
         self._current_session = current_session
         self.settings = settings
+        self._game_formatter_factory = game_formatter_factory
 
     def copy_to_clipboard(self) -> bool:
         stream_session = self._current_session.get()
@@ -33,11 +35,19 @@ class OutputUseCase:
             return False
 
         try:
-            formatter = GameTimestampFormatter(self.settings.timestamp.template)
-
             lines: list[str] = []
-            if self.settings.timestamp.include_start_label:
+            formatter = self._game_formatter_factory(stream_session.kind)
+            if formatter is None:
+                self._logger.error(
+                    f"不明な配信種類のタイムスタンプデータです ID: {stream_session.id}, 種類: {stream_session.kind}"
+                )
+                return False
+
+            if stream_session.kind == StreamKind.SDVX and self.settings.sdvx.include_start_label:
+                lines.append(self.settings.sdvx.start_label)
+            elif stream_session.kind == StreamKind.INF and self.settings.timestamp.include_start_label:
                 lines.append(self.settings.timestamp.start_label)
+
             for timestamp in stream_session.timestamps:
                 line = formatter.format(stream_session, timestamp)
                 lines.append(line)
@@ -51,14 +61,14 @@ class OutputUseCase:
             self._logger.exception(e)
             return False
 
-    def save_stream_session(self, stream_session: StreamSession[PlayData]) -> None:
+    def save_stream_session(self, stream_session: StreamSession) -> None:
         try:
             self._stream_session_repository.save(stream_session)
         except Exception as e:
             self._logger.error("配信セッションの保存に失敗しました")
             self._logger.exception(e)
 
-    def load_stream_session(self, file_path: Path) -> StreamSession[PlayData]:
+    def load_stream_session(self, file_path: Path) -> StreamSession:
         try:
             session = self._stream_session_repository.load(file_path)
         except Exception as e:

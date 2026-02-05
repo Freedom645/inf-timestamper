@@ -1,0 +1,159 @@
+import logging
+from injector import inject
+from enum import StrEnum
+from typing import Callable
+from pathlib import Path
+from uuid import UUID
+from time import sleep
+from datetime import datetime, timedelta
+from watchdog.observers import Observer
+from watchdog.observers.api import BaseObserver
+from watchdog.events import FileSystemEventHandler, DirModifiedEvent, FileModifiedEvent
+
+from domain.entity.sdvx_game_entity import SDVXChartDetail, SDVXPlayData, SDVXPlayResult
+from domain.value.sdvx_game_value import SDVXClearLamp
+from domain.value.stream_value import StreamKind
+from domain.entity.settings_entity import Settings
+from domain.port.play_watcher import IPlayWatcher, WatchType
+from infrastructure.file_accessor import FileAccessor
+
+
+def read_text(path: Path, default: str = "") -> str:
+    try:
+        with open(path, "r", encoding="utf-8") as f:
+            return f.read().strip()
+    except Exception:
+        return default
+
+
+def parse_int(text: str, default: int = -1) -> int:
+    try:
+        return int(text)
+    except ValueError:
+        return default
+
+
+class PlayState(StrEnum):
+    SELECT = "select"
+    PLAY = "play"
+
+
+class SDVXHelperFileWatcher(FileSystemEventHandler, IPlayWatcher):
+    @inject
+    def __init__(self, settings: Settings, file_accessor: FileAccessor, logger: logging.Logger) -> None:
+        FileSystemEventHandler.__init__(self)
+        self._settings = settings
+        self._file_accessor = file_accessor
+        self._logger = logger
+
+        self._observer: BaseObserver | None = None
+        self._callbacks: dict[UUID, Callable[[WatchType, SDVXPlayData], None]] = {}
+        self._last_status = PlayState.SELECT
+        self._last_modify = datetime.min
+
+    def on_modified(self, event: DirModifiedEvent | FileModifiedEvent) -> None:
+        try:
+            if isinstance(event.src_path, bytes):
+                src_path = Path(event.src_path.decode())
+            else:
+                src_path = Path(event.src_path)
+
+            self._logger.debug(f"Modified event detected: {src_path}")
+
+            if not src_path.is_file():
+                return
+
+            if not (src_path.name == "select_jacket.png" and self._last_status == PlayState.SELECT) and not (
+                src_path.name == "history_cursong.xml" and self._last_status == PlayState.PLAY
+            ):
+                return
+
+            if self._last_modify + timedelta(seconds=10) > datetime.now():
+                # 10秒以内の連続イベントは無視する
+                return
+
+            # ステータス遷移
+            if self._last_status == PlayState.SELECT:
+                # 選曲中にジャケット更新：プレイ開始
+                self._last_status = PlayState.PLAY
+                # FIXME: ファイル書き込みにラグがあるため、少し待つ
+                sleep(2.0)
+            elif self._last_status == PlayState.PLAY:
+                # プレイ中に履歴更新：リザルト表示～選曲に戻る
+                self._last_status = PlayState.SELECT
+                # FIXME: ファイル書き込みにラグがあるため、少し待つ
+                sleep(5.0)
+            else:
+                return
+
+            self._logger.info(f"SDVX play state changed to: {self._last_status}, source file: {src_path.name}")
+            play_data = self._read_history_cursong_xml(
+                self._settings.sdvx.sdvx_helper_directory / "out" / "history_cursong.xml"
+            )
+            if self._last_status == PlayState.PLAY:
+                play_data.play_result = None
+                self._notify(WatchType.REGISTER, play_data)
+            elif self._last_status == PlayState.SELECT:
+                self._notify(WatchType.MODIFY, play_data)
+
+            self._last_modify = datetime.now()
+        except Exception as e:
+            self._logger.error("SDVXHelperFileWatcherの処理に失敗しました")
+            self._logger.exception(e)
+
+    def _read_history_cursong_xml(self, directory: Path) -> SDVXPlayData:
+        try:
+            data = self._file_accessor.load_as_xml(directory)
+            if data is None:
+                raise RuntimeError("history_cursong.xmlの読み込みに失敗しました。")
+
+            root = data.getroot()
+            if root is None:
+                raise RuntimeError("history_cursong.xmlの解析に失敗しました。")
+
+            title = root.findtext("title", "unknown")
+            difficulty = root.findtext("difficulty", "")
+            chart_detail = SDVXChartDetail(
+                title=title, level=parse_int(root.findtext("lv", "-1")), difficulty=difficulty
+            )
+
+            if (latest_result := root.find("Result")) is not None:
+                play_result = SDVXPlayResult(
+                    score=parse_int(latest_result.findtext("score", "-1")),
+                    ex_score=parse_int(latest_result.findtext("exscore", "-1")),
+                    clear_lamp=SDVXClearLamp.from_str(latest_result.findtext("lamp")),
+                )
+            else:
+                play_result = None
+
+            return SDVXPlayData(key=f"{title}_{difficulty}", chart_detail=chart_detail, play_result=play_result)
+        except Exception as e:
+            raise RuntimeError("history_cursong.xmlの読み込みに失敗しました。") from e
+
+    def kind(self) -> StreamKind:
+        return StreamKind.SDVX
+
+    def start(self) -> None:
+        self._last_status = PlayState.SELECT
+        self._observer = Observer()
+        self._observer.schedule(self, str(self._settings.sdvx.sdvx_helper_directory / "out"), recursive=False)
+        self._observer.start()
+
+    def stop(self) -> None:
+        if self._observer is None:
+            self._logger.warning("Observerが存在しません")
+            return
+        self._observer.stop()
+        self._observer.unschedule_all()
+        self._observer = None
+
+    def subscribe(self, id: UUID, callback: Callable[[WatchType, SDVXPlayData], None]) -> None:
+        self._callbacks[id] = callback
+
+    def unsubscribe(self, id: UUID) -> None:
+        if id in self._callbacks:
+            del self._callbacks[id]
+
+    def _notify(self, watch_type: WatchType, record: SDVXPlayData) -> None:
+        for callback in self._callbacks.values():
+            callback(watch_type, record)

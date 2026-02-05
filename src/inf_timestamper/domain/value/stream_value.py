@@ -19,3 +19,11 @@ class StreamEventType(StrEnum):
     """配信開始"""
     STREAM_ENDED = "stream_ended"
     """配信終了"""
+
+
+@unique
+class StreamKind(StrEnum):
+    INF = "inf"
+    """INF"""
+    SDVX = "sdvx"
+    """SDVX"""

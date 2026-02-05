@@ -11,6 +11,8 @@ from PySide6.QtGui import QCloseEvent
 from domain.entity.settings_entity import Settings, SettingYoutube
 
 from ui.views.settings_basic_tab import SettingsBasicTab
+from ui.views.settings_inf_tab import SettingsInfTab
+from ui.views.settings_sdvx_tab import SettingsSDVXTab
 from ui.views.settings_stream_tab import SettingsStreamTab
 
 
@@ -23,9 +25,13 @@ class SettingsMainDialog(QDialog):
 
         self.tabs = QTabWidget()
         self.basic_tab = SettingsBasicTab(self)
+        self.inf_tab = SettingsInfTab(self)
+        self.sdvx_tab = SettingsSDVXTab(self)
         self.stream_tab = SettingsStreamTab(self)
 
         self.tabs.addTab(self.basic_tab, "基本設定")
+        self.tabs.addTab(self.inf_tab, "INFINITAS設定")
+        self.tabs.addTab(self.sdvx_tab, "SDVX設定")
         self.tabs.addTab(self.stream_tab, "配信ソフト連携")
 
         # ボタン
@@ -47,7 +53,9 @@ class SettingsMainDialog(QDialog):
 
     def open_dialog(self, setting: Settings) -> int:
         self._setting = setting
-        self.basic_tab.set_settings(setting.reflux, setting.timestamp)
+        self.basic_tab.set_settings(setting.basic)
+        self.inf_tab.set_settings(setting.reflux, setting.timestamp)
+        self.sdvx_tab.set_settings(setting.sdvx)
         self.stream_tab.set_settings(setting.obs)
 
         return super().exec()
@@ -57,13 +65,16 @@ class SettingsMainDialog(QDialog):
 
     def save_setting(self) -> None:
         try:
-            settings_reflux, settings_timestamp = self.basic_tab.get_settings()
+            settings_reflux, settings_timestamp = self.inf_tab.get_settings()
             settings_obs = self.stream_tab.get_settings()
+            setting_sdvx = self.sdvx_tab.get_settings()
             self._setting = Settings(
+                basic=self.basic_tab.get_settings(),
                 reflux=settings_reflux,
                 obs=settings_obs,
                 timestamp=settings_timestamp,
                 youtube=SettingYoutube(auth_type=""),
+                sdvx=setting_sdvx,
             )
             self.accept()
         except Exception as e:
@@ -71,5 +82,7 @@ class SettingsMainDialog(QDialog):
 
     def closeEvent(self, arg__1: QCloseEvent) -> None:
         self.basic_tab.closeEvent(arg__1)
+        self.inf_tab.closeEvent(arg__1)
+        self.sdvx_tab.closeEvent(arg__1)
         self.stream_tab.closeEvent(arg__1)
         return super().closeEvent(arg__1)

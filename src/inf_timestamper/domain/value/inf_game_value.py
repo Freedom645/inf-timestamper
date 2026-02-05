@@ -12,7 +12,7 @@ class DJ_LEVEL(StrEnum):
     F = "F"
 
 
-class ClearLamp(StrEnum):
+class InfClearLamp(StrEnum):
     NO_PLAY = "NP"
     FAILED = "F"
     ASSIST_CLEAR = "AC"

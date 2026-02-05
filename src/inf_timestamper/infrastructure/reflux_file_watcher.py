@@ -9,10 +9,11 @@ from watchdog.observers import Observer
 from watchdog.observers.api import BaseObserver
 from watchdog.events import FileSystemEventHandler, DirModifiedEvent, FileModifiedEvent
 
-from domain.entity.game_entity import ChartDetail, PlayData, PlayResult
+from domain.entity.inf_game_entity import InfChartDetail, InfPlayData, InfPlayResult
 from domain.entity.settings_entity import Settings
 from domain.port.play_watcher import IPlayWatcher, WatchType
-from domain.value.game_value import DJ_LEVEL, ClearLamp
+from domain.value.inf_game_value import DJ_LEVEL, InfClearLamp
+from domain.value.stream_value import StreamKind
 from infrastructure.file_accessor import FileAccessor
 
 
@@ -86,7 +87,7 @@ class RefluxFileWatcher(FileSystemEventHandler, IPlayWatcher):
         self._logger = logger
 
         self._observer: BaseObserver | None = None
-        self._callbacks: dict[UUID, Callable[[WatchType, PlayData], None]] = {}
+        self._callbacks: dict[UUID, Callable[[WatchType, InfPlayData], None]] = {}
         self._last_status: str = PlayState.OFF.value
 
     def on_modified(self, event: DirModifiedEvent | FileModifiedEvent) -> None:
@@ -111,9 +112,9 @@ class RefluxFileWatcher(FileSystemEventHandler, IPlayWatcher):
             if status == PlayState.PLAY.value:
                 title = self._file_accessor.load_as_text(src_path.parent / "title.txt", default="unknown")
                 level = self._file_accessor.load_as_integer(src_path.parent / "level.txt", default=-1)
-                play_data = PlayData(
+                play_data = InfPlayData(
                     key=self._generate_key(title=title, level=level),
-                    chart_detail=ChartDetail(title=title, level=level),
+                    chart_detail=InfChartDetail(title=title, level=level),
                 )
                 self._notify(WatchType.REGISTER, play_data)
 
@@ -129,7 +130,7 @@ class RefluxFileWatcher(FileSystemEventHandler, IPlayWatcher):
     def _generate_key(self, title: str, level: int) -> str:
         return f"{title}_{level}"
 
-    def _read_latest_json(self, directory: Path) -> PlayData:
+    def _read_latest_json(self, directory: Path) -> InfPlayData:
         try:
             data: LatestJson = self._file_accessor.load_as_json(directory)  # type: ignore
 
@@ -138,7 +139,7 @@ class RefluxFileWatcher(FileSystemEventHandler, IPlayWatcher):
             bpm_str = data.get("bpm", "")
             min_bpm, max_bpm = bpm_str.split("~") if "~" in bpm_str else (bpm_str, bpm_str)
 
-            chart_detail = ChartDetail(
+            chart_detail = InfChartDetail(
                 title=title,
                 level=level,
                 artist=data.get("artist", ""),
@@ -149,9 +150,9 @@ class RefluxFileWatcher(FileSystemEventHandler, IPlayWatcher):
                 difficulty=data.get("diff", ""),
                 note_count=int(data.get("notecount", -1)),
             )
-            play_result = PlayResult(
+            play_result = InfPlayResult(
                 dj_level=DJ_LEVEL(data.get("grade", "")),
-                lamp=ClearLamp(data.get("lamp", "")),
+                lamp=InfClearLamp(data.get("lamp", "")),
                 gauge=data.get("gauge", ""),
                 p_great=int(data.get("pgreat", -1)),
                 great=int(data.get("great", -1)),
@@ -163,13 +164,16 @@ class RefluxFileWatcher(FileSystemEventHandler, IPlayWatcher):
                 combo_break=int(data.get("combobreak", -1)),
             )
 
-            return PlayData(
+            return InfPlayData(
                 key=self._generate_key(title=title, level=level),
                 chart_detail=chart_detail,
                 play_result=play_result,
             )
         except Exception as e:
             raise RuntimeError("latest.jsonの読み込みに失敗しました。") from e
+
+    def kind(self) -> StreamKind:
+        return StreamKind.INF
 
     def start(self) -> None:
         self._last_status = PlayState.OFF.value
@@ -185,13 +189,13 @@ class RefluxFileWatcher(FileSystemEventHandler, IPlayWatcher):
         self._observer.unschedule_all()
         self._observer = None
 
-    def subscribe(self, id: UUID, callback: Callable[[WatchType, PlayData], None]) -> None:
+    def subscribe(self, id: UUID, callback: Callable[[WatchType, InfPlayData], None]) -> None:
         self._callbacks[id] = callback
 
     def unsubscribe(self, id: UUID) -> None:
         if id in self._callbacks:
             del self._callbacks[id]
 
-    def _notify(self, watch_type: WatchType, record: PlayData) -> None:
+    def _notify(self, watch_type: WatchType, record: InfPlayData) -> None:
         for callback in self._callbacks.values():
             callback(watch_type, record)

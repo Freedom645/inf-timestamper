@@ -1,15 +1,12 @@
 from abc import ABC, abstractmethod
 from pathlib import Path
-from typing import Generic, TypeVar
 
-from domain.entity.stream_entity import StreamSession, TimestampData
-
-T = TypeVar("T", bound=TimestampData)
+from domain.entity.stream_entity import StreamSession
 
 
-class StreamSessionRepository(ABC, Generic[T]):
+class StreamSessionRepository(ABC):
     @abstractmethod
-    def load(self, path: Path) -> StreamSession[T] | None: ...
+    def load(self, path: Path) -> StreamSession | None: ...
 
     @abstractmethod
-    def save(self, stream_session: StreamSession[T]) -> None: ...
+    def save(self, stream_session: StreamSession) -> None: ...

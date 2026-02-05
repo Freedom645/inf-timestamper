@@ -19,11 +19,10 @@ from PySide6.QtCore import QThread
 from datetime import datetime
 from injector import inject
 
-from domain.entity.game_entity import PlayData
-from domain.entity.game_format import GameTimestampFormatter
 from domain.entity.settings_entity import Settings
 from domain.entity.stream_entity import StreamSession, Timestamp
 from domain.value.base_path import BasePath
+from domain.factory.game_formatter_factory import GameTimestampFormatterFactory
 from ui.view_models.play_recording_view_model import PlayRecordingViewModel
 from ui.views.utils import FunctionRunner
 from ui.widgets.date_time_edit import DateTimeEdit
@@ -34,6 +33,7 @@ class PlayRecordingWidget(QWidget):
     def __init__(
         self,
         play_recording_view_model: PlayRecordingViewModel,
+        game_formatter_factory: GameTimestampFormatterFactory,
         base_path: BasePath,
         settings: Settings,
         parent: QWidget | None = None,
@@ -42,6 +42,7 @@ class PlayRecordingWidget(QWidget):
         self._vm = play_recording_view_model
         self.base_path = base_path
         self.settings = settings
+        self._game_formatter_factory = game_formatter_factory
 
         self._thread: QThread | None = None
         self._timestamp_item_map: dict[UUID, QListWidgetItem] = {}
@@ -169,10 +170,13 @@ class PlayRecordingWidget(QWidget):
         else:
             self.stream_start_time.clear()
 
-    def _on_timestamp_upsert_signal(self, session: StreamSession[PlayData], timestamp: Timestamp[PlayData]) -> None:
+    def _on_timestamp_upsert_signal(self, session: StreamSession, timestamp: Timestamp) -> None:
         self.timestamp_count.setText(str(session.count_timestamp()))
 
-        formatter = GameTimestampFormatter(self.settings.timestamp.template)
+        formatter = self._game_formatter_factory(session.kind)
+        if formatter is None:
+            return
+
         label = formatter.format(session, timestamp)
 
         if timestamp.id in self._timestamp_item_map:
@@ -184,7 +188,7 @@ class PlayRecordingWidget(QWidget):
         self.list_widget.addItem(self._timestamp_item_map[timestamp.id])
         self.list_widget.scrollToBottom()
 
-    def _on_overwrite_signal(self, session: StreamSession[PlayData]) -> None:
+    def _on_overwrite_signal(self, session: StreamSession) -> None:
         self._on_start_time_changed(session.start_time)
         self.timestamp_count.setText(str(session.count_timestamp()))
         self._timestamp_item_map.clear()
