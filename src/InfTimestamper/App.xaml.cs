@@ -1,5 +1,6 @@
 using System.IO;
 using System.Windows;
+using InfTimestamper.Core.Persistence;
 using InfTimestamper.Core.States;
 using InfTimestamper.Services;
 using InfTimestamper.ViewModels;
@@ -56,7 +57,9 @@ public partial class App : Application
             .ConfigureServices((_, services) =>
             {
                 services.AddSingleton<AppStateMachine>();
+                services.AddSingleton<JsonRecordStore>();
                 services.AddSingleton<IClipboardService, WpfClipboardService>();
+                services.AddSingleton<IDialogService>(_ => new WpfDialogService(() => Current?.MainWindow));
                 services.AddSingleton<MainWindowViewModel>();
                 services.AddSingleton<MainWindow>(sp => new MainWindow(sp.GetRequiredService<MainWindowViewModel>()));
             })

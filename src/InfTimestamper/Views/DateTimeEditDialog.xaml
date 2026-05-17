@@ -1,0 +1,66 @@
+<Window x:Class="InfTimestamper.Views.DateTimeEditDialog"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+        xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+        xmlns:vm="clr-namespace:InfTimestamper.ViewModels"
+        xmlns:conv="clr-namespace:InfTimestamper.Converters"
+        mc:Ignorable="d"
+        d:DataContext="{d:DesignInstance Type=vm:DateTimeEditDialogViewModel}"
+        Title="日時編集"
+        Width="380" Height="220"
+        WindowStartupLocation="CenterOwner"
+        ResizeMode="NoResize"
+        ShowInTaskbar="False">
+    <Window.Resources>
+        <conv:BoolToBrushConverter x:Key="ValidityToBrush" />
+        <BooleanToVisibilityConverter x:Key="BoolToVisibility" />
+    </Window.Resources>
+
+    <Grid Margin="12">
+        <Grid.RowDefinitions>
+            <RowDefinition Height="Auto" />
+            <RowDefinition Height="Auto" />
+            <RowDefinition Height="Auto" />
+            <RowDefinition Height="*" />
+            <RowDefinition Height="Auto" />
+        </Grid.RowDefinitions>
+
+        <StackPanel Grid.Row="0" Orientation="Horizontal" Margin="0,0,0,8">
+            <TextBlock Text="編集対象:" FontWeight="Bold" />
+            <TextBlock Text="{Binding EditingCount}" Margin="4,0,2,0" />
+            <TextBlock Text="件" />
+        </StackPanel>
+
+        <TextBox Grid.Row="1"
+                 Text="{Binding EditText, UpdateSourceTrigger=PropertyChanged}"
+                 IsReadOnly="{Binding IsMultiple}"
+                 Background="{Binding IsTextValid, Converter={StaticResource ValidityToBrush}}"
+                 FontFamily="Consolas, Cascadia Mono"
+                 Padding="6"
+                 Margin="0,0,0,8" />
+
+        <TextBlock Grid.Row="2"
+                   Text="複数編集中: 表示は最小値、相対ボタンで全選択を一斉に移動します"
+                   FontSize="11"
+                   Foreground="Gray"
+                   Margin="0,0,0,8"
+                   Visibility="{Binding IsMultiple, Converter={StaticResource BoolToVisibility}}" />
+
+        <UniformGrid Grid.Row="3" Columns="6" Rows="1" VerticalAlignment="Top" Margin="0,0,0,8">
+            <Button Content="-1分"  Command="{Binding ShiftCommand}" CommandParameter="-00:01:00" Margin="2" />
+            <Button Content="-10秒" Command="{Binding ShiftCommand}" CommandParameter="-00:00:10" Margin="2" />
+            <Button Content="-1秒"  Command="{Binding ShiftCommand}" CommandParameter="-00:00:01" Margin="2" />
+            <Button Content="+1秒"  Command="{Binding ShiftCommand}" CommandParameter="00:00:01"  Margin="2" />
+            <Button Content="+10秒" Command="{Binding ShiftCommand}" CommandParameter="00:00:10"  Margin="2" />
+            <Button Content="+1分"  Command="{Binding ShiftCommand}" CommandParameter="00:01:00"  Margin="2" />
+        </UniformGrid>
+
+        <StackPanel Grid.Row="4" Orientation="Horizontal" HorizontalAlignment="Right">
+            <Button Content="確定" Command="{Binding ConfirmCommand}" IsDefault="True"
+                    Width="80" Height="28" Margin="0,0,8,0" />
+            <Button Content="閉じる" Command="{Binding CancelCommand}" IsCancel="True"
+                    Width="80" Height="28" />
+        </StackPanel>
+    </Grid>
+</Window>

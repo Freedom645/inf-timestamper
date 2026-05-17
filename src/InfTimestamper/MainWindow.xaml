@@ -13,10 +13,10 @@
     <DockPanel LastChildFill="True">
         <Menu DockPanel.Dock="Top">
             <MenuItem Header="ファイル(_F)">
-                <MenuItem Header="過去の記録を開く" IsEnabled="False" />
-                <MenuItem Header="記録を保存する" IsEnabled="False" />
+                <MenuItem Header="過去の記録を開く..." Command="{Binding OpenRecordCommand}" />
+                <MenuItem Header="記録を保存する..." Command="{Binding SaveRecordCommand}" />
                 <Separator />
-                <MenuItem Header="設定" IsEnabled="False" />
+                <MenuItem Header="設定..." IsEnabled="False" />
             </MenuItem>
             <MenuItem Header="About(_A)">
                 <MenuItem Header="バージョン情報" IsEnabled="False" />
@@ -66,7 +66,15 @@
             <!-- 記録表示エリア（ヘッダ） -->
             <StackPanel Grid.Row="2" Orientation="Horizontal" Margin="0,0,0,4">
                 <TextBlock Text="配信開始時間:" FontWeight="Bold" />
-                <TextBlock Text="{Binding StreamStartedAtText}" Margin="4,0,16,0" />
+                <TextBlock Text="{Binding StreamStartedAtText}" Margin="4,0,16,0">
+                    <TextBlock.ContextMenu>
+                        <ContextMenu>
+                            <MenuItem Header="日時を編集..."
+                                      Command="{Binding PlacementTarget.DataContext.EditStreamStartedAtCommand,
+                                                RelativeSource={RelativeSource AncestorType=ContextMenu}}" />
+                        </ContextMenu>
+                    </TextBlock.ContextMenu>
+                </TextBlock>
                 <TextBlock Text="タイムスタンプ数:" FontWeight="Bold" />
                 <TextBlock Text="{Binding TimestampCount}" Margin="4,0,0,0" />
             </StackPanel>
@@ -79,6 +87,13 @@
                      HorizontalContentAlignment="Stretch"
                      ScrollViewer.HorizontalScrollBarVisibility="Auto"
                      ScrollViewer.VerticalScrollBarVisibility="Auto">
+                <ListBox.ContextMenu>
+                    <ContextMenu>
+                        <MenuItem Header="選択項目の日時を編集..."
+                                  Command="{Binding PlacementTarget.DataContext.EditSelectedTimestampsCommand,
+                                            RelativeSource={RelativeSource AncestorType=ContextMenu}}" />
+                    </ContextMenu>
+                </ListBox.ContextMenu>
                 <ListBox.ItemTemplate>
                     <DataTemplate>
                         <Grid>

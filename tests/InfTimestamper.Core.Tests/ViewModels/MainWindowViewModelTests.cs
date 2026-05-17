@@ -1,4 +1,5 @@
 using InfTimestamper.Core.Models;
+using InfTimestamper.Core.Persistence;
 using InfTimestamper.Core.States;
 using InfTimestamper.ViewModels;
 using NUlid;
@@ -7,8 +8,18 @@ namespace InfTimestamper.Core.Tests.ViewModels;
 
 public class MainWindowViewModelTests
 {
-    private static MainWindowViewModel NewVm(FakeClipboardService? clip = null)
-        => new(new AppStateMachine(), clip ?? new FakeClipboardService());
+    private static MainWindowViewModel NewVm(
+        FakeClipboardService? clip = null,
+        FakeDialogService? dialog = null,
+        JsonRecordStore? store = null)
+        => new(
+            new AppStateMachine(),
+            clip ?? new FakeClipboardService(),
+            dialog ?? new FakeDialogService(),
+            store ?? new JsonRecordStore());
+
+    private static MainWindowViewModel NewVmWith(FakeDialogService dialog)
+        => NewVm(null, dialog, null);
 
     private static TimestampEntry MakeEntry(string title, DateTimeOffset at)
     {
@@ -146,5 +157,159 @@ public class MainWindowViewModelTests
 
         vm.StopCommand.Execute(null);
         Assert.Equal("記録終了", vm.StateLabel);
+    }
+
+    [Fact]
+    public void EditStreamStartedAt_AppliesNewValue()
+    {
+        var dialog = new FakeDialogService();
+        var vm = NewVmWith(dialog);
+        vm.StartCommand.Execute(null);
+        vm.ForceStartCommand.Execute(null);
+        var newValue = new DateTimeOffset(2026, 5, 17, 12, 0, 0, TimeSpan.FromHours(9));
+        dialog.DateTimeEditorResult = new[] { newValue };
+
+        vm.EditStreamStartedAtCommand.Execute(null);
+
+        Assert.Equal(newValue, vm.StreamStartedAt);
+    }
+
+    [Fact]
+    public void EditStreamStartedAt_DisabledWhenNoStreamStart()
+    {
+        var vm = NewVm();
+        Assert.False(vm.EditStreamStartedAtCommand.CanExecute(null));
+    }
+
+    [Fact]
+    public void EditSelectedTimestamps_AppliesShift_AndReorders()
+    {
+        var dialog = new FakeDialogService();
+        var vm = NewVmWith(dialog);
+        vm.SetStreamStartedAt(DateTimeOffset.UnixEpoch);
+
+        var first = MakeEntry("First", DateTimeOffset.UnixEpoch.AddSeconds(100));
+        var second = MakeEntry("Second", DateTimeOffset.UnixEpoch.AddSeconds(200));
+        vm.AddTimestamp(first);
+        vm.AddTimestamp(second);
+
+        vm.Timestamps[1].IsSelected = true;
+        vm.NotifySelectionChanged();
+
+        // 選択中の値 (second の 200 秒) を 50 秒に変更 → first(100s) より前に並ぶ
+        dialog.DateTimeEditorResult = new[] { DateTimeOffset.UnixEpoch.AddSeconds(50) };
+        vm.EditSelectedTimestampsCommand.Execute(null);
+
+        Assert.Same(second, vm.Timestamps[0].Entry);
+        Assert.Same(first, vm.Timestamps[1].Entry);
+        Assert.Equal(DateTimeOffset.UnixEpoch.AddSeconds(50), second.PlayStartedAt);
+    }
+
+    [Fact]
+    public void EditSelectedTimestamps_DisabledWithoutSelection()
+    {
+        var vm = NewVm();
+        vm.AddTimestamp(MakeEntry("X", DateTimeOffset.Now));
+        Assert.False(vm.EditSelectedTimestampsCommand.CanExecute(null));
+    }
+
+    [Fact]
+    public void OpenRecord_LoadsFromFile_AndTransitionsToRecordingEnded()
+    {
+        var dialog = new FakeDialogService();
+        var store = new JsonRecordStore();
+        var vm = new MainWindowViewModel(new AppStateMachine(), new FakeClipboardService(), dialog, store);
+
+        // 事前に保存しておく
+        var record = new StreamRecord
+        {
+            Game = GameId.Infinitas,
+            Stream = new StreamInfo { StartedAt = new DateTimeOffset(2026, 5, 17, 18, 0, 0, TimeSpan.FromHours(9)) },
+            CreatedAt = DateTimeOffset.Now,
+            UpdatedAt = DateTimeOffset.Now,
+        };
+        var entry = MakeEntry("Sample", record.Stream.StartedAt.AddMinutes(5));
+        record.Timestamps.Add(entry);
+
+        var tempPath = Path.Combine(Path.GetTempPath(), $"inf-test-{Guid.NewGuid():N}.json");
+        try
+        {
+            store.SaveAtomic(record, tempPath);
+
+            dialog.OpenFileResult = tempPath;
+            vm.OpenRecordCommand.Execute(null);
+
+            Assert.Equal(AppState.RecordingEnded, vm.State);
+            Assert.Equal(1, vm.TimestampCount);
+            Assert.Equal(record.Stream.StartedAt, vm.StreamStartedAt);
+        }
+        finally
+        {
+            if (File.Exists(tempPath)) File.Delete(tempPath);
+        }
+    }
+
+    [Fact]
+    public void OpenRecord_BrokenFile_ShowsErrorDialog()
+    {
+        var dialog = new FakeDialogService();
+        var vm = NewVmWith(dialog);
+
+        var tempPath = Path.Combine(Path.GetTempPath(), $"inf-test-{Guid.NewGuid():N}.json");
+        try
+        {
+            File.WriteAllText(tempPath, "{ broken json");
+            dialog.OpenFileResult = tempPath;
+            vm.OpenRecordCommand.Execute(null);
+
+            Assert.Single(dialog.Errors);
+            Assert.Equal(AppState.Initial, vm.State);
+        }
+        finally
+        {
+            if (File.Exists(tempPath)) File.Delete(tempPath);
+        }
+    }
+
+    [Fact]
+    public void OpenRecord_CancelDialog_DoesNothing()
+    {
+        var dialog = new FakeDialogService { OpenFileResult = null };
+        var vm = NewVmWith(dialog);
+
+        vm.OpenRecordCommand.Execute(null);
+
+        Assert.Empty(dialog.Errors);
+        Assert.Equal(AppState.Initial, vm.State);
+    }
+
+    [Fact]
+    public void SaveRecord_WritesFile_AndShowsInfo()
+    {
+        var dialog = new FakeDialogService();
+        var vm = NewVmWith(dialog);
+        vm.SetStreamStartedAt(new DateTimeOffset(2026, 5, 17, 18, 0, 0, TimeSpan.FromHours(9)));
+        vm.AddTimestamp(MakeEntry("Sample", vm.StreamStartedAt!.Value.AddMinutes(1)));
+
+        var tempPath = Path.Combine(Path.GetTempPath(), $"inf-test-{Guid.NewGuid():N}.json");
+        try
+        {
+            dialog.SaveFileResult = tempPath;
+            vm.SaveRecordCommand.Execute(null);
+
+            Assert.True(File.Exists(tempPath));
+            Assert.Single(dialog.Infos);
+        }
+        finally
+        {
+            if (File.Exists(tempPath)) File.Delete(tempPath);
+        }
+    }
+
+    [Fact]
+    public void SaveRecord_DisabledWhenEmpty()
+    {
+        var vm = NewVm();
+        Assert.False(vm.SaveRecordCommand.CanExecute(null));
     }
 }
