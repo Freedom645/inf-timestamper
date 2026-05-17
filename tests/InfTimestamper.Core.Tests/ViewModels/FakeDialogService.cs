@@ -1,4 +1,5 @@
 using InfTimestamper.Core.Settings;
+using InfTimestamper.Core.Updates;
 using InfTimestamper.Services;
 
 namespace InfTimestamper.Core.Tests.ViewModels;
@@ -42,4 +43,13 @@ internal sealed class FakeDialogService : IDialogService
     public void ShowInfo(string title, string message) => Infos.Add((title, message));
 
     public bool Confirm(string title, string message) => ConfirmResult;
+
+    public bool UpdateProgressResult { get; set; } = true;
+    public int UpdateProgressCallCount { get; private set; }
+
+    public Task<bool> ShowUpdateProgressAsync(IUpdateService updateService, CancellationToken cancellationToken)
+    {
+        UpdateProgressCallCount++;
+        return Task.FromResult(UpdateProgressResult);
+    }
 }

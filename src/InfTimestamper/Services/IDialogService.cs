@@ -1,4 +1,5 @@
 using InfTimestamper.Core.Settings;
+using InfTimestamper.Core.Updates;
 
 namespace InfTimestamper.Services;
 
@@ -19,4 +20,6 @@ public interface IDialogService
     void ShowInfo(string title, string message);
 
     bool Confirm(string title, string message);
+
+    Task<bool> ShowUpdateProgressAsync(IUpdateService updateService, CancellationToken cancellationToken);
 }

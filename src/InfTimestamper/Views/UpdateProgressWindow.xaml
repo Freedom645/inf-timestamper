@@ -1,0 +1,39 @@
+<Window x:Class="InfTimestamper.Views.UpdateProgressWindow"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+        xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+        xmlns:vm="clr-namespace:InfTimestamper.ViewModels"
+        mc:Ignorable="d"
+        d:DataContext="{d:DesignInstance Type=vm:UpdateProgressViewModel}"
+        Title="アップデート"
+        Width="420" Height="170"
+        WindowStartupLocation="CenterOwner"
+        ResizeMode="NoResize"
+        ShowInTaskbar="False">
+    <Grid Margin="16">
+        <Grid.RowDefinitions>
+            <RowDefinition Height="Auto" />
+            <RowDefinition Height="Auto" />
+            <RowDefinition Height="*" />
+        </Grid.RowDefinitions>
+
+        <TextBlock Grid.Row="0"
+                   Text="{Binding StatusText}"
+                   FontSize="13"
+                   Margin="0,0,0,12" />
+
+        <ProgressBar Grid.Row="1"
+                     Value="{Binding ProgressPercent}"
+                     Minimum="0"
+                     Maximum="100"
+                     Height="22" />
+
+        <TextBlock Grid.Row="2"
+                   HorizontalAlignment="Right"
+                   VerticalAlignment="Bottom"
+                   FontSize="11"
+                   Foreground="Gray"
+                   Text="{Binding ProgressPercent, StringFormat={}{0}%}" />
+    </Grid>
+</Window>

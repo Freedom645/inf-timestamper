@@ -34,6 +34,7 @@ public sealed class MainWindowViewModel : ObservableBase
     private readonly SettingsStore? _settingsStore;
     private readonly string? _settingsPath;
     private readonly IGitHubReleaseChecker? _releaseChecker;
+    private readonly IUpdateService? _updateService;
     private readonly ILogger<MainWindowViewModel> _logger;
 
     private AppSettings _settings = AppSettings.CreateDefault();
@@ -50,7 +51,7 @@ public sealed class MainWindowViewModel : ObservableBase
         IDialogService dialog,
         JsonRecordStore recordStore,
         ILogger<MainWindowViewModel>? logger = null)
-        : this(stateMachine, clipboard, dialog, recordStore, AppSettings.CreateDefault(), null, null, null, logger) { }
+        : this(stateMachine, clipboard, dialog, recordStore, AppSettings.CreateDefault(), null, null, null, null, logger) { }
 
     public MainWindowViewModel(
         AppStateMachine stateMachine,
@@ -61,7 +62,7 @@ public sealed class MainWindowViewModel : ObservableBase
         SettingsStore? settingsStore,
         string? settingsPath,
         ILogger<MainWindowViewModel>? logger = null)
-        : this(stateMachine, clipboard, dialog, recordStore, settings, settingsStore, settingsPath, null, logger) { }
+        : this(stateMachine, clipboard, dialog, recordStore, settings, settingsStore, settingsPath, null, null, logger) { }
 
     public MainWindowViewModel(
         AppStateMachine stateMachine,
@@ -73,6 +74,19 @@ public sealed class MainWindowViewModel : ObservableBase
         string? settingsPath,
         IGitHubReleaseChecker? releaseChecker,
         ILogger<MainWindowViewModel>? logger = null)
+        : this(stateMachine, clipboard, dialog, recordStore, settings, settingsStore, settingsPath, releaseChecker, null, logger) { }
+
+    public MainWindowViewModel(
+        AppStateMachine stateMachine,
+        IClipboardService clipboard,
+        IDialogService dialog,
+        JsonRecordStore recordStore,
+        AppSettings settings,
+        SettingsStore? settingsStore,
+        string? settingsPath,
+        IGitHubReleaseChecker? releaseChecker,
+        IUpdateService? updateService,
+        ILogger<MainWindowViewModel>? logger = null)
     {
         _stateMachine = stateMachine ?? throw new ArgumentNullException(nameof(stateMachine));
         _clipboard = clipboard ?? throw new ArgumentNullException(nameof(clipboard));
@@ -82,6 +96,7 @@ public sealed class MainWindowViewModel : ObservableBase
         _settingsStore = settingsStore;
         _settingsPath = settingsPath;
         _releaseChecker = releaseChecker;
+        _updateService = updateService;
         _format = string.IsNullOrEmpty(_settings.Infinitas?.TimestampFormat)
             ? DefaultFormat
             : _settings.Infinitas!.TimestampFormat;
@@ -364,20 +379,50 @@ public sealed class MainWindowViewModel : ObservableBase
 
         if (hasNewer)
         {
-            var confirmed = _dialog.Confirm(
-                "新しいバージョンが利用可能",
-                $"新しいバージョン {release.TagName} がリリースされています。\n（現在: v{current})\n\nリリースページを開きますか？");
-            if (confirmed)
+            // Velopack でインストール済みなら自動アップデートフロー、そうでなければリリースページ起動
+            if (_updateService?.IsInstalled == true)
             {
+                var confirmed = _dialog.Confirm(
+                    "新しいバージョンが利用可能",
+                    $"新しいバージョン {release.TagName} が利用可能です。\n（現在: v{current})\n\nダウンロードして適用しますか？\n（完了後、自動的に再起動します）");
+                if (!confirmed) return;
+
                 try
                 {
-                    Process.Start(new ProcessStartInfo(release.HtmlUrl) { UseShellExecute = true });
+                    var success = await _dialog.ShowUpdateProgressAsync(_updateService, cancellationToken).ConfigureAwait(true);
+                    if (success)
+                    {
+                        _updateService.ApplyAndRestart();
+                    }
+                    else if (!silent)
+                    {
+                        _dialog.ShowError("アップデート", "アップデートの取得に失敗しました。");
+                    }
                 }
                 catch (Exception ex)
                 {
-                    _logger.LogWarning(ex, "リリースページの起動に失敗しました。");
+                    _logger.LogError(ex, "セルフアップデートに失敗しました。");
                     if (!silent)
-                        _dialog.ShowError("リリースページ", "ブラウザの起動に失敗しました: " + ex.Message);
+                        _dialog.ShowError("アップデート", "アップデートの適用に失敗しました: " + ex.Message);
+                }
+            }
+            else
+            {
+                var confirmed = _dialog.Confirm(
+                    "新しいバージョンが利用可能",
+                    $"新しいバージョン {release.TagName} がリリースされています。\n（現在: v{current})\n\nリリースページを開きますか？");
+                if (confirmed)
+                {
+                    try
+                    {
+                        Process.Start(new ProcessStartInfo(release.HtmlUrl) { UseShellExecute = true });
+                    }
+                    catch (Exception ex)
+                    {
+                        _logger.LogWarning(ex, "リリースページの起動に失敗しました。");
+                        if (!silent)
+                            _dialog.ShowError("リリースページ", "ブラウザの起動に失敗しました: " + ex.Message);
+                    }
                 }
             }
         }

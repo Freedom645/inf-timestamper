@@ -89,6 +89,9 @@ public partial class App : Application
                     sp.GetRequiredService<HttpClient>(),
                     GitHubReleaseChecker.DefaultRepository,
                     sp.GetRequiredService<ILogger<GitHubReleaseChecker>>()));
+                services.AddSingleton<IUpdateService>(sp => new VelopackUpdateService(
+                    VelopackUpdateService.DefaultRepositoryUrl,
+                    sp.GetRequiredService<ILogger<VelopackUpdateService>>()));
                 services.AddSingleton<IObsConnectionTester>(sp => new ObsConnectionTester(
                     () => new ObsWebSocketConnection(sp.GetRequiredService<ILogger<ObsWebSocketConnection>>()),
                     sp.GetRequiredService<ILogger<ObsConnectionTester>>(),
@@ -145,6 +148,7 @@ public partial class App : Application
                     sp.GetRequiredService<SettingsStore>(),
                     settingsPath,
                     sp.GetRequiredService<IGitHubReleaseChecker>(),
+                    sp.GetRequiredService<IUpdateService>(),
                     sp.GetService<ILogger<MainWindowViewModel>>()));
                 services.AddSingleton<MainWindow>(sp => new MainWindow(sp.GetRequiredService<MainWindowViewModel>()));
             })

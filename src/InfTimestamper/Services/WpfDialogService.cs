@@ -1,6 +1,7 @@
 using System.Windows;
 using InfTimestamper.Core.Obs;
 using InfTimestamper.Core.Settings;
+using InfTimestamper.Core.Updates;
 using InfTimestamper.ViewModels;
 using InfTimestamper.ViewModels.Settings;
 using InfTimestamper.Views;
@@ -84,4 +85,49 @@ public sealed class WpfDialogService : IDialogService
     public bool Confirm(string title, string message)
         => MessageBox.Show(_ownerProvider(), message, title, MessageBoxButton.YesNo, MessageBoxImage.Question)
            == MessageBoxResult.Yes;
+
+    public async Task<bool> ShowUpdateProgressAsync(IUpdateService updateService, CancellationToken cancellationToken)
+    {
+        if (updateService is null) throw new ArgumentNullException(nameof(updateService));
+
+        var vm = new UpdateProgressViewModel
+        {
+            StatusText = "アップデートをダウンロードしています...",
+        };
+        var window = new UpdateProgressWindow(vm) { Owner = _ownerProvider() };
+
+        bool success = false;
+        Exception? failure = null;
+
+        var progress = new Progress<int>(p =>
+        {
+            vm.ProgressPercent = p;
+            vm.StatusText = $"ダウンロード中... {p}%";
+        });
+
+        // Window 表示前に非同期処理を開始するため Task.Run + Dispatcher
+        async Task RunDownloadAsync()
+        {
+            try
+            {
+                success = await updateService.CheckAndDownloadAsync(progress, cancellationToken).ConfigureAwait(false);
+            }
+            catch (Exception ex)
+            {
+                failure = ex;
+                success = false;
+            }
+            finally
+            {
+                await Application.Current.Dispatcher.InvokeAsync(window.Close);
+            }
+        }
+
+        // ShowDialog はブロッキングなのでダウンロードを先に Fire
+        var task = RunDownloadAsync();
+        window.ShowDialog();
+        await task.ConfigureAwait(true);
+
+        return success && failure is null;
+    }
 }
