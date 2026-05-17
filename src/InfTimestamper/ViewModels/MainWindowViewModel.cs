@@ -2,15 +2,19 @@ using System.Collections.ObjectModel;
 using System.Collections.Specialized;
 using System.IO;
 using System.Text;
+using InfTimestamper.Core.Coordination;
 using InfTimestamper.Core.Formatting;
 using InfTimestamper.Core.Models;
+using InfTimestamper.Core.Obs;
 using InfTimestamper.Core.Persistence;
 using InfTimestamper.Core.Persistence.Json;
+using InfTimestamper.Core.Recognition;
 using InfTimestamper.Core.Settings;
 using InfTimestamper.Core.States;
 using InfTimestamper.Services;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Logging.Abstractions;
+using NUlid;
 
 namespace InfTimestamper.ViewModels;
 
@@ -31,6 +35,9 @@ public sealed class MainWindowViewModel : ObservableBase
     private StreamRecord _record = new();
     private string _format = DefaultFormat;
     private string _hintText = string.Empty;
+    private ObsConnectionManagerState _obsStatus = ObsConnectionManagerState.Idle;
+    private int _obsRetryAttempt;
+    private RecordingCoordinator? _coordinator;
 
     public MainWindowViewModel(
         AppStateMachine stateMachine,
@@ -88,14 +95,24 @@ public sealed class MainWindowViewModel : ObservableBase
 
     public string GameName => "INFINITAS";
 
-    public string StateLabel => State switch
+    public string StateLabel
     {
-        AppState.Initial => "初期状態",
-        AppState.WaitingForStream => "配信開始待ち",
-        AppState.Recording => "記録中",
-        AppState.RecordingEnded => "記録終了",
-        _ => "-",
-    };
+        get
+        {
+            // OBS 再接続中は要件 L535 に従ったラベルを優先表示
+            if (_obsStatus == ObsConnectionManagerState.Reconnecting && _obsRetryAttempt >= 1)
+                return $"OBS再接続中（試行 {_obsRetryAttempt} 回目）";
+
+            return State switch
+            {
+                AppState.Initial => "初期状態",
+                AppState.WaitingForStream => "配信開始待ち",
+                AppState.Recording => "記録中",
+                AppState.RecordingEnded => "記録終了",
+                _ => "-",
+            };
+        }
+    }
 
     public string PrimaryButtonText => State switch
     {
@@ -183,6 +200,85 @@ public sealed class MainWindowViewModel : ObservableBase
 
     public void NotifySelectionChanged()
         => EditSelectedTimestampsCommand.RaiseCanExecuteChanged();
+
+    public void BindCoordinator(RecordingCoordinator coordinator)
+    {
+        if (coordinator is null) throw new ArgumentNullException(nameof(coordinator));
+        if (_coordinator is not null) UnbindCoordinator();
+
+        _coordinator = coordinator;
+        _coordinator.PlayStarted += OnPlayStarted;
+        _coordinator.PlayResultDetected += OnPlayResultDetected;
+        _coordinator.ObsStatusChanged += OnObsStatusChanged;
+
+        ApplySettingsToCoordinator();
+    }
+
+    public void UnbindCoordinator()
+    {
+        if (_coordinator is null) return;
+        _coordinator.PlayStarted -= OnPlayStarted;
+        _coordinator.PlayResultDetected -= OnPlayResultDetected;
+        _coordinator.ObsStatusChanged -= OnObsStatusChanged;
+        _coordinator = null;
+    }
+
+    private void ApplySettingsToCoordinator()
+    {
+        if (_coordinator is null) return;
+
+        var streamObs = new ObsConnectionOptions(_settings.Obs.Host, _settings.Obs.Port, _settings.Obs.Password);
+        var captureObs = _settings.Infinitas.TwoPcEnabled && _settings.Infinitas.CaptureObs is not null
+            ? new ObsConnectionOptions(_settings.Infinitas.CaptureObs.Host, _settings.Infinitas.CaptureObs.Port, _settings.Infinitas.CaptureObs.Password)
+            : null;
+
+        _coordinator.Configure(new RecordingCoordinatorOptions
+        {
+            StreamObs = streamObs,
+            CaptureObs = captureObs,
+            TwoPcEnabled = _settings.Infinitas.TwoPcEnabled,
+            GameSourceName = _settings.Infinitas.GameSourceName,
+        });
+    }
+
+    private void OnPlayStarted(object? sender, PlayStartedEventArgs e)
+    {
+        var entry = new TimestampEntry
+        {
+            Id = Ulid.NewUlid(),
+            PlayStartedAt = e.CapturedAt,
+        };
+        foreach (var (key, value) in e.Fields)
+        {
+            if (!string.IsNullOrEmpty(value))
+                entry.SetField(key, value);
+        }
+        AddTimestamp(entry);
+    }
+
+    private void OnPlayResultDetected(object? sender, PlayResultEventArgs e)
+    {
+        // 直近のプレイ開始エントリに結果フィールドをマージ
+        var latestEntry = _record.Timestamps.LastOrDefault();
+        if (latestEntry is null) return;
+
+        foreach (var (key, value) in e.Fields)
+        {
+            if (!string.IsNullOrEmpty(value))
+                latestEntry.SetField(key, value);
+        }
+        _record.UpdatedAt = DateTimeOffset.Now;
+
+        var vm = Timestamps.FirstOrDefault(t => ReferenceEquals(t.Entry, latestEntry));
+        vm?.NotifyEntryUpdated();
+    }
+
+    private void OnObsStatusChanged(object? sender, RecordingObsStatusChangedEventArgs e)
+    {
+        _obsStatus = e.State;
+        _obsRetryAttempt = e.RetryAttempt;
+        RaisePropertyChanged(nameof(StateLabel));
+    }
 
     internal StreamRecord Record => _record;
 
@@ -306,6 +402,9 @@ public sealed class MainWindowViewModel : ObservableBase
             ? DefaultFormat
             : updated.Infinitas!.TimestampFormat;
         Format = newFormat;
+
+        // OBS 接続情報やソース名が変わった可能性があるので Coordinator にも反映
+        ApplySettingsToCoordinator();
 
         // 永続化
         if (_settingsStore is not null && !string.IsNullOrEmpty(_settingsPath))

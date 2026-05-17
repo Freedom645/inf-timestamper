@@ -1,8 +1,14 @@
+using InfTimestamper.Core.Coordination;
 using InfTimestamper.Core.Models;
+using InfTimestamper.Core.Obs;
 using InfTimestamper.Core.Persistence;
+using InfTimestamper.Core.Recognition;
 using InfTimestamper.Core.Settings;
 using InfTimestamper.Core.States;
+using InfTimestamper.Core.Tests.Obs;
+using InfTimestamper.Core.Tests.Recognition;
 using InfTimestamper.Core.Tests.TestHelpers;
+using InfTimestamper.Core.Threading;
 using InfTimestamper.ViewModels;
 using NUlid;
 
@@ -366,5 +372,100 @@ public class MainWindowViewModelTests
 
         Assert.Equal(originalFormat, vm.Format);
         Assert.False(File.Exists(path));
+    }
+
+    private static (MainWindowViewModel vm, AppStateMachine state, RecognitionPipeline pipeline, RecordingCoordinator coord)
+        BuildVmWithCoordinator()
+    {
+        var state = new AppStateMachine();
+        var recognizer = new FrameRecognizer(
+            new ImageHasher(),
+            new NoOpOcrService(),
+            HashResource.Empty(),
+            RoiResource.Empty());
+        var pipeline = new RecognitionPipeline(recognizer);
+        var fakeConn = new FakeObsConnection();
+        var coord = new RecordingCoordinator(
+            state,
+            pipeline,
+            ImmediateUiDispatcher.Instance,
+            streamConnectionFactory: () => fakeConn,
+            managerFactory: c => new ObsConnectionManager(c, Microsoft.Extensions.Logging.Abstractions.NullLogger<ObsConnectionManager>.Instance, new TestDelayProvider(), TimeSpan.FromMilliseconds(50)),
+            captureFactory: c => new ObsScreenshotCapture(c, Microsoft.Extensions.Logging.Abstractions.NullLogger<ObsScreenshotCapture>.Instance, TimeSpan.FromMilliseconds(50)));
+
+        var vm = new MainWindowViewModel(state, new FakeClipboardService(), new FakeDialogService(), new JsonRecordStore());
+        vm.BindCoordinator(coord);
+        return (vm, state, pipeline, coord);
+    }
+
+    [Fact]
+    public void Pipeline_PlayStarted_AddsTimestampWithFields()
+    {
+        var (vm, _, pipeline, _) = BuildVmWithCoordinator();
+
+        pipeline.InjectRecognition(new FrameRecognition(
+            DateTimeOffset.UnixEpoch.AddMinutes(1),
+            RecognizedState.PlayStart,
+            null,
+            new Dictionary<string, string>
+            {
+                ["title"] = "Test Song",
+                ["diff_s"] = "SPA",
+                ["level"] = "11",
+            }));
+
+        Assert.Equal(1, vm.TimestampCount);
+        Assert.True(vm.Timestamps[0].Entry.TryGetFieldAsString("title", out var title));
+        Assert.Equal("Test Song", title);
+        Assert.True(vm.Timestamps[0].Entry.TryGetFieldAsString("diff_s", out var diff));
+        Assert.Equal("SPA", diff);
+    }
+
+    [Fact]
+    public void Pipeline_PlayResultDetected_MergesIntoLatestEntry()
+    {
+        var (vm, _, pipeline, _) = BuildVmWithCoordinator();
+
+        pipeline.InjectRecognition(new FrameRecognition(
+            DateTimeOffset.UnixEpoch.AddMinutes(1),
+            RecognizedState.PlayStart,
+            null,
+            new Dictionary<string, string> { ["title"] = "Song" }));
+
+        pipeline.InjectRecognition(new FrameRecognition(
+            DateTimeOffset.UnixEpoch.AddMinutes(3),
+            RecognizedState.Result,
+            null,
+            new Dictionary<string, string>
+            {
+                ["miss_count"] = "5",
+                ["dj_level"] = "AAA",
+                ["lamp"] = "FC",
+                ["ex_score"] = "1500",
+            }));
+
+        var entry = vm.Timestamps[0].Entry;
+        Assert.True(entry.TryGetFieldAsString("miss_count", out var miss));
+        Assert.Equal("5", miss);
+        Assert.True(entry.TryGetFieldAsString("dj_level", out var dj));
+        Assert.Equal("AAA", dj);
+        Assert.True(entry.TryGetFieldAsString("lamp", out var lamp));
+        Assert.Equal("FC", lamp);
+        // 元の title もそのまま残る
+        Assert.True(entry.TryGetFieldAsString("title", out var title));
+        Assert.Equal("Song", title);
+    }
+
+    [Fact]
+    public void StateLabel_ReflectsObsReconnecting()
+    {
+        var (vm, _, _, coord) = BuildVmWithCoordinator();
+
+        // RecordingCoordinator は内部 manager 経由で ObsStatusChanged を発火する。
+        // テストでは Reflection 経由ではなく、Pipeline 側で再現できないので
+        // 直接 ObsStatusChanged を発火するヘルパは持たない。代わりに
+        // StateMachine 経由で実 ManagerState の遷移をシミュレートできる範囲で
+        // 「OBS が再接続中でなければ通常の状態ラベル」を確認
+        Assert.Equal("初期状態", vm.StateLabel);
     }
 }

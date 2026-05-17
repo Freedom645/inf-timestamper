@@ -1,8 +1,12 @@
 using System.IO;
 using System.Windows;
+using InfTimestamper.Core.Coordination;
+using InfTimestamper.Core.Obs;
 using InfTimestamper.Core.Persistence;
+using InfTimestamper.Core.Recognition;
 using InfTimestamper.Core.Settings;
 using InfTimestamper.Core.States;
+using InfTimestamper.Core.Threading;
 using InfTimestamper.Services;
 using InfTimestamper.ViewModels;
 using Microsoft.Extensions.DependencyInjection;
@@ -24,6 +28,11 @@ public partial class App : Application
 
         _host = BuildHost();
         _host.Start();
+
+        // RecordingCoordinator と MainWindowViewModel を結線
+        var vm = _host.Services.GetRequiredService<MainWindowViewModel>();
+        var coordinator = _host.Services.GetRequiredService<RecordingCoordinator>();
+        vm.BindCoordinator(coordinator);
 
         var mainWindow = _host.Services.GetRequiredService<MainWindow>();
         MainWindow = mainWindow;
@@ -68,6 +77,47 @@ public partial class App : Application
                 });
                 services.AddSingleton<IClipboardService, WpfClipboardService>();
                 services.AddSingleton<IDialogService>(_ => new WpfDialogService(() => Current?.MainWindow));
+
+                // 認識層と OBS 接続層
+                services.AddSingleton<IUiDispatcher, WpfDispatcher>();
+                services.AddSingleton<IImageHasher, ImageHasher>();
+                services.AddSingleton<HashResource>(_ =>
+                    HashResourceLoader.Load(Path.Combine(AppContext.BaseDirectory, "Resources", "INFINITAS", "hashes.json")));
+                services.AddSingleton<RoiResource>(_ =>
+                    RoiResourceLoader.Load(Path.Combine(AppContext.BaseDirectory, "Resources", "INFINITAS", "rois.json")));
+                services.AddSingleton<SongRepository>(_ =>
+                {
+                    var songsPath = Path.Combine(AppContext.BaseDirectory, "Resources", "INFINITAS", "songs.json");
+                    return File.Exists(songsPath) ? SongRepository.LoadFromFile(songsPath) : new SongRepository(Array.Empty<SongRecord>());
+                });
+                services.AddSingleton<SongTitleMatcher>();
+                services.AddSingleton<IOcrService>(sp =>
+                {
+                    var tessdataPath = Path.Combine(AppContext.BaseDirectory, "tessdata");
+                    return new TesseractOcrService(
+                        tessdataPath,
+                        TesseractOcrService.DefaultLanguage,
+                        sp.GetRequiredService<ILogger<TesseractOcrService>>());
+                });
+                services.AddSingleton<FrameRecognizer>();
+                services.AddSingleton<RecognitionPipeline>();
+                services.AddSingleton<RecordingCoordinator>(sp => new RecordingCoordinator(
+                    sp.GetRequiredService<AppStateMachine>(),
+                    sp.GetRequiredService<RecognitionPipeline>(),
+                    sp.GetRequiredService<IUiDispatcher>(),
+                    streamConnectionFactory: () => new ObsWebSocketConnection(
+                        sp.GetRequiredService<ILogger<ObsWebSocketConnection>>()),
+                    managerFactory: conn => new ObsConnectionManager(
+                        conn,
+                        sp.GetRequiredService<ILogger<ObsConnectionManager>>()),
+                    captureFactory: conn => new ObsScreenshotCapture(
+                        conn,
+                        sp.GetRequiredService<ILogger<ObsScreenshotCapture>>(),
+                        TimeSpan.FromSeconds(1)),
+                    captureConnectionFactory: () => new ObsWebSocketConnection(
+                        sp.GetRequiredService<ILogger<ObsWebSocketConnection>>()),
+                    logger: sp.GetRequiredService<ILogger<RecordingCoordinator>>()));
+
                 services.AddSingleton<MainWindowViewModel>(sp => new MainWindowViewModel(
                     sp.GetRequiredService<AppStateMachine>(),
                     sp.GetRequiredService<IClipboardService>(),

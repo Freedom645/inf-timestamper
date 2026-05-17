@@ -20,4 +20,16 @@
     <InternalsVisibleTo Include="InfTimestamper.Core.Tests" />
   </ItemGroup>
 
+  <ItemGroup>
+    <Content Include="Resources\INFINITAS\songs.json">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </Content>
+    <Content Include="Resources\INFINITAS\hashes.json" Condition="Exists('Resources\INFINITAS\hashes.json')">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </Content>
+    <Content Include="Resources\INFINITAS\rois.json" Condition="Exists('Resources\INFINITAS\rois.json')">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </Content>
+  </ItemGroup>
+
 </Project>
