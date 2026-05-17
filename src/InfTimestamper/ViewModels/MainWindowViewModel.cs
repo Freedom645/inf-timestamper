@@ -6,6 +6,7 @@ using InfTimestamper.Core.Formatting;
 using InfTimestamper.Core.Models;
 using InfTimestamper.Core.Persistence;
 using InfTimestamper.Core.Persistence.Json;
+using InfTimestamper.Core.Settings;
 using InfTimestamper.Core.States;
 using InfTimestamper.Services;
 using Microsoft.Extensions.Logging;
@@ -22,8 +23,11 @@ public sealed class MainWindowViewModel : ObservableBase
     private readonly IClipboardService _clipboard;
     private readonly IDialogService _dialog;
     private readonly JsonRecordStore _recordStore;
+    private readonly SettingsStore? _settingsStore;
+    private readonly string? _settingsPath;
     private readonly ILogger<MainWindowViewModel> _logger;
 
+    private AppSettings _settings = AppSettings.CreateDefault();
     private StreamRecord _record = new();
     private string _format = DefaultFormat;
     private string _hintText = string.Empty;
@@ -34,11 +38,28 @@ public sealed class MainWindowViewModel : ObservableBase
         IDialogService dialog,
         JsonRecordStore recordStore,
         ILogger<MainWindowViewModel>? logger = null)
+        : this(stateMachine, clipboard, dialog, recordStore, AppSettings.CreateDefault(), null, null, logger) { }
+
+    public MainWindowViewModel(
+        AppStateMachine stateMachine,
+        IClipboardService clipboard,
+        IDialogService dialog,
+        JsonRecordStore recordStore,
+        AppSettings settings,
+        SettingsStore? settingsStore,
+        string? settingsPath,
+        ILogger<MainWindowViewModel>? logger = null)
     {
         _stateMachine = stateMachine ?? throw new ArgumentNullException(nameof(stateMachine));
         _clipboard = clipboard ?? throw new ArgumentNullException(nameof(clipboard));
         _dialog = dialog ?? throw new ArgumentNullException(nameof(dialog));
         _recordStore = recordStore ?? throw new ArgumentNullException(nameof(recordStore));
+        _settings = settings ?? AppSettings.CreateDefault();
+        _settingsStore = settingsStore;
+        _settingsPath = settingsPath;
+        _format = string.IsNullOrEmpty(_settings.Infinitas?.TimestampFormat)
+            ? DefaultFormat
+            : _settings.Infinitas!.TimestampFormat;
         _logger = logger ?? NullLogger<MainWindowViewModel>.Instance;
 
         _stateMachine.StateChanged += OnStateMachineChanged;
@@ -58,6 +79,7 @@ public sealed class MainWindowViewModel : ObservableBase
         OpenRecordCommand = new RelayCommand(ExecuteOpenRecord, () => State == AppState.Initial);
         SaveRecordCommand = new RelayCommand(ExecuteSaveRecord,
             () => Timestamps.Count > 0 || StreamStartedAt is not null);
+        OpenSettingsCommand = new RelayCommand(ExecuteOpenSettings);
     }
 
     public ObservableCollection<TimestampViewModel> Timestamps { get; } = new();
@@ -132,6 +154,9 @@ public sealed class MainWindowViewModel : ObservableBase
     public RelayCommand EditSelectedTimestampsCommand { get; }
     public RelayCommand OpenRecordCommand { get; }
     public RelayCommand SaveRecordCommand { get; }
+    public RelayCommand OpenSettingsCommand { get; }
+
+    public AppSettings CurrentSettings => _settings;
 
     public void AddTimestamp(TimestampEntry entry)
     {
@@ -266,6 +291,34 @@ public sealed class MainWindowViewModel : ObservableBase
         {
             _logger.LogWarning(ex, "過去記録読込に失敗しました。");
             _dialog.ShowError("読込エラー", ex.Message);
+        }
+    }
+
+    private void ExecuteOpenSettings()
+    {
+        var updated = _dialog.ShowSettings(_settings);
+        if (updated is null) return;
+
+        _settings = updated;
+
+        // フォーマット文字列の即時反映
+        var newFormat = string.IsNullOrEmpty(updated.Infinitas?.TimestampFormat)
+            ? DefaultFormat
+            : updated.Infinitas!.TimestampFormat;
+        Format = newFormat;
+
+        // 永続化
+        if (_settingsStore is not null && !string.IsNullOrEmpty(_settingsPath))
+        {
+            try
+            {
+                _settingsStore.SaveAtomic(_settings, _settingsPath);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "設定の保存に失敗しました。");
+                _dialog.ShowError("保存エラー", "設定の保存に失敗しました: " + ex.Message);
+            }
         }
     }
 

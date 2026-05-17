@@ -1,6 +1,7 @@
 using System.IO;
 using System.Windows;
 using InfTimestamper.Core.Persistence;
+using InfTimestamper.Core.Settings;
 using InfTimestamper.Core.States;
 using InfTimestamper.Services;
 using InfTimestamper.ViewModels;
@@ -56,11 +57,26 @@ public partial class App : Application
             .UseSerilog()
             .ConfigureServices((_, services) =>
             {
+                var settingsPath = SettingsStore.DefaultSettingsPath();
                 services.AddSingleton<AppStateMachine>();
                 services.AddSingleton<JsonRecordStore>();
+                services.AddSingleton<SettingsStore>();
+                services.AddSingleton<AppSettings>(sp =>
+                {
+                    var store = sp.GetRequiredService<SettingsStore>();
+                    return store.Load(settingsPath);
+                });
                 services.AddSingleton<IClipboardService, WpfClipboardService>();
                 services.AddSingleton<IDialogService>(_ => new WpfDialogService(() => Current?.MainWindow));
-                services.AddSingleton<MainWindowViewModel>();
+                services.AddSingleton<MainWindowViewModel>(sp => new MainWindowViewModel(
+                    sp.GetRequiredService<AppStateMachine>(),
+                    sp.GetRequiredService<IClipboardService>(),
+                    sp.GetRequiredService<IDialogService>(),
+                    sp.GetRequiredService<JsonRecordStore>(),
+                    sp.GetRequiredService<AppSettings>(),
+                    sp.GetRequiredService<SettingsStore>(),
+                    settingsPath,
+                    sp.GetService<ILogger<MainWindowViewModel>>()));
                 services.AddSingleton<MainWindow>(sp => new MainWindow(sp.GetRequiredService<MainWindowViewModel>()));
             })
             .Build();

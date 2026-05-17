@@ -1,0 +1,159 @@
+<Window x:Class="InfTimestamper.Views.SettingsDialog"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+        xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+        xmlns:vm="clr-namespace:InfTimestamper.ViewModels.Settings"
+        mc:Ignorable="d"
+        d:DataContext="{d:DesignInstance Type=vm:SettingsDialogViewModel}"
+        Title="設定"
+        Width="600" MinWidth="520"
+        Height="520" MinHeight="460"
+        WindowStartupLocation="CenterOwner"
+        ShowInTaskbar="False">
+    <Grid Margin="12">
+        <Grid.RowDefinitions>
+            <RowDefinition Height="*" />
+            <RowDefinition Height="Auto" />
+        </Grid.RowDefinitions>
+
+        <TabControl Grid.Row="0">
+            <!-- 基本設定 -->
+            <TabItem Header="基本設定">
+                <StackPanel Margin="12">
+                    <CheckBox Content="起動時の自動アップデートチェック"
+                              IsChecked="{Binding General.AutoUpdateCheck}"
+                              Margin="0,0,0,12" />
+
+                    <TextBlock Text="バックアップ保存先" FontWeight="Bold" Margin="0,0,0,4" />
+                    <Grid>
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="*" />
+                            <ColumnDefinition Width="Auto" />
+                        </Grid.ColumnDefinitions>
+                        <TextBox Grid.Column="0"
+                                 Text="{Binding General.BackupDirectory, UpdateSourceTrigger=PropertyChanged}"
+                                 Padding="4" />
+                        <Button Grid.Column="1" Content="参照..." Width="80" Margin="6,0,0,0"
+                                IsEnabled="False"
+                                ToolTip="フォルダ選択ダイアログは後続フェーズで実装" />
+                    </Grid>
+
+                    <CheckBox Content="リセット時に確認ダイアログを表示"
+                              IsChecked="{Binding General.ConfirmOnReset}"
+                              Margin="0,12,0,4" />
+                    <CheckBox Content="アプリ終了時に確認ダイアログを表示（記録中または未保存の編集時）"
+                              IsChecked="{Binding General.ConfirmOnExit}" />
+                </StackPanel>
+            </TabItem>
+
+            <!-- 配信ソフト連携 -->
+            <TabItem Header="配信ソフト連携">
+                <StackPanel Margin="12">
+                    <TextBlock Text="OBS 接続情報" FontWeight="Bold" Margin="0,0,0,4" />
+                    <Grid Margin="0,0,0,8">
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="120" />
+                            <ColumnDefinition Width="*" />
+                            <ColumnDefinition Width="Auto" />
+                        </Grid.ColumnDefinitions>
+                        <Grid.RowDefinitions>
+                            <RowDefinition Height="Auto" />
+                            <RowDefinition Height="Auto" />
+                            <RowDefinition Height="Auto" />
+                        </Grid.RowDefinitions>
+                        <TextBlock Grid.Row="0" Grid.Column="0" Text="ホスト" VerticalAlignment="Center" />
+                        <TextBox  Grid.Row="0" Grid.Column="1"
+                                  Text="{Binding Obs.Host, UpdateSourceTrigger=PropertyChanged}" Padding="4" Margin="0,2" />
+                        <CheckBox Grid.Row="0" Grid.Column="2" Content="ローカルホスト"
+                                  IsChecked="{Binding Obs.IsLocalhost}" VerticalAlignment="Center" Margin="8,0,0,0" />
+
+                        <TextBlock Grid.Row="1" Grid.Column="0" Text="ポート" VerticalAlignment="Center" />
+                        <TextBox  Grid.Row="1" Grid.Column="1"
+                                  Text="{Binding Obs.Port, UpdateSourceTrigger=PropertyChanged}" Padding="4" Margin="0,2" />
+
+                        <TextBlock Grid.Row="2" Grid.Column="0" Text="パスワード" VerticalAlignment="Center" />
+                        <PasswordBox Grid.Row="2" Grid.Column="1" x:Name="ObsPasswordBox" Padding="4" Margin="0,2" />
+                    </Grid>
+                    <Button Content="接続テスト" Width="120" HorizontalAlignment="Left"
+                            IsEnabled="False"
+                            ToolTip="接続テストは OBS 結線サブフェーズで実装" />
+                </StackPanel>
+            </TabItem>
+
+            <!-- INFINITAS -->
+            <TabItem Header="INFINITAS">
+                <StackPanel Margin="12">
+                    <TextBlock Text="タイムスタンプフォーマット" FontWeight="Bold" Margin="0,0,0,4" />
+                    <TextBox x:Name="FormatTextBox"
+                             Text="{Binding Infinitas.TimestampFormat, UpdateSourceTrigger=PropertyChanged}"
+                             FontFamily="Consolas, Cascadia Mono"
+                             Padding="4" Margin="0,0,0,4" />
+
+                    <StackPanel Orientation="Horizontal" Margin="0,0,0,8">
+                        <TextBlock Text="識別子:" VerticalAlignment="Center" Margin="0,0,4,0" />
+                        <ComboBox x:Name="IdentifierCombo"
+                                  ItemsSource="{Binding Infinitas.AvailableIdentifiers}"
+                                  SelectedItem="{Binding Infinitas.SelectedIdentifier}"
+                                  Width="160" />
+                        <Button Content="追加" Width="60" Margin="6,0,0,0"
+                                Click="OnAddIdentifierClick" />
+                    </StackPanel>
+
+                    <TextBlock Text="プレビュー" FontWeight="Bold" Margin="0,4,0,2" />
+                    <Border BorderBrush="LightGray" BorderThickness="1" Padding="6">
+                        <TextBlock Text="{Binding Infinitas.Preview}"
+                                   FontFamily="Consolas, Cascadia Mono" />
+                    </Border>
+
+                    <TextBlock Text="OBS ゲーム画面ソース名" FontWeight="Bold" Margin="0,12,0,4" />
+                    <Grid>
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="*" />
+                            <ColumnDefinition Width="Auto" />
+                        </Grid.ColumnDefinitions>
+                        <TextBox Grid.Column="0"
+                                 Text="{Binding Infinitas.GameSourceName, UpdateSourceTrigger=PropertyChanged}"
+                                 Padding="4" />
+                        <Button Grid.Column="1" Content="OBSから取得" Width="100" Margin="6,0,0,0"
+                                IsEnabled="False"
+                                ToolTip="OBS 結線サブフェーズで実装" />
+                    </Grid>
+
+                    <CheckBox Content="2 台 PC 構成（ゲーム画面取得用 OBS を別に指定）"
+                              IsChecked="{Binding Infinitas.TwoPcEnabled}"
+                              Margin="0,12,0,4" />
+                    <Border BorderBrush="LightGray" BorderThickness="1" Padding="8" Margin="0,4,0,0"
+                            IsEnabled="{Binding Infinitas.TwoPcEnabled}">
+                        <Grid>
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="120" />
+                                <ColumnDefinition Width="*" />
+                            </Grid.ColumnDefinitions>
+                            <Grid.RowDefinitions>
+                                <RowDefinition Height="Auto" />
+                                <RowDefinition Height="Auto" />
+                                <RowDefinition Height="Auto" />
+                            </Grid.RowDefinitions>
+                            <TextBlock Grid.Row="0" Grid.Column="0" Text="ホスト" VerticalAlignment="Center" />
+                            <TextBox  Grid.Row="0" Grid.Column="1"
+                                      Text="{Binding Infinitas.CaptureObs.Host, UpdateSourceTrigger=PropertyChanged}" Padding="4" Margin="0,2" />
+                            <TextBlock Grid.Row="1" Grid.Column="0" Text="ポート" VerticalAlignment="Center" />
+                            <TextBox  Grid.Row="1" Grid.Column="1"
+                                      Text="{Binding Infinitas.CaptureObs.Port, UpdateSourceTrigger=PropertyChanged}" Padding="4" Margin="0,2" />
+                            <TextBlock Grid.Row="2" Grid.Column="0" Text="パスワード" VerticalAlignment="Center" />
+                            <PasswordBox Grid.Row="2" Grid.Column="1" x:Name="CaptureObsPasswordBox" Padding="4" Margin="0,2" />
+                        </Grid>
+                    </Border>
+                </StackPanel>
+            </TabItem>
+        </TabControl>
+
+        <StackPanel Grid.Row="1" Orientation="Horizontal" HorizontalAlignment="Right" Margin="0,12,0,0">
+            <Button Content="確定" Command="{Binding ConfirmCommand}" IsDefault="True"
+                    Width="80" Height="28" Margin="0,0,8,0" />
+            <Button Content="閉じる" Command="{Binding CancelCommand}" IsCancel="True"
+                    Width="80" Height="28" />
+        </StackPanel>
+    </Grid>
+</Window>

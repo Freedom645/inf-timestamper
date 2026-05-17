@@ -1,6 +1,8 @@
 using InfTimestamper.Core.Models;
 using InfTimestamper.Core.Persistence;
+using InfTimestamper.Core.Settings;
 using InfTimestamper.Core.States;
+using InfTimestamper.Core.Tests.TestHelpers;
 using InfTimestamper.ViewModels;
 using NUlid;
 
@@ -311,5 +313,58 @@ public class MainWindowViewModelTests
     {
         var vm = NewVm();
         Assert.False(vm.SaveRecordCommand.CanExecute(null));
+    }
+
+    [Fact]
+    public void OpenSettings_AppliesDialogResult_UpdatesFormatAndPersists()
+    {
+        var dialog = new FakeDialogService();
+        var updated = AppSettings.CreateDefault();
+        updated.Infinitas.TimestampFormat = "$title [$level]";
+        dialog.SettingsResult = updated;
+
+        using var temp = new TempDirectory();
+        var path = Path.Combine(temp.Path, "settings.json");
+        var store = new SettingsStore();
+
+        var vm = new MainWindowViewModel(
+            new AppStateMachine(),
+            new FakeClipboardService(),
+            dialog,
+            new JsonRecordStore(),
+            AppSettings.CreateDefault(),
+            store,
+            path);
+
+        vm.OpenSettingsCommand.Execute(null);
+
+        Assert.Equal("$title [$level]", vm.Format);
+        Assert.True(File.Exists(path));
+
+        var loaded = store.Load(path);
+        Assert.Equal("$title [$level]", loaded.Infinitas.TimestampFormat);
+    }
+
+    [Fact]
+    public void OpenSettings_CancelDialog_LeavesFormatUnchanged()
+    {
+        var dialog = new FakeDialogService { SettingsResult = null };
+        using var temp = new TempDirectory();
+        var path = Path.Combine(temp.Path, "settings.json");
+
+        var vm = new MainWindowViewModel(
+            new AppStateMachine(),
+            new FakeClipboardService(),
+            dialog,
+            new JsonRecordStore(),
+            AppSettings.CreateDefault(),
+            new SettingsStore(),
+            path);
+
+        var originalFormat = vm.Format;
+        vm.OpenSettingsCommand.Execute(null);
+
+        Assert.Equal(originalFormat, vm.Format);
+        Assert.False(File.Exists(path));
     }
 }

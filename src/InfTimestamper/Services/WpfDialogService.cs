@@ -1,5 +1,7 @@
 using System.Windows;
+using InfTimestamper.Core.Settings;
 using InfTimestamper.ViewModels;
+using InfTimestamper.ViewModels.Settings;
 using InfTimestamper.Views;
 using Microsoft.Win32;
 
@@ -21,6 +23,15 @@ public sealed class WpfDialogService : IDialogService
 
         var vm = new DateTimeEditDialogViewModel(currentValues);
         var dialog = new DateTimeEditDialog(vm) { Owner = _ownerProvider() };
+        var ok = dialog.ShowDialog();
+        return ok == true ? vm.Result : null;
+    }
+
+    public AppSettings? ShowSettings(AppSettings current)
+    {
+        if (current is null) throw new ArgumentNullException(nameof(current));
+        var vm = new SettingsDialogViewModel(current);
+        var dialog = new SettingsDialog(vm) { Owner = _ownerProvider() };
         var ok = dialog.ShowDialog();
         return ok == true ? vm.Result : null;
     }

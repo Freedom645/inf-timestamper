@@ -16,7 +16,7 @@
                 <MenuItem Header="過去の記録を開く..." Command="{Binding OpenRecordCommand}" />
                 <MenuItem Header="記録を保存する..." Command="{Binding SaveRecordCommand}" />
                 <Separator />
-                <MenuItem Header="設定..." IsEnabled="False" />
+                <MenuItem Header="設定..." Command="{Binding OpenSettingsCommand}" />
             </MenuItem>
             <MenuItem Header="About(_A)">
                 <MenuItem Header="バージョン情報" IsEnabled="False" />

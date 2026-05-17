@@ -1,8 +1,12 @@
+using InfTimestamper.Core.Settings;
+
 namespace InfTimestamper.Services;
 
 public interface IDialogService
 {
     IReadOnlyList<DateTimeOffset>? ShowDateTimeEditor(IReadOnlyList<DateTimeOffset> currentValues);
+
+    AppSettings? ShowSettings(AppSettings current);
 
     string? ShowOpenFileDialog(string filter, string? initialDirectory = null);
 
