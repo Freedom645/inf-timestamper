@@ -86,7 +86,32 @@ internal static class Program
         var label = stats.DominantLabel ?? "(none)";
         var ratio = stats.DominantRatio * 100.0;
         var bandStr = string.Join(",", stats.BandCounts.OrderByDescending(kv => kv.Value).Select(kv => $"{kv.Key}={kv.Value}"));
-        Console.WriteLine($"{name}\t[{roi.X},{roi.Y},{roi.Width},{roi.Height}]\t{label}\t{ratio:F1}%\t{bandStr}");
+        var hist = HsvHistogram(sub);
+        Console.WriteLine($"{name}\t[{roi.X},{roi.Y},{roi.Width},{roi.Height}]\t{label}\t{ratio:F1}%\t{bandStr}\t{hist}");
+    }
+
+    // S>=60, V>=60 を満たすピクセルの H ヒストグラム (18-step) と H/S/V 平均を返す。
+    // バンド範囲に入らない色を発見するための診断用。
+    private static string HsvHistogram(Mat bgr)
+    {
+        using var hsv = new Mat();
+        Cv2.CvtColor(bgr, hsv, ColorConversionCodes.BGR2HSV);
+        var bins = new int[10]; // 0-17, 18-35, ..., 162-179
+        long sumH = 0, sumS = 0, sumV = 0;
+        int n = 0;
+        for (int y = 0; y < hsv.Rows; y++)
+        for (int x = 0; x < hsv.Cols; x++)
+        {
+            var p = hsv.At<Vec3b>(y, x);
+            int h = p.Item0, s = p.Item1, v = p.Item2;
+            if (s < 60 || v < 60) continue;
+            n++;
+            sumH += h; sumS += s; sumV += v;
+            bins[Math.Min(9, h / 18)]++;
+        }
+        if (n == 0) return "saturated=0";
+        var binStr = string.Join(",", Enumerable.Range(0, 10).Select(i => $"H[{i * 18}-{i * 18 + 17}]={bins[i]}"));
+        return $"saturated={n} meanHSV=({sumH / n},{sumS / n},{sumV / n}) {binStr}";
     }
 
     private static Options? ParseArgs(string[] args)

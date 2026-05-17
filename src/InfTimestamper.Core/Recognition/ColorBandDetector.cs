@@ -32,8 +32,14 @@ public sealed class ColorBandDetector
     public static ColorBandDetector ForDifficulty()
         => new(DefaultDifficultyColorPalette.Bands);
 
+    /// <summary>
+    /// ランプ用 Detector。A-EASY (S≈124, V≈70) など彩度・明度が控えめな色も
+    /// 拾えるように Saturation/Value のしきい値を 60 に緩和する。
+    /// </summary>
     public static ColorBandDetector ForLamp()
-        => new(DefaultLampColorPalette.Bands);
+        => new(DefaultLampColorPalette.Bands,
+            saturationThreshold: 60,
+            valueThreshold: 60);
 
     /// <summary>
     /// 与えられた ROI の HSV 分布から、最も支配的な色バンドに対応するラベルを返す。
@@ -69,7 +75,7 @@ public sealed class ColorBandDetector
                 totalSaturated++;
                 foreach (var band in _bands)
                 {
-                    if (h >= band.HueMin && h <= band.HueMax)
+                    if (band.Matches(h, s, v))
                     {
                         counts.TryGetValue(band.Label, out var c);
                         counts[band.Label] = c + 1;
