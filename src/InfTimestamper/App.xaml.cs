@@ -1,5 +1,11 @@
 using System.IO;
 using System.Windows;
+using InfTimestamper.Core.States;
+using InfTimestamper.Services;
+using InfTimestamper.ViewModels;
+using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Hosting;
+using Microsoft.Extensions.Logging;
 using Serilog;
 using Serilog.Events;
 
@@ -7,18 +13,54 @@ namespace InfTimestamper;
 
 public partial class App : Application
 {
+    private IHost? _host;
+
     protected override void OnStartup(StartupEventArgs e)
     {
         ConfigureLogging(e.Args);
         Log.Information("INF-TIMESTAMPER starting up");
+
+        _host = BuildHost();
+        _host.Start();
+
+        var mainWindow = _host.Services.GetRequiredService<MainWindow>();
+        MainWindow = mainWindow;
+        mainWindow.Show();
+
         base.OnStartup(e);
     }
 
     protected override void OnExit(ExitEventArgs e)
     {
         Log.Information("INF-TIMESTAMPER shutting down (exit code {ExitCode})", e.ApplicationExitCode);
-        Log.CloseAndFlush();
+        try
+        {
+            _host?.StopAsync(TimeSpan.FromSeconds(5)).GetAwaiter().GetResult();
+        }
+        catch (Exception ex)
+        {
+            Log.Warning(ex, "Host 停止中に例外が発生しました。");
+        }
+        finally
+        {
+            _host?.Dispose();
+            Log.CloseAndFlush();
+        }
         base.OnExit(e);
+    }
+
+    private IHost BuildHost()
+    {
+        return Host.CreateDefaultBuilder()
+            .UseSerilog()
+            .ConfigureServices((_, services) =>
+            {
+                services.AddSingleton<AppStateMachine>();
+                services.AddSingleton<IClipboardService, WpfClipboardService>();
+                services.AddSingleton<MainWindowViewModel>();
+                services.AddSingleton<MainWindow>(sp => new MainWindow(sp.GetRequiredService<MainWindowViewModel>()));
+            })
+            .Build();
     }
 
     private static void ConfigureLogging(string[] args)
