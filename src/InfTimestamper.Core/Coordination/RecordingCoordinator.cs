@@ -104,11 +104,36 @@ public sealed class RecordingCoordinator : IAsyncDisposable
 
         _cts = new CancellationTokenSource();
         _streamConnection = _streamConnectionFactory();
+        _streamConnection.StreamStateChanged += OnObsStreamStateChanged;
         _streamManager = _managerFactory(_streamConnection);
         _streamManager.StateChanged += OnManagerStateChanged;
 
         _logger.LogInformation("OBS 接続を開始します: {Host}:{Port}", _options.StreamObs.Host, _options.StreamObs.Port);
         _managerTask = _streamManager.RunAsync(_options.StreamObs, _cts.Token);
+    }
+
+    private void OnObsStreamStateChanged(object? sender, ObsStreamStateChangedEventArgs e)
+    {
+        _dispatcher.Invoke(() =>
+        {
+            try
+            {
+                if (e.State == ObsStreamState.Started && _stateMachine.State == AppState.WaitingForStream)
+                {
+                    _logger.LogInformation("OBS の配信開始を検知。記録中に遷移します。");
+                    _stateMachine.DetectStreamStart();
+                }
+                else if (e.State == ObsStreamState.Stopped && _stateMachine.State == AppState.Recording)
+                {
+                    _logger.LogInformation("OBS の配信終了を検知。記録終了に遷移します。");
+                    _stateMachine.DetectStreamEnd();
+                }
+            }
+            catch (InvalidStateTransitionException ex)
+            {
+                _logger.LogDebug(ex, "OBS の配信状態変化と AppStateMachine の状態が一致しないため遷移をスキップ。");
+            }
+        });
     }
 
     private void EnsureCaptureStarted()
@@ -168,6 +193,7 @@ public sealed class RecordingCoordinator : IAsyncDisposable
 
         if (_streamConnection is not null)
         {
+            _streamConnection.StreamStateChanged -= OnObsStreamStateChanged;
             try { _streamConnection.DisposeAsync().AsTask().GetAwaiter().GetResult(); } catch { /* swallow */ }
             _streamConnection = null;
         }

@@ -113,6 +113,42 @@ public sealed class ObsWebSocketConnection : IObsConnection
             cancellationToken);
     }
 
+    public Task<ObsServerInfo> GetServerInfoAsync(CancellationToken cancellationToken)
+    {
+        return Task.Run(
+            () =>
+            {
+                cancellationToken.ThrowIfCancellationRequested();
+                var version = _client.GetVersion();
+                string scene = string.Empty;
+                try { scene = _client.GetCurrentProgramScene() ?? string.Empty; }
+                catch (Exception ex) { _logger.LogDebug(ex, "現在のシーン取得に失敗しました。"); }
+                return new ObsServerInfo(version?.OBSStudioVersion ?? string.Empty, scene);
+            },
+            cancellationToken);
+    }
+
+    public Task<IReadOnlyList<string>> GetInputNamesAsync(CancellationToken cancellationToken)
+    {
+        return Task.Run<IReadOnlyList<string>>(
+            () =>
+            {
+                cancellationToken.ThrowIfCancellationRequested();
+                var inputs = _client.GetInputList();
+                var names = new List<string>(inputs?.Count ?? 0);
+                if (inputs is not null)
+                {
+                    foreach (var input in inputs)
+                    {
+                        if (!string.IsNullOrEmpty(input.InputName))
+                            names.Add(input.InputName);
+                    }
+                }
+                return names;
+            },
+            cancellationToken);
+    }
+
     public async ValueTask DisposeAsync()
     {
         _client.Connected -= OnClientConnected;

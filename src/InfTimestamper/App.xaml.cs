@@ -76,7 +76,12 @@ public partial class App : Application
                     return store.Load(settingsPath);
                 });
                 services.AddSingleton<IClipboardService, WpfClipboardService>();
-                services.AddSingleton<IDialogService>(_ => new WpfDialogService(() => Current?.MainWindow));
+                services.AddSingleton<IObsConnectionTester>(sp => new ObsConnectionTester(
+                    () => new ObsWebSocketConnection(sp.GetRequiredService<ILogger<ObsWebSocketConnection>>()),
+                    sp.GetRequiredService<ILogger<ObsConnectionTester>>(),
+                    ObsConnectionTester.DefaultTimeout));
+                services.AddSingleton<IDialogService>(sp =>
+                    new WpfDialogService(() => Current?.MainWindow, sp.GetRequiredService<IObsConnectionTester>()));
 
                 // 認識層と OBS 接続層
                 services.AddSingleton<IUiDispatcher, WpfDispatcher>();

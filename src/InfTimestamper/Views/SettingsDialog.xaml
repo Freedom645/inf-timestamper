@@ -35,8 +35,7 @@
                                  Text="{Binding General.BackupDirectory, UpdateSourceTrigger=PropertyChanged}"
                                  Padding="4" />
                         <Button Grid.Column="1" Content="参照..." Width="80" Margin="6,0,0,0"
-                                IsEnabled="False"
-                                ToolTip="フォルダ選択ダイアログは後続フェーズで実装" />
+                                Command="{Binding General.BrowseBackupDirectoryCommand}" />
                     </Grid>
 
                     <CheckBox Content="リセット時に確認ダイアログを表示"
@@ -76,8 +75,7 @@
                         <PasswordBox Grid.Row="2" Grid.Column="1" x:Name="ObsPasswordBox" Padding="4" Margin="0,2" />
                     </Grid>
                     <Button Content="接続テスト" Width="120" HorizontalAlignment="Left"
-                            IsEnabled="False"
-                            ToolTip="接続テストは OBS 結線サブフェーズで実装" />
+                            Command="{Binding Obs.TestConnectionCommand}" />
                 </StackPanel>
             </TabItem>
 
@@ -112,12 +110,13 @@
                             <ColumnDefinition Width="*" />
                             <ColumnDefinition Width="Auto" />
                         </Grid.ColumnDefinitions>
-                        <TextBox Grid.Column="0"
-                                 Text="{Binding Infinitas.GameSourceName, UpdateSourceTrigger=PropertyChanged}"
-                                 Padding="4" />
+                        <ComboBox Grid.Column="0"
+                                  IsEditable="True"
+                                  ItemsSource="{Binding Infinitas.AvailableSources}"
+                                  Text="{Binding Infinitas.GameSourceName, UpdateSourceTrigger=PropertyChanged}"
+                                  Padding="4" />
                         <Button Grid.Column="1" Content="OBSから取得" Width="100" Margin="6,0,0,0"
-                                IsEnabled="False"
-                                ToolTip="OBS 結線サブフェーズで実装" />
+                                Command="{Binding Infinitas.FetchSourcesCommand}" />
                     </Grid>
 
                     <CheckBox Content="2 台 PC 構成（ゲーム画面取得用 OBS を別に指定）"
@@ -145,6 +144,9 @@
                             <PasswordBox Grid.Row="2" Grid.Column="1" x:Name="CaptureObsPasswordBox" Padding="4" Margin="0,2" />
                         </Grid>
                     </Border>
+                    <Button Content="接続テスト（ゲーム画面取得用）" Width="200" HorizontalAlignment="Left" Margin="0,8,0,0"
+                            Command="{Binding Infinitas.CaptureObs.TestConnectionCommand}"
+                            IsEnabled="{Binding Infinitas.TwoPcEnabled}" />
                 </StackPanel>
             </TabItem>
         </TabControl>

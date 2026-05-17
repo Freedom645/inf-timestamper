@@ -1,4 +1,5 @@
 using System.Windows;
+using InfTimestamper.Core.Obs;
 using InfTimestamper.Core.Settings;
 using InfTimestamper.ViewModels;
 using InfTimestamper.ViewModels.Settings;
@@ -10,10 +11,15 @@ namespace InfTimestamper.Services;
 public sealed class WpfDialogService : IDialogService
 {
     private readonly Func<Window?> _ownerProvider;
+    private readonly IObsConnectionTester? _tester;
 
     public WpfDialogService(Func<Window?> ownerProvider)
+        : this(ownerProvider, null) { }
+
+    public WpfDialogService(Func<Window?> ownerProvider, IObsConnectionTester? tester)
     {
         _ownerProvider = ownerProvider ?? throw new ArgumentNullException(nameof(ownerProvider));
+        _tester = tester;
     }
 
     public IReadOnlyList<DateTimeOffset>? ShowDateTimeEditor(IReadOnlyList<DateTimeOffset> currentValues)
@@ -30,7 +36,7 @@ public sealed class WpfDialogService : IDialogService
     public AppSettings? ShowSettings(AppSettings current)
     {
         if (current is null) throw new ArgumentNullException(nameof(current));
-        var vm = new SettingsDialogViewModel(current);
+        var vm = new SettingsDialogViewModel(current, _tester, this);
         var dialog = new SettingsDialog(vm) { Owner = _ownerProvider() };
         var ok = dialog.ShowDialog();
         return ok == true ? vm.Result : null;
@@ -56,6 +62,17 @@ public sealed class WpfDialogService : IDialogService
         if (!string.IsNullOrEmpty(initialDirectory))
             dialog.InitialDirectory = initialDirectory;
         return dialog.ShowDialog(_ownerProvider()) == true ? dialog.FileName : null;
+    }
+
+    public string? ShowFolderBrowserDialog(string title, string? initialDirectory = null)
+    {
+        var dialog = new OpenFolderDialog
+        {
+            Title = title,
+        };
+        if (!string.IsNullOrEmpty(initialDirectory) && System.IO.Directory.Exists(initialDirectory))
+            dialog.InitialDirectory = initialDirectory;
+        return dialog.ShowDialog(_ownerProvider()) == true ? dialog.FolderName : null;
     }
 
     public void ShowError(string title, string message)

@@ -9,6 +9,7 @@ internal sealed class FakeDialogService : IDialogService
     public AppSettings? SettingsResult { get; set; }
     public string? OpenFileResult { get; set; }
     public string? SaveFileResult { get; set; }
+    public string? FolderBrowserResult { get; set; }
     public bool ConfirmResult { get; set; } = true;
 
     public List<(string Title, string Message)> Errors { get; } = new();
@@ -32,6 +33,9 @@ internal sealed class FakeDialogService : IDialogService
 
     public string? ShowSaveFileDialog(string filter, string defaultFileName, string? initialDirectory = null)
         => SaveFileResult;
+
+    public string? ShowFolderBrowserDialog(string title, string? initialDirectory = null)
+        => FolderBrowserResult;
 
     public void ShowError(string title, string message) => Errors.Add((title, message));
 

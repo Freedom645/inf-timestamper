@@ -15,7 +15,13 @@ public interface IObsConnection : IAsyncDisposable
     Task<ObsScreenshot> GetScreenshotAsync(string sourceName, CancellationToken cancellationToken);
 
     Task<bool> IsStreamActiveAsync(CancellationToken cancellationToken);
+
+    Task<ObsServerInfo> GetServerInfoAsync(CancellationToken cancellationToken);
+
+    Task<IReadOnlyList<string>> GetInputNamesAsync(CancellationToken cancellationToken);
 }
+
+public sealed record ObsServerInfo(string ObsVersion, string CurrentSceneName);
 
 public sealed class ObsDisconnectedEventArgs : EventArgs
 {

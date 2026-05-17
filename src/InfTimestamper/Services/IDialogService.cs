@@ -12,6 +12,8 @@ public interface IDialogService
 
     string? ShowSaveFileDialog(string filter, string defaultFileName, string? initialDirectory = null);
 
+    string? ShowFolderBrowserDialog(string title, string? initialDirectory = null);
+
     void ShowError(string title, string message);
 
     void ShowInfo(string title, string message);

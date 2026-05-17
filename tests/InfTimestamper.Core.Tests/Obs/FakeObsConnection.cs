@@ -13,6 +13,8 @@ internal sealed class FakeObsConnection : IObsConnection
     public Func<ObsConnectionOptions, Task>? ConnectHandler { get; set; }
     public Func<string, Task<ObsScreenshot>>? ScreenshotHandler { get; set; }
     public Func<Task<bool>>? StreamActiveHandler { get; set; }
+    public Func<Task<ObsServerInfo>>? ServerInfoHandler { get; set; }
+    public Func<Task<IReadOnlyList<string>>>? InputNamesHandler { get; set; }
 
     public int ConnectAttempts { get; private set; }
     public int DisposeCount { get; private set; }
@@ -42,6 +44,16 @@ internal sealed class FakeObsConnection : IObsConnection
         => StreamActiveHandler is null
             ? Task.FromResult(false)
             : StreamActiveHandler();
+
+    public Task<ObsServerInfo> GetServerInfoAsync(CancellationToken cancellationToken)
+        => ServerInfoHandler is null
+            ? Task.FromResult(new ObsServerInfo("test-version", "scene"))
+            : ServerInfoHandler();
+
+    public Task<IReadOnlyList<string>> GetInputNamesAsync(CancellationToken cancellationToken)
+        => InputNamesHandler is null
+            ? Task.FromResult<IReadOnlyList<string>>(Array.Empty<string>())
+            : InputNamesHandler();
 
     public void SimulateDisconnect(string? reason = null)
     {
