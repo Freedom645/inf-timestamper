@@ -1,0 +1,67 @@
+# .NET / Visual Studio
+bin/
+obj/
+out/
+*.user
+*.suo
+*.userprefs
+*.userosscache
+*.sln.docstates
+.vs/
+.vscode/
+.idea/
+
+# Build & publish output
+[Dd]ebug/
+[Rr]elease/
+[Pp]ublish/
+*.pdb
+*.dll
+!docs/**/*.dll
+*.exe
+!docs/**/*.exe
+
+# Test / coverage
+[Tt]est[Rr]esult*/
+[Cc]overage*/
+*.coverage
+*.coveragexml
+*.trx
+.coverlet/
+
+# Rider
+*.DotSettings.user
+
+# NuGet
+*.nupkg
+*.snupkg
+**/packages/*
+!**/packages/build/
+**/[Pp]ackages/repositories.config
+project.lock.json
+project.fragment.lock.json
+artifacts/
+
+# ReSharper
+_ReSharper*/
+*.[Rr]e[Ss]harper
+
+# Application runtime artifacts (アプリ実行時に書き出されるもの)
+logs/
+*.log
+backups/
+frames/
+
+# OS
+Thumbs.db
+ehthumbs.db
+Desktop.ini
+.DS_Store
+
+# 一時ファイル
+*.bak
+*.tmp
+*~
+
+# Claude Code ローカル設定
+.claude/settings.local.json
