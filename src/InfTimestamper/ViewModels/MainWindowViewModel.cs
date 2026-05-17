@@ -1,6 +1,8 @@
 using System.Collections.ObjectModel;
 using System.Collections.Specialized;
+using System.Diagnostics;
 using System.IO;
+using System.Reflection;
 using System.Text;
 using InfTimestamper.Core.Coordination;
 using InfTimestamper.Core.Formatting;
@@ -22,6 +24,7 @@ public sealed class MainWindowViewModel : ObservableBase
 {
     public const string DefaultFormat = "$timestamp $title [$diff_s $level]";
     public const string JsonFileFilter = "JSON ファイル (*.json)|*.json|すべてのファイル (*.*)|*.*";
+    public const string GitHubUrl = "https://github.com/Freedom645/inf-timestamper";
 
     private readonly AppStateMachine _stateMachine;
     private readonly IClipboardService _clipboard;
@@ -87,6 +90,9 @@ public sealed class MainWindowViewModel : ObservableBase
         SaveRecordCommand = new RelayCommand(ExecuteSaveRecord,
             () => Timestamps.Count > 0 || StreamStartedAt is not null);
         OpenSettingsCommand = new RelayCommand(ExecuteOpenSettings);
+
+        ShowAboutCommand = new RelayCommand(ExecuteShowAbout);
+        OpenGitHubCommand = new RelayCommand(ExecuteOpenGitHub);
     }
 
     public ObservableCollection<TimestampViewModel> Timestamps { get; } = new();
@@ -172,6 +178,8 @@ public sealed class MainWindowViewModel : ObservableBase
     public RelayCommand OpenRecordCommand { get; }
     public RelayCommand SaveRecordCommand { get; }
     public RelayCommand OpenSettingsCommand { get; }
+    public RelayCommand ShowAboutCommand { get; }
+    public RelayCommand OpenGitHubCommand { get; }
 
     public AppSettings CurrentSettings => _settings;
 
@@ -280,6 +288,75 @@ public sealed class MainWindowViewModel : ObservableBase
         RaisePropertyChanged(nameof(StateLabel));
     }
 
+    private void ExecuteShowAbout()
+    {
+        var version = Assembly.GetExecutingAssembly().GetName().Version?.ToString() ?? "0.0.0";
+        _dialog.ShowInfo("バージョン情報",
+            $"INF-TIMESTAMPER\nバージョン: {version}\n\nGitHub: {GitHubUrl}");
+    }
+
+    private void ExecuteOpenGitHub()
+    {
+        try
+        {
+            Process.Start(new ProcessStartInfo(GitHubUrl) { UseShellExecute = true });
+        }
+        catch (Exception ex)
+        {
+            _logger.LogWarning(ex, "GitHub ページを開けませんでした。");
+            _dialog.ShowError("GitHub", "既定ブラウザの起動に失敗しました: " + ex.Message);
+        }
+    }
+
+    public bool RequestExitConfirmation()
+    {
+        if (_settings.General?.ConfirmOnExit != true) return true;
+
+        var isRecording = State == AppState.Recording;
+        var hasEntries = Timestamps.Count > 0;
+        if (!isRecording && !hasEntries) return true;
+
+        var message = isRecording
+            ? "記録中の状態でアプリを終了しようとしています。終了しますか？"
+            : "未保存の記録があります。終了しますか？";
+        return _dialog.Confirm("終了確認", message);
+    }
+
+    public void CheckUnfinishedRecords()
+    {
+        var dir = _settings.General?.BackupDirectory;
+        if (string.IsNullOrEmpty(dir) || !Directory.Exists(dir))
+            return;
+
+        UnfinishedRecord? unfinished = null;
+        try
+        {
+            unfinished = _recordStore.FindUnfinished(dir).FirstOrDefault();
+        }
+        catch (Exception ex)
+        {
+            _logger.LogWarning(ex, "未完了ファイルのスキャンに失敗しました。");
+            return;
+        }
+        if (unfinished is null) return;
+
+        var shouldLoad = _dialog.Confirm(
+            "前回の記録が完了していません",
+            $"前回終了時に未完了の記録が見つかりました。\n\n{unfinished.FilePath}\n\n読み込みますか？\n（「いいえ」を選んだ場合、次回起動時にも検出されます）");
+
+        if (!shouldLoad) return;
+
+        try
+        {
+            LoadRecord(unfinished.Record);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogWarning(ex, "未完了ファイルの読込に失敗しました。");
+            _dialog.ShowError("読込エラー", ex.Message);
+        }
+    }
+
     internal StreamRecord Record => _record;
 
     private void ExecuteStart()
@@ -317,6 +394,12 @@ public sealed class MainWindowViewModel : ObservableBase
 
     private void ExecuteReset()
     {
+        if (_settings.General?.ConfirmOnReset == true)
+        {
+            if (!_dialog.Confirm("リセット確認", "現在の記録をリセットします。よろしいですか？"))
+                return;
+        }
+
         TryStateOp(() =>
         {
             _stateMachine.Reset();

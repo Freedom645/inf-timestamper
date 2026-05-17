@@ -5,6 +5,7 @@
         xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
         xmlns:local="clr-namespace:InfTimestamper"
         xmlns:vm="clr-namespace:InfTimestamper.ViewModels"
+        xmlns:behaviors="clr-namespace:InfTimestamper.Behaviors"
         mc:Ignorable="d"
         d:DataContext="{d:DesignInstance Type=vm:MainWindowViewModel}"
         Title="INF-TIMESTAMPER"
@@ -19,9 +20,10 @@
                 <MenuItem Header="設定..." Command="{Binding OpenSettingsCommand}" />
             </MenuItem>
             <MenuItem Header="About(_A)">
-                <MenuItem Header="バージョン情報" IsEnabled="False" />
-                <MenuItem Header="最新バージョンチェック" IsEnabled="False" />
-                <MenuItem Header="GitHub" IsEnabled="False" />
+                <MenuItem Header="バージョン情報" Command="{Binding ShowAboutCommand}" />
+                <MenuItem Header="最新バージョンチェック" IsEnabled="False"
+                          ToolTip="セルフアップデート機能と一緒に Phase 6 で実装" />
+                <MenuItem Header="GitHub" Command="{Binding OpenGitHubCommand}" />
             </MenuItem>
         </Menu>
 
@@ -42,31 +44,34 @@
                 <Button Content="{Binding PrimaryButtonText}"
                         Command="{Binding PrimaryCommand}"
                         Width="120" Height="32" Margin="0,0,8,0"
-                        ToolTip="状態に応じて 開始 / 強制開始 / 記録停止 / 記録再開 に切り替わる" />
+                        behaviors:HintTextBehavior.Text="記録の開始 / 強制開始 / 停止 / 再開を切り替えます" />
                 <Button Content="リセット"
                         Command="{Binding ResetCommand}"
                         Width="80" Height="32" Margin="0,0,8,0"
-                        ToolTip="記録終了状態のみリセット可能" />
+                        behaviors:HintTextBehavior.Text="現在の記録をリセットします（記録終了状態のみ）" />
                 <Button Content="コピー"
                         Command="{Binding CopyCommand}"
                         Width="80" Height="32"
-                        ToolTip="タイムスタンプをクリップボードへコピー" />
+                        behaviors:HintTextBehavior.Text="現在のタイムスタンプをクリップボードへコピーします" />
             </StackPanel>
 
             <!-- 状態表示エリア -->
             <Border Grid.Row="1" BorderBrush="LightGray" BorderThickness="1" Padding="8" Margin="0,0,0,8">
                 <StackPanel Orientation="Horizontal">
                     <TextBlock Text="ゲーム:" FontWeight="Bold" />
-                    <TextBlock Text="{Binding GameName}" Margin="4,0,16,0" />
+                    <TextBlock Text="{Binding GameName}" Margin="4,0,16,0"
+                               behaviors:HintTextBehavior.Text="現在アプリに設定されているゲーム種別" />
                     <TextBlock Text="状態:" FontWeight="Bold" />
-                    <TextBlock Text="{Binding StateLabel}" Margin="4,0,0,0" />
+                    <TextBlock Text="{Binding StateLabel}" Margin="4,0,0,0"
+                               behaviors:HintTextBehavior.Text="アプリの状態。OBS 再接続中は試行回数が表示されます" />
                 </StackPanel>
             </Border>
 
             <!-- 記録表示エリア（ヘッダ） -->
             <StackPanel Grid.Row="2" Orientation="Horizontal" Margin="0,0,0,4">
                 <TextBlock Text="配信開始時間:" FontWeight="Bold" />
-                <TextBlock Text="{Binding StreamStartedAtText}" Margin="4,0,16,0">
+                <TextBlock Text="{Binding StreamStartedAtText}" Margin="4,0,16,0"
+                           behaviors:HintTextBehavior.Text="配信開始時間。右クリックで編集できます">
                     <TextBlock.ContextMenu>
                         <ContextMenu>
                             <MenuItem Header="日時を編集..."
@@ -86,7 +91,8 @@
                      SelectionMode="Extended"
                      HorizontalContentAlignment="Stretch"
                      ScrollViewer.HorizontalScrollBarVisibility="Auto"
-                     ScrollViewer.VerticalScrollBarVisibility="Auto">
+                     ScrollViewer.VerticalScrollBarVisibility="Auto"
+                     behaviors:HintTextBehavior.Text="プレイ開始タイムスタンプの一覧。チェックボックスで複数選択、右クリックで編集">
                 <ListBox.ContextMenu>
                     <ContextMenu>
                         <MenuItem Header="選択項目の日時を編集..."

@@ -4,7 +4,13 @@ namespace InfTimestamper.Core.Tests.Obs;
 
 internal sealed class TestLogger<T> : ILogger<T>
 {
-    public List<LogEntry> Entries { get; } = new();
+    private readonly object _gate = new();
+    private readonly List<LogEntry> _entries = new();
+
+    public IReadOnlyList<LogEntry> Entries
+    {
+        get { lock (_gate) return _entries.ToList(); }
+    }
 
     public IDisposable BeginScope<TState>(TState state) where TState : notnull => NullScope.Instance;
 
@@ -17,10 +23,22 @@ internal sealed class TestLogger<T> : ILogger<T>
         Exception? exception,
         Func<TState, Exception?, string> formatter)
     {
-        Entries.Add(new LogEntry(logLevel, formatter(state, exception), exception));
+        lock (_gate)
+        {
+            _entries.Add(new LogEntry(logLevel, formatter(state, exception), exception));
+        }
     }
 
-    public int CountAt(LogLevel level) => Entries.Count(e => e.Level == level);
+    public int CountAt(LogLevel level)
+    {
+        lock (_gate)
+        {
+            int count = 0;
+            foreach (var e in _entries)
+                if (e.Level == level) count++;
+            return count;
+        }
+    }
 
     private sealed class NullScope : IDisposable
     {

@@ -1,4 +1,5 @@
 using System.Collections.Specialized;
+using System.ComponentModel;
 using System.Windows;
 using InfTimestamper.ViewModels;
 
@@ -16,7 +17,11 @@ public partial class MainWindow : Window
             DataContext = viewModel;
 
         if (DataContext is MainWindowViewModel vm)
+        {
             HookCollectionAutoScroll(vm);
+            Loaded += (_, _) => vm.CheckUnfinishedRecords();
+            Closing += OnWindowClosing;
+        }
     }
 
     private void HookCollectionAutoScroll(MainWindowViewModel vm)
@@ -29,5 +34,11 @@ public partial class MainWindow : Window
         if (e.Action != NotifyCollectionChangedAction.Add) return;
         if (TimestampList.Items.Count == 0) return;
         TimestampList.ScrollIntoView(TimestampList.Items[TimestampList.Items.Count - 1]);
+    }
+
+    private void OnWindowClosing(object? sender, CancelEventArgs e)
+    {
+        if (DataContext is not MainWindowViewModel vm) return;
+        e.Cancel = !vm.RequestExitConfirmation();
     }
 }
