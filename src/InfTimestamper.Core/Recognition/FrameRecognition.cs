@@ -25,4 +25,10 @@ public static class RecognitionRoiKeys
     /// rois.json で `"difficulty_color": [x, y, w, h]` 形式で指定する。
     /// </summary>
     public const string DifficultyColor = "difficulty_color";
+
+    /// <summary>
+    /// クリアランプの色判定用 ROI キー。
+    /// rois.json で `"lamp_color": [x, y, w, h]` 形式で指定する。
+    /// </summary>
+    public const string LampColor = "lamp_color";
 }

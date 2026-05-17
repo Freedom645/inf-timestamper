@@ -16,7 +16,8 @@ public sealed class FrameRecognizer
     private readonly ImageNormalizer _normalizer;
     private readonly IImageHasher _hasher;
     private readonly IOcrService _ocr;
-    private readonly ColorDifficultyDetector _colorDetector;
+    private readonly ColorBandDetector _difficultyColorDetector;
+    private readonly ColorBandDetector _lampColorDetector;
     private readonly SongTitleMatcher? _songMatcher;
     private readonly HashResource _hashes;
     private readonly RoiResource _rois;
@@ -29,7 +30,8 @@ public sealed class FrameRecognizer
         RoiResource rois,
         SongTitleMatcher? songMatcher = null,
         ImageNormalizer? normalizer = null,
-        ColorDifficultyDetector? colorDetector = null,
+        ColorBandDetector? difficultyColorDetector = null,
+        ColorBandDetector? lampColorDetector = null,
         ILogger<FrameRecognizer>? logger = null)
     {
         _hasher = hasher ?? throw new ArgumentNullException(nameof(hasher));
@@ -38,7 +40,8 @@ public sealed class FrameRecognizer
         _rois = rois ?? throw new ArgumentNullException(nameof(rois));
         _songMatcher = songMatcher;
         _normalizer = normalizer ?? new ImageNormalizer();
-        _colorDetector = colorDetector ?? new ColorDifficultyDetector();
+        _difficultyColorDetector = difficultyColorDetector ?? ColorBandDetector.ForDifficulty();
+        _lampColorDetector = lampColorDetector ?? ColorBandDetector.ForLamp();
         _logger = logger ?? NullLogger<FrameRecognizer>.Instance;
     }
 
@@ -139,10 +142,25 @@ public sealed class FrameRecognizer
         if (!IsRoiInside(roi, frame)) return false;
 
         using var sub = SubMat(frame, roi);
-        var detected = _colorDetector.DetectDifficulty(sub);
+        var detected = _difficultyColorDetector.Detect(sub);
         if (string.IsNullOrEmpty(detected)) return false;
 
         colorLetter = detected;
+        return true;
+    }
+
+    private bool TryDetectLampByColor(Mat frame, out string lampLabel)
+    {
+        lampLabel = string.Empty;
+        if (!_rois.TryGet(RecognitionRoiKeys.LampColor, out var roi)) return false;
+        if (!roi.IsValid) return false;
+        if (!IsRoiInside(roi, frame)) return false;
+
+        using var sub = SubMat(frame, roi);
+        var detected = _lampColorDetector.Detect(sub);
+        if (string.IsNullOrEmpty(detected)) return false;
+
+        lampLabel = detected;
         return true;
     }
 
@@ -151,8 +169,19 @@ public sealed class FrameRecognizer
         var dj = MatchIcons(frame, _hashes.DjLevel);
         if (dj is not null) fields[RecognitionFieldKeys.DjLevel] = dj.Value;
 
-        var lamp = MatchIcons(frame, _hashes.Lamp);
-        if (lamp is not null) fields[RecognitionFieldKeys.Lamp] = lamp.Value;
+        // 1) ランプは色判定を優先（rois.json の "lamp_color" ROI）
+        //    HARD と FAILED は同色（赤）のため、Red バンドは HARD を返す。
+        //    FAILED の区別は別 ROI/手段で行う（未実装）
+        if (TryDetectLampByColor(frame, out var lampLabel))
+        {
+            fields[RecognitionFieldKeys.Lamp] = lampLabel;
+        }
+        else
+        {
+            // 2) フォールバック: aHash 照合
+            var lamp = MatchIcons(frame, _hashes.Lamp);
+            if (lamp is not null) fields[RecognitionFieldKeys.Lamp] = lamp.Value;
+        }
 
         ApplyOcrDigit(frame, RecognitionFieldKeys.MissCount, fields);
         ApplyOcrDigit(frame, RecognitionFieldKeys.ExScore, fields);

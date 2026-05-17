@@ -3,71 +3,78 @@ using OpenCvSharp;
 
 namespace InfTimestamper.Core.Tests.Recognition;
 
-public class ColorDifficultyDetectorTests
+public class ColorBandDetectorTests
 {
     private static Mat MakeSolid(int width, int height, byte b, byte g, byte r)
         => new(height, width, MatType.CV_8UC3, new Scalar(b, g, r));
 
     [Theory]
-    [InlineData(0, 0, 255, "A")]   // BGR (0,0,255) = pure red → ANOTHER
-    [InlineData(0, 255, 255, "H")] // pure yellow → HYPER
-    [InlineData(0, 255, 0, "B")]   // pure green → BEGINNER
-    [InlineData(255, 0, 0, "N")]   // pure blue → NORMAL
-    [InlineData(255, 0, 255, "L")] // pure magenta/purple → LEGGENDARIA
-    public void DetectDifficulty_PureColor_ReturnsExpectedLabel(byte b, byte g, byte r, string expected)
+    [InlineData(0, 0, 255, "A")]
+    [InlineData(0, 255, 255, "H")]
+    [InlineData(0, 255, 0, "B")]
+    [InlineData(255, 0, 0, "N")]
+    [InlineData(255, 0, 255, "L")]
+    public void Detect_DifficultyPalette_ReturnsExpectedLabel(byte b, byte g, byte r, string expected)
     {
         using var mat = MakeSolid(64, 32, b, g, r);
-        var detector = new ColorDifficultyDetector();
+        var detector = ColorBandDetector.ForDifficulty();
+        Assert.Equal(expected, detector.Detect(mat));
+    }
 
-        var result = detector.DetectDifficulty(mat);
-
-        Assert.Equal(expected, result);
+    [Theory]
+    [InlineData(0, 0, 255, "HARD")]      // 赤
+    [InlineData(0, 255, 255, "EX-HARD")] // 黄
+    [InlineData(0, 255, 0, "EASY")]      // 緑
+    [InlineData(255, 255, 0, "FC")]      // 水色 (Cyan: B=255, G=255, R=0)
+    [InlineData(255, 0, 0, "NORMAL")]    // 青
+    [InlineData(255, 0, 255, "A-EASY")]  // 紫 (Magenta)
+    public void Detect_LampPalette_ReturnsExpectedLabel(byte b, byte g, byte r, string expected)
+    {
+        using var mat = MakeSolid(64, 32, b, g, r);
+        var detector = ColorBandDetector.ForLamp();
+        Assert.Equal(expected, detector.Detect(mat));
     }
 
     [Fact]
-    public void DetectDifficulty_BlackImage_ReturnsNull()
+    public void Detect_BlackImage_ReturnsNull()
     {
         using var mat = MakeSolid(64, 32, 0, 0, 0);
-        var detector = new ColorDifficultyDetector();
-        Assert.Null(detector.DetectDifficulty(mat));
+        Assert.Null(ColorBandDetector.ForDifficulty().Detect(mat));
+        Assert.Null(ColorBandDetector.ForLamp().Detect(mat));
     }
 
     [Fact]
-    public void DetectDifficulty_WhiteImage_ReturnsNull()
+    public void Detect_WhiteImage_ReturnsNull()
     {
         // 白は S=0 で全ピクセルが彩度しきい値未満
         using var mat = MakeSolid(64, 32, 255, 255, 255);
-        var detector = new ColorDifficultyDetector();
-        Assert.Null(detector.DetectDifficulty(mat));
+        Assert.Null(ColorBandDetector.ForDifficulty().Detect(mat));
+        Assert.Null(ColorBandDetector.ForLamp().Detect(mat));
     }
 
     [Fact]
-    public void DetectDifficulty_EmptyMat_ReturnsNull()
+    public void Detect_EmptyMat_ReturnsNull()
     {
-        var detector = new ColorDifficultyDetector();
-        Assert.Null(detector.DetectDifficulty(new Mat()));
+        Assert.Null(ColorBandDetector.ForDifficulty().Detect(new Mat()));
     }
 
     [Fact]
     public void ComputeBandStats_PureBlue_ReportsHighRatio()
     {
         using var mat = MakeSolid(64, 32, 255, 0, 0);
-        var detector = new ColorDifficultyDetector();
+        var stats = ColorBandDetector.ForDifficulty().ComputeBandStats(mat);
 
-        var stats = detector.ComputeBandStats(mat);
-
-        Assert.Equal("N", stats.DominantDifficulty);
+        Assert.Equal("N", stats.DominantLabel);
         Assert.True(stats.DominantRatio > 0.95, $"期待: >0.95、実測: {stats.DominantRatio}");
     }
 
     [Fact]
-    public void DetectDifficulty_BelowMinDominantRatio_ReturnsNull()
+    public void Detect_BelowMinDominantRatio_ReturnsNull()
     {
-        // ほぼ黒に近く彩度の高いピクセルが少ない画像
         using var mat = MakeSolid(64, 32, 5, 5, 5);
-        var detector = new ColorDifficultyDetector(
+        var detector = new ColorBandDetector(
             DefaultDifficultyColorPalette.Bands,
             minDominantRatio: 0.5);
-        Assert.Null(detector.DetectDifficulty(mat));
+        Assert.Null(detector.Detect(mat));
     }
 }
