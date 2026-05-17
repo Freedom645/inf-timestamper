@@ -1,4 +1,5 @@
 using System.IO;
+using System.Net.Http;
 using System.Windows;
 using InfTimestamper.Core.Coordination;
 using InfTimestamper.Core.Obs;
@@ -7,6 +8,7 @@ using InfTimestamper.Core.Recognition;
 using InfTimestamper.Core.Settings;
 using InfTimestamper.Core.States;
 using InfTimestamper.Core.Threading;
+using InfTimestamper.Core.Updates;
 using InfTimestamper.Services;
 using InfTimestamper.ViewModels;
 using Microsoft.Extensions.DependencyInjection;
@@ -76,6 +78,17 @@ public partial class App : Application
                     return store.Load(settingsPath);
                 });
                 services.AddSingleton<IClipboardService, WpfClipboardService>();
+
+                // GitHub Releases バージョンチェック
+                services.AddSingleton<HttpClient>(_ =>
+                {
+                    var client = new HttpClient { Timeout = TimeSpan.FromSeconds(10) };
+                    return client;
+                });
+                services.AddSingleton<IGitHubReleaseChecker>(sp => new GitHubReleaseChecker(
+                    sp.GetRequiredService<HttpClient>(),
+                    GitHubReleaseChecker.DefaultRepository,
+                    sp.GetRequiredService<ILogger<GitHubReleaseChecker>>()));
                 services.AddSingleton<IObsConnectionTester>(sp => new ObsConnectionTester(
                     () => new ObsWebSocketConnection(sp.GetRequiredService<ILogger<ObsWebSocketConnection>>()),
                     sp.GetRequiredService<ILogger<ObsConnectionTester>>(),
@@ -131,6 +144,7 @@ public partial class App : Application
                     sp.GetRequiredService<AppSettings>(),
                     sp.GetRequiredService<SettingsStore>(),
                     settingsPath,
+                    sp.GetRequiredService<IGitHubReleaseChecker>(),
                     sp.GetService<ILogger<MainWindowViewModel>>()));
                 services.AddSingleton<MainWindow>(sp => new MainWindow(sp.GetRequiredService<MainWindowViewModel>()));
             })

@@ -13,6 +13,7 @@ using InfTimestamper.Core.Persistence.Json;
 using InfTimestamper.Core.Recognition;
 using InfTimestamper.Core.Settings;
 using InfTimestamper.Core.States;
+using InfTimestamper.Core.Updates;
 using InfTimestamper.Services;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Logging.Abstractions;
@@ -32,6 +33,7 @@ public sealed class MainWindowViewModel : ObservableBase
     private readonly JsonRecordStore _recordStore;
     private readonly SettingsStore? _settingsStore;
     private readonly string? _settingsPath;
+    private readonly IGitHubReleaseChecker? _releaseChecker;
     private readonly ILogger<MainWindowViewModel> _logger;
 
     private AppSettings _settings = AppSettings.CreateDefault();
@@ -48,7 +50,7 @@ public sealed class MainWindowViewModel : ObservableBase
         IDialogService dialog,
         JsonRecordStore recordStore,
         ILogger<MainWindowViewModel>? logger = null)
-        : this(stateMachine, clipboard, dialog, recordStore, AppSettings.CreateDefault(), null, null, logger) { }
+        : this(stateMachine, clipboard, dialog, recordStore, AppSettings.CreateDefault(), null, null, null, logger) { }
 
     public MainWindowViewModel(
         AppStateMachine stateMachine,
@@ -59,6 +61,18 @@ public sealed class MainWindowViewModel : ObservableBase
         SettingsStore? settingsStore,
         string? settingsPath,
         ILogger<MainWindowViewModel>? logger = null)
+        : this(stateMachine, clipboard, dialog, recordStore, settings, settingsStore, settingsPath, null, logger) { }
+
+    public MainWindowViewModel(
+        AppStateMachine stateMachine,
+        IClipboardService clipboard,
+        IDialogService dialog,
+        JsonRecordStore recordStore,
+        AppSettings settings,
+        SettingsStore? settingsStore,
+        string? settingsPath,
+        IGitHubReleaseChecker? releaseChecker,
+        ILogger<MainWindowViewModel>? logger = null)
     {
         _stateMachine = stateMachine ?? throw new ArgumentNullException(nameof(stateMachine));
         _clipboard = clipboard ?? throw new ArgumentNullException(nameof(clipboard));
@@ -67,6 +81,7 @@ public sealed class MainWindowViewModel : ObservableBase
         _settings = settings ?? AppSettings.CreateDefault();
         _settingsStore = settingsStore;
         _settingsPath = settingsPath;
+        _releaseChecker = releaseChecker;
         _format = string.IsNullOrEmpty(_settings.Infinitas?.TimestampFormat)
             ? DefaultFormat
             : _settings.Infinitas!.TimestampFormat;
@@ -93,6 +108,7 @@ public sealed class MainWindowViewModel : ObservableBase
 
         ShowAboutCommand = new RelayCommand(ExecuteShowAbout);
         OpenGitHubCommand = new RelayCommand(ExecuteOpenGitHub);
+        CheckLatestVersionCommand = new RelayCommand(ExecuteCheckLatestVersion, () => _releaseChecker is not null);
     }
 
     public ObservableCollection<TimestampViewModel> Timestamps { get; } = new();
@@ -180,6 +196,7 @@ public sealed class MainWindowViewModel : ObservableBase
     public RelayCommand OpenSettingsCommand { get; }
     public RelayCommand ShowAboutCommand { get; }
     public RelayCommand OpenGitHubCommand { get; }
+    public RelayCommand CheckLatestVersionCommand { get; }
 
     public AppSettings CurrentSettings => _settings;
 
@@ -305,6 +322,68 @@ public sealed class MainWindowViewModel : ObservableBase
         {
             _logger.LogWarning(ex, "GitHub ページを開けませんでした。");
             _dialog.ShowError("GitHub", "既定ブラウザの起動に失敗しました: " + ex.Message);
+        }
+    }
+
+    private async void ExecuteCheckLatestVersion()
+    {
+        await CheckLatestVersionAsync(silent: false).ConfigureAwait(true);
+    }
+
+    public async Task CheckLatestVersionAsync(bool silent, CancellationToken cancellationToken = default)
+    {
+        if (_releaseChecker is null)
+        {
+            if (!silent)
+                _dialog.ShowError("最新バージョン情報", "バージョンチェックサービスが利用できません。");
+            return;
+        }
+
+        GitHubRelease? release;
+        try
+        {
+            release = await _releaseChecker.GetLatestReleaseAsync(cancellationToken).ConfigureAwait(true);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogWarning(ex, "最新バージョン情報の取得に失敗しました。");
+            if (!silent)
+                _dialog.ShowError("最新バージョン情報", "最新バージョン情報の取得に失敗しました。");
+            return;
+        }
+
+        if (release is null)
+        {
+            if (!silent)
+                _dialog.ShowError("最新バージョン情報", "最新バージョン情報の取得に失敗しました。");
+            return;
+        }
+
+        var current = Assembly.GetExecutingAssembly().GetName().Version ?? new Version(0, 0, 0);
+        var hasNewer = VersionComparer.IsNewer(release.TagName, current);
+
+        if (hasNewer)
+        {
+            var confirmed = _dialog.Confirm(
+                "新しいバージョンが利用可能",
+                $"新しいバージョン {release.TagName} がリリースされています。\n（現在: v{current})\n\nリリースページを開きますか？");
+            if (confirmed)
+            {
+                try
+                {
+                    Process.Start(new ProcessStartInfo(release.HtmlUrl) { UseShellExecute = true });
+                }
+                catch (Exception ex)
+                {
+                    _logger.LogWarning(ex, "リリースページの起動に失敗しました。");
+                    if (!silent)
+                        _dialog.ShowError("リリースページ", "ブラウザの起動に失敗しました: " + ex.Message);
+                }
+            }
+        }
+        else if (!silent)
+        {
+            _dialog.ShowInfo("最新バージョン情報", "現在のバージョンが最新です。");
         }
     }
 

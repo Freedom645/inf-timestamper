@@ -21,8 +21,7 @@
             </MenuItem>
             <MenuItem Header="About(_A)">
                 <MenuItem Header="バージョン情報" Command="{Binding ShowAboutCommand}" />
-                <MenuItem Header="最新バージョンチェック" IsEnabled="False"
-                          ToolTip="セルフアップデート機能と一緒に Phase 6 で実装" />
+                <MenuItem Header="最新バージョンチェック" Command="{Binding CheckLatestVersionCommand}" />
                 <MenuItem Header="GitHub" Command="{Binding OpenGitHubCommand}" />
             </MenuItem>
         </Menu>

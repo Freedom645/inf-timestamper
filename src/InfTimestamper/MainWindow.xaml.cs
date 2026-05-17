@@ -19,7 +19,12 @@ public partial class MainWindow : Window
         if (DataContext is MainWindowViewModel vm)
         {
             HookCollectionAutoScroll(vm);
-            Loaded += (_, _) => vm.CheckUnfinishedRecords();
+            Loaded += async (_, _) =>
+            {
+                vm.CheckUnfinishedRecords();
+                if (vm.CurrentSettings.General?.AutoUpdateCheck == true)
+                    await vm.CheckLatestVersionAsync(silent: true);
+            };
             Closing += OnWindowClosing;
         }
     }
