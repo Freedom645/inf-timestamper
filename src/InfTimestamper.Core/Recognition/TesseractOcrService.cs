@@ -7,7 +7,9 @@ namespace InfTimestamper.Core.Recognition;
 
 public sealed class TesseractOcrService : IOcrService, IDisposable
 {
-    public const string DefaultLanguage = "eng";
+    // 楽曲タイトルに日本語が混在するため jpn と eng の両対応。
+    // 数字限定モードは Whitelist で 0-9 のみに制限するため、jpn が含まれていても影響しない
+    public const string DefaultLanguage = "jpn+eng";
     public const string DigitWhitelist = "0123456789";
 
     private readonly ILogger<TesseractOcrService> _logger;
@@ -89,6 +91,13 @@ public sealed class TesseractOcrService : IOcrService, IDisposable
     {
         if (string.IsNullOrWhiteSpace(tessdataPath)) return false;
         if (!Directory.Exists(tessdataPath)) return false;
-        return File.Exists(Path.Combine(tessdataPath, $"{language}.traineddata"));
+
+        // jpn+eng のような複合言語指定は + で分割し、すべての言語ファイルが存在するかを確認
+        foreach (var lang in language.Split('+', StringSplitOptions.RemoveEmptyEntries))
+        {
+            var path = Path.Combine(tessdataPath, $"{lang.Trim()}.traineddata");
+            if (!File.Exists(path)) return false;
+        }
+        return true;
     }
 }

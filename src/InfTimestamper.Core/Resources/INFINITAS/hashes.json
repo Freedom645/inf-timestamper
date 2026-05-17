@@ -1,0 +1,38 @@
+{
+  "_attribution": {
+    "song_select": "状態判定 song_select のエントリは dj-kata/inf_daken_counter_obsw v2.0.48 (Apache 2.0) の detect_core.py から移植。Python imagehash.hex_to_hash の hex 文字列は CoenM.ImageSharp.ImageHash の AverageHash と同じビット順序 (行優先 MSB-first) のため、ulong として直接利用可能"
+  },
+  "states": {
+    "song_select": [
+      {
+        "name": "1p_arrow_center",
+        "roi": [466, 1000, 27, 27],
+        "ahash": "0x007e7e5e5a7e7c00",
+        "threshold": 10
+      },
+      {
+        "name": "2p_arrow_center",
+        "roi": [1422, 1000, 27, 27],
+        "ahash": "0x007e7e5e5a7e7c00",
+        "threshold": 10
+      },
+      {
+        "name": "1p_arrow_edge",
+        "roi": [60, 980, 34, 47],
+        "ahash": "0x003c3c3c3c3c3c00",
+        "threshold": 10
+      },
+      {
+        "name": "2p_arrow_edge",
+        "roi": [1860, 980, 34, 47],
+        "ahash": "0x003c3c3c3c3c3c00",
+        "threshold": 10
+      }
+    ],
+    "play_start": [],
+    "result": []
+  },
+  "difficulty": [],
+  "dj_level": [],
+  "lamp": []
+}
