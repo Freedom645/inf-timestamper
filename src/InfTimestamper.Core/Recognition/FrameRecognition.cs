@@ -17,3 +17,12 @@ public static class RecognitionFieldKeys
     public const string DjLevel = "dj_level";
     public const string Lamp = "lamp";
 }
+
+public static class RecognitionRoiKeys
+{
+    /// <summary>
+    /// 難易度文字（NORMAL/HYPER/ANOTHER 等）の色判定用 ROI キー。
+    /// rois.json で `"difficulty_color": [x, y, w, h]` 形式で指定する。
+    /// </summary>
+    public const string DifficultyColor = "difficulty_color";
+}

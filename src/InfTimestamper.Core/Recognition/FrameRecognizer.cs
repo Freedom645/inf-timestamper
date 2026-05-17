@@ -7,9 +7,16 @@ namespace InfTimestamper.Core.Recognition;
 
 public sealed class FrameRecognizer
 {
+    /// <summary>
+    /// 色判定で SP/DP が分からない場合の既定プレイモードプレフィックス。
+    /// INFINITAS のほとんどのプレイは SP のため、SP を既定とする。
+    /// </summary>
+    public const string DefaultPlayModePrefix = "SP";
+
     private readonly ImageNormalizer _normalizer;
     private readonly IImageHasher _hasher;
     private readonly IOcrService _ocr;
+    private readonly ColorDifficultyDetector _colorDetector;
     private readonly SongTitleMatcher? _songMatcher;
     private readonly HashResource _hashes;
     private readonly RoiResource _rois;
@@ -22,6 +29,7 @@ public sealed class FrameRecognizer
         RoiResource rois,
         SongTitleMatcher? songMatcher = null,
         ImageNormalizer? normalizer = null,
+        ColorDifficultyDetector? colorDetector = null,
         ILogger<FrameRecognizer>? logger = null)
     {
         _hasher = hasher ?? throw new ArgumentNullException(nameof(hasher));
@@ -30,6 +38,7 @@ public sealed class FrameRecognizer
         _rois = rois ?? throw new ArgumentNullException(nameof(rois));
         _songMatcher = songMatcher;
         _normalizer = normalizer ?? new ImageNormalizer();
+        _colorDetector = colorDetector ?? new ColorDifficultyDetector();
         _logger = logger ?? NullLogger<FrameRecognizer>.Instance;
     }
 
@@ -95,17 +104,46 @@ public sealed class FrameRecognizer
 
     private void ExtractSelectionFields(Mat frame, Dictionary<string, string> fields)
     {
-        var diffMatch = MatchIcons(frame, _hashes.Difficulty);
-        if (diffMatch is not null)
+        // 1) 優先: 色判定（rois.json の "difficulty_color" ROI を使う）
+        //    HSV 支配色で B/N/H/A/L を 1 文字判定。SP/DP は別途判定（未実装）のため SP を仮定
+        if (TryDetectDifficultyByColor(frame, out var colorLetter))
         {
-            fields[RecognitionFieldKeys.DiffShort] = diffMatch.Value;
-            var longName = DifficultyShortToLong(diffMatch.Value);
+            var diffShort = DefaultPlayModePrefix + colorLetter;
+            fields[RecognitionFieldKeys.DiffShort] = diffShort;
+            var longName = DifficultyShortToLong(diffShort);
             if (!string.IsNullOrEmpty(longName))
                 fields[RecognitionFieldKeys.DiffLong] = longName;
+        }
+        else
+        {
+            // 2) フォールバック: 既存の aHash 照合（hashes.json の "difficulty" セクション）
+            var diffMatch = MatchIcons(frame, _hashes.Difficulty);
+            if (diffMatch is not null)
+            {
+                fields[RecognitionFieldKeys.DiffShort] = diffMatch.Value;
+                var longName = DifficultyShortToLong(diffMatch.Value);
+                if (!string.IsNullOrEmpty(longName))
+                    fields[RecognitionFieldKeys.DiffLong] = longName;
+            }
         }
 
         ApplyOcrDigit(frame, RecognitionFieldKeys.Level, fields);
         ApplyTitleOcr(frame, fields);
+    }
+
+    private bool TryDetectDifficultyByColor(Mat frame, out string colorLetter)
+    {
+        colorLetter = string.Empty;
+        if (!_rois.TryGet(RecognitionRoiKeys.DifficultyColor, out var roi)) return false;
+        if (!roi.IsValid) return false;
+        if (!IsRoiInside(roi, frame)) return false;
+
+        using var sub = SubMat(frame, roi);
+        var detected = _colorDetector.DetectDifficulty(sub);
+        if (string.IsNullOrEmpty(detected)) return false;
+
+        colorLetter = detected;
+        return true;
     }
 
     private void ExtractResultFields(Mat frame, Dictionary<string, string> fields)

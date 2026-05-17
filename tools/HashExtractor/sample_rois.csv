@@ -1,0 +1,8 @@
+# INFINITAS リザルト画面（1920x1080）の暫定 ROI
+# 表示比から逆算した推定値。実機で微調整が必要
+# name,x,y,w,h
+difficulty_label,715,1035,274,31
+clear_type_1p,0,0,0,0
+clear_type_2p,1713,415,150,24
+dj_level_1p,0,0,0,0
+dj_level_2p,1718,474,144,39
