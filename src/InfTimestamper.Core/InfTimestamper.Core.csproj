@@ -23,12 +23,15 @@
   <ItemGroup>
     <Content Include="Resources\INFINITAS\songs.json">
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+      <CopyToPublishDirectory>PreserveNewest</CopyToPublishDirectory>
     </Content>
     <Content Include="Resources\INFINITAS\hashes.json" Condition="Exists('Resources\INFINITAS\hashes.json')">
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+      <CopyToPublishDirectory>PreserveNewest</CopyToPublishDirectory>
     </Content>
     <Content Include="Resources\INFINITAS\rois.json" Condition="Exists('Resources\INFINITAS\rois.json')">
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+      <CopyToPublishDirectory>PreserveNewest</CopyToPublishDirectory>
     </Content>
   </ItemGroup>
 
