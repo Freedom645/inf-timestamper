@@ -21,6 +21,10 @@ out/
 *.exe
 !docs/**/*.exe
 
+# 認識用参照画像（INFINITAS のゲームキャプチャ等、著作権配慮で commit しない）
+src/InfTimestamper.Core/Resources/INFINITAS/reference_images/
+**/reference_images/
+
 # Test / coverage
 [Tt]est[Rr]esult*/
 [Cc]overage*/

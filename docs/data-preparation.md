@@ -83,13 +83,18 @@ reference_images/
 
 | 機能 | dj-kata の方式 | 流用可否 |
 | --- | --- | --- |
-| 状態判定（song_select 等） | `imagehash.average_hash` + 期待 hex | **可**（aHash 互換、流用済み） |
-| 状態判定（is_result 等） | `imagehash.average_hash(Image.open('layout/is_result.png'))` | 部分可（参照 PNG を取得して再計算） |
-| DJ レベル | マスク値 + pickle ルックアップ（kaktuswald/inf-notebook 由来） | 不可（aHash でない、ライセンスも未指定） |
-| クリアランプ | 同上 | 不可 |
-| 難易度 (SPB〜DPL) | dj-kata に該当ロジックなし | 自前で参照画像から aHash 計算 |
+| 状態判定（song_select） | `imagehash.average_hash` + ハードコード hex | **可**（aHash 互換、4 エントリ移植済み） |
+| 状態判定（is_result 等） | `imagehash.average_hash(Image.open('layout/*.png'))` | 部分可（参照 PNG を取得して自前計算） |
+| 難易度（SPB〜DPL） | dj-kata に該当ロジック無し | 自前で参照画像から aHash 計算 |
+| DJ レベル / クリアランプ / 数字 / 曲名 | `recog.py` でマスク値 + pickle (`.res`) ルックアップ | **実用不可** |
 
-つまり、状態判定の一部のみ流用でき、それ以外は参照画像を自分で取得して `HashExtractor` で aHash を計算する必要がある。
+「マスク値 + pickle」が実用不可な理由:
+- dj-kata の `recog.py` 認識ロジックは Apache 2.0 で C# 移植可
+- ただし依存するテーブル `.res` は **dj-kata 自前生成スクリプトが無く**、inf-notebook 側の `resources_generate*.py` で作られたものと推定される
+- inf-notebook は **ライセンス未指定（全権利留保）** → `.res` の直接流用不可
+- dj-kata 内の `.res` バージョンは古く（`details1.0` 〜 `2.2`、informations は `1.0` 〜 `2.2` / inf-notebook は `4.1`）、現 INFINITAS UI では動かない可能性が高い
+
+つまり、状態判定の一部のみ流用でき、それ以外は **参照画像を自分で取得して `HashExtractor` で aHash を計算する** のが現実解。
 
 ## 3. ROI 座標の取得
 
