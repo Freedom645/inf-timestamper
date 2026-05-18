@@ -55,6 +55,32 @@ public class SongTitleMatcherTests
         Assert.Equal(SongMatchKind.Unmatched, result.Kind);
     }
 
+    [Theory]
+    [InlineData("V")]   // 1 文字
+    [InlineData("XX")]  // 2 文字
+    public void Match_VeryShortInput_OnlyConfirmedExactMatch(string input)
+    {
+        // 装飾フォントの誤読では 1-2 文字の OCR がしばしば発生し、DB の短いタイトル
+        // ("V" 等) に偶然 1 文字差で当たって誤マッチする問題があった。
+        // length <= 2 は Confirmed (distance=0) のみ許容して誤マッチを防ぐ
+        var matcher = new SongTitleMatcher(new SongRepository(new[]
+        {
+            new SongRecord("vid", "V", "V", new Dictionary<string, int>()),
+        }));
+
+        var result = matcher.Match(input);
+
+        if (input == "V")
+        {
+            Assert.Equal(SongMatchKind.Confirmed, result.Kind);
+            Assert.Equal(0, result.Distance);
+        }
+        else
+        {
+            Assert.Equal(SongMatchKind.Unmatched, result.Kind);
+        }
+    }
+
     [Fact]
     public void Match_ThresholdScalesWithLength()
     {

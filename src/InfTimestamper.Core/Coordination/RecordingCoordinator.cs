@@ -16,6 +16,7 @@ public sealed class RecordingCoordinator : IAsyncDisposable
     private readonly Func<IObsConnection>? _captureConnectionFactory;
     private readonly Func<IObsConnection, ObsConnectionManager> _managerFactory;
     private readonly Func<IObsConnection, ObsScreenshotCapture> _captureFactory;
+    private readonly DebugFrameStore? _debugFrameStore;
     private readonly ILogger<RecordingCoordinator> _logger;
 
     private IObsConnection? _streamConnection;
@@ -24,6 +25,7 @@ public sealed class RecordingCoordinator : IAsyncDisposable
     private ObsScreenshotCapture? _screenshotCapture;
     private CancellationTokenSource? _cts;
     private Task? _managerTask;
+    private RecognizedState _lastRecState = RecognizedState.Unknown;
     private bool _disposed;
 
     private RecordingCoordinatorOptions _options = new();
@@ -36,6 +38,7 @@ public sealed class RecordingCoordinator : IAsyncDisposable
         Func<IObsConnection, ObsConnectionManager> managerFactory,
         Func<IObsConnection, ObsScreenshotCapture> captureFactory,
         Func<IObsConnection>? captureConnectionFactory = null,
+        DebugFrameStore? debugFrameStore = null,
         ILogger<RecordingCoordinator>? logger = null)
     {
         _stateMachine = stateMachine ?? throw new ArgumentNullException(nameof(stateMachine));
@@ -45,6 +48,7 @@ public sealed class RecordingCoordinator : IAsyncDisposable
         _managerFactory = managerFactory ?? throw new ArgumentNullException(nameof(managerFactory));
         _captureFactory = captureFactory ?? throw new ArgumentNullException(nameof(captureFactory));
         _captureConnectionFactory = captureConnectionFactory;
+        _debugFrameStore = debugFrameStore;
         _logger = logger ?? NullLogger<RecordingCoordinator>.Instance;
 
         _stateMachine.StateChanged += OnStateChanged;
@@ -207,13 +211,22 @@ public sealed class RecordingCoordinator : IAsyncDisposable
         _cts?.Dispose();
         _cts = null;
         _managerTask = null;
+        _lastRecState = RecognizedState.Unknown;
     }
 
     private void OnScreenshotCaptured(object? sender, ObsScreenshotCapturedEventArgs e)
     {
         try
         {
-            _pipeline.ProcessFrame(e.Screenshot);
+            var rec = _pipeline.ProcessFrame(e.Screenshot);
+
+            // 認識状態が遷移したフレームのみデバッグ保存する。1Hz × 全保存だと量が多すぎるため、
+            // 状態境界の代表フレーム (SongSelect / PlayStart / Result 入場時) に絞る。
+            if (_debugFrameStore is not null && _debugFrameStore.IsEnabled && rec.State != _lastRecState)
+            {
+                _debugFrameStore.Save(e.Screenshot.PngBytes, e.Screenshot.CapturedAt, rec.State.ToString());
+                _lastRecState = rec.State;
+            }
         }
         catch (Exception ex)
         {

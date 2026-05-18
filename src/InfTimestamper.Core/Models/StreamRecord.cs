@@ -19,10 +19,10 @@ public sealed class StreamRecord
     public StreamInfo Stream { get; set; } = new();
 
     [JsonPropertyOrder(4)]
-    public DateTimeOffset CreatedAt { get; set; }
+    public DateTimeOffset CreatedAt { get; set; } = DateTimeOffset.Now;
 
     [JsonPropertyOrder(5)]
-    public DateTimeOffset UpdatedAt { get; set; }
+    public DateTimeOffset UpdatedAt { get; set; } = DateTimeOffset.Now;
 
     [JsonPropertyOrder(6)]
     public List<TimestampEntry> Timestamps { get; set; } = new();

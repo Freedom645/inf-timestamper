@@ -122,6 +122,11 @@ public partial class App : Application
                 });
                 services.AddSingleton<FrameRecognizer>();
                 services.AddSingleton<RecognitionPipeline>();
+                services.AddSingleton<DebugFrameStore>(sp => new DebugFrameStore(
+                    logsDir: Path.Combine(AppContext.BaseDirectory, "logs"),
+                    enabled: true,
+                    maxFiles: 500,
+                    logger: sp.GetRequiredService<ILogger<DebugFrameStore>>()));
                 services.AddSingleton<RecordingCoordinator>(sp => new RecordingCoordinator(
                     sp.GetRequiredService<AppStateMachine>(),
                     sp.GetRequiredService<RecognitionPipeline>(),
@@ -137,6 +142,7 @@ public partial class App : Application
                         TimeSpan.FromSeconds(1)),
                     captureConnectionFactory: () => new ObsWebSocketConnection(
                         sp.GetRequiredService<ILogger<ObsWebSocketConnection>>()),
+                    debugFrameStore: sp.GetRequiredService<DebugFrameStore>(),
                     logger: sp.GetRequiredService<ILogger<RecordingCoordinator>>()));
 
                 services.AddSingleton<MainWindowViewModel>(sp => new MainWindowViewModel(

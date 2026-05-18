@@ -29,7 +29,13 @@ public sealed class SongTitleMatcher
         if (normalized.Length == 0)
             return new SongMatchResult(null, rawTitle, SongMatchKind.Unmatched, null);
 
-        var threshold = Math.Min(3, (int)Math.Ceiling(normalized.Length * 0.3));
+        // 要件: min(3, ceil(length * 0.3))。装飾フォントの誤読を吸収するには tight すぎる感もあるが、
+        // 緩めると別曲への誤マッチが増えるため保守的にしておく。OCR 精度向上は別途取り組む。
+        // ただし極端に短い OCR 結果 (1-2 文字) は DB 内の短いタイトル "V" などへ容易に誤マッチするため
+        // Confirmed (distance=0) のみ許容する。
+        var threshold = normalized.Length <= 2
+            ? 0
+            : Math.Min(3, (int)Math.Ceiling(normalized.Length * 0.3));
 
         SongRecord? best = null;
         int bestDistance = int.MaxValue;

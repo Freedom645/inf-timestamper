@@ -44,11 +44,13 @@ public sealed class TesseractOcrService : IOcrService, IDisposable
 
     public bool IsAvailable => _engine is not null;
 
-    public OcrResult? RecognizeDigits(Mat roi) => RecognizeInternal(roi, DigitWhitelist);
+    // INFINITAS のタイトル / レベル / スコアはどれも 1 行表示のため SingleLine (PSM 7) で読む。
+    // 既定の AutoOSD は複数行の文書を想定するので、改行が混入したり段落判定で壊れることがある。
+    public OcrResult? RecognizeDigits(Mat roi) => RecognizeInternal(roi, DigitWhitelist, PageSegMode.SingleLine);
 
-    public OcrResult? RecognizeText(Mat roi) => RecognizeInternal(roi, null);
+    public OcrResult? RecognizeText(Mat roi) => RecognizeInternal(roi, null, PageSegMode.SingleLine);
 
-    private OcrResult? RecognizeInternal(Mat roi, string? whitelist)
+    private OcrResult? RecognizeInternal(Mat roi, string? whitelist, PageSegMode segMode)
     {
         if (_engine is null) return null;
         if (roi is null || roi.Empty()) return null;
@@ -60,8 +62,12 @@ public sealed class TesseractOcrService : IOcrService, IDisposable
             try
             {
                 _engine.SetVariable("tessedit_char_whitelist", whitelist ?? string.Empty);
+                _engine.DefaultPageSegMode = segMode;
 
-                var bytes = roi.ImEncode(".png");
+                // 前処理: 2x 拡大 (小さい文字を読みやすく) → グレースケール変換。
+                // INFINITAS のタイトル / スコアは装飾付き文字なので、二値化はせず階調を保つ
+                using var processed = Preprocess(roi);
+                var bytes = processed.ImEncode(".png");
                 using var pix = Pix.LoadFromMemory(bytes);
                 using var page = _engine.Process(pix);
 
@@ -75,6 +81,26 @@ public sealed class TesseractOcrService : IOcrService, IDisposable
                 return null;
             }
         }
+    }
+
+    /// <summary>
+    /// OCR 前処理: 2x 拡大 + グレースケール変換。
+    /// INFINITAS の文字は装飾付き (グラデーション、影、縁取り) なので二値化は使わず、
+    /// 拡大とグレースケール化で Tesseract が読みやすい状態にする。
+    /// Otsu 二値化は実画像では誤読を増やしたため採用しない (装飾文字のエッジ階調が失われる)。
+    /// </summary>
+    private static Mat Preprocess(Mat roi)
+    {
+        using var upscaled = new Mat();
+        Cv2.Resize(roi, upscaled, new OpenCvSharp.Size(roi.Width * 2, roi.Height * 2),
+            interpolation: InterpolationFlags.Cubic);
+
+        var gray = new Mat();
+        if (upscaled.Channels() == 1)
+            upscaled.CopyTo(gray);
+        else
+            Cv2.CvtColor(upscaled, gray, ColorConversionCodes.BGR2GRAY);
+        return gray;
     }
 
     public void Dispose()

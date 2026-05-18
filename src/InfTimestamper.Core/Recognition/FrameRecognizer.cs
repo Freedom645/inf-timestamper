@@ -75,8 +75,15 @@ public sealed class FrameRecognizer
         switch (state)
         {
             case RecognizedState.SongSelect:
-            case RecognizedState.PlayStart:
+                // タイトル / 難易度 / レベル の OCR は SongSelect 画面でのみ実施する。
+                // PlayStart 画面はレイアウトが大きく異なる (1P/2P で左右ミラー、ノーツ降下開始) ため、
+                // 同じ ROI で OCR を走らせると別領域の誤読が SongSelect で蓄積した正しい値を上書きしてしまう。
+                // PlayStart edge は RecognitionPipeline が SongSelect で蓄積したフィールドを merge して
+                // PlayStarted イベントを発火するので、PlayStart 自体での抽出は不要。
                 ExtractSelectionFields(normalizedFrame, fields, effectiveSide);
+                break;
+            case RecognizedState.PlayStart:
+                // フィールド抽出は行わない (上記参照)。Pipeline 側で SongSelect の蓄積を merge する。
                 break;
             case RecognizedState.Result:
                 ExtractResultFields(normalizedFrame, fields, effectiveSide);
