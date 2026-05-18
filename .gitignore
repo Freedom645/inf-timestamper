@@ -56,6 +56,11 @@ logs/
 backups/
 frames/
 
+# 診断ツールのワーキング出力 (ROI 候補の試行錯誤で生成される一時ファイル)
+tools/RoiCropper/probe_*.csv
+tools/RoiCropper/out_*/
+tools/RoiCropper/out_*.png
+
 # OS
 Thumbs.db
 ehthumbs.db

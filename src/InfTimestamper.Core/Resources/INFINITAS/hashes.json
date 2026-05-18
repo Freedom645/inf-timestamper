@@ -33,6 +33,32 @@
     "result": []
   },
   "difficulty": [],
-  "dj_level": [],
-  "lamp": []
+  "dj_level": [
+    { "value": "A",   "side": "1p", "roi": [341, 474, 144, 39], "phash": "0xfd6e62816780d987", "threshold": 10 },
+    { "value": "AA",  "side": "1p", "roi": [341, 474, 144, 39], "phash": "0xf5ee6e226161f640", "threshold": 10 },
+    { "value": "AAA", "side": "1p", "roi": [341, 474, 144, 39], "phash": "0xfd627e62760009be", "threshold": 10 },
+    { "value": "B",   "side": "1p", "roi": [341, 474, 144, 39], "phash": "0xfdb296895a46a986", "threshold": 10 },
+    { "value": "C",   "side": "1p", "roi": [341, 474, 144, 39], "phash": "0xfd9ab1805e68a897", "threshold": 10 },
+    { "value": "D",   "side": "1p", "roi": [341, 474, 144, 39], "phash": "0xfdb393805ccba894", "threshold": 10 },
+    { "value": "E",   "side": "1p", "roi": [341, 474, 144, 39], "phash": "0xf9b6b289d6688986", "threshold": 10 },
+    { "value": "F",   "side": "1p", "roi": [341, 474, 144, 39], "phash": "0xf9a6b299c768c886", "threshold": 10 },
+    { "value": "A",   "side": "2p", "roi": [1718, 474, 144, 39], "phash": "0xfd8c7e60811fb6a0", "threshold": 10 },
+    { "value": "AA",  "side": "2p", "roi": [1718, 474, 144, 39], "phash": "0xfdae62287e00097f", "threshold": 10 },
+    { "value": "AAA", "side": "2p", "roi": [1718, 474, 144, 39], "phash": "0xfd1d519e069f9680", "threshold": 10 },
+    { "value": "B",   "side": "2p", "roi": [1718, 474, 144, 39], "phash": "0xfd887e5689895646", "threshold": 10 },
+    { "value": "C",   "side": "2p", "roi": [1718, 474, 144, 39], "phash": "0xfd885e61a096d761", "threshold": 10 },
+    { "value": "D",   "side": "2p", "roi": [1718, 474, 144, 39], "phash": "0xfca87b43a0b896c3", "threshold": 10 },
+    { "value": "E",   "side": "2p", "roi": [1718, 474, 144, 39], "phash": "0xf986766889965669", "threshold": 10 },
+    { "value": "F",   "side": "2p", "roi": [1718, 474, 144, 39], "phash": "0xf98467789887a678", "threshold": 10 }
+  ],
+  "lamp": [],
+  "play_mode": [
+    { "value": "SP", "roi": [920, 1035, 60, 40], "phash": "0xbf281aa60f1bb4c3", "threshold": 10 },
+    { "value": "SP", "roi": [920, 1035, 60, 40], "phash": "0xd77869a54b12a4d3", "threshold": 10 },
+    { "value": "SP", "roi": [920, 1035, 60, 40], "phash": "0xf7784aa44b1ba4c3", "threshold": 10 },
+    { "value": "SP", "roi": [920, 1035, 60, 40], "phash": "0xb72c1a860f1db4e3", "threshold": 10 },
+    { "value": "DP", "roi": [920, 1035, 60, 40], "phash": "0x8037ec4fb0f04f8d", "threshold": 10 },
+    { "value": "DP", "roi": [920, 1035, 60, 40], "phash": "0x80b7bc4bb0f04f8d", "threshold": 10 },
+    { "value": "DP", "roi": [920, 1035, 60, 40], "phash": "0xc03b6c2f70d2cf85", "threshold": 10 }
+  ]
 }

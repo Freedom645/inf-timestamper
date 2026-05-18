@@ -37,4 +37,26 @@ public class RoiResourceLoaderTests
         var resource = RoiResourceLoader.LoadFromString("""{ "title": [0,0,1,1] }""");
         Assert.False(resource.TryGet("missing", out _));
     }
+
+    [Fact]
+    public void Load_BundledInfinitasRois_HasSideAwareKeys()
+    {
+        var path = Path.Combine(AppContext.BaseDirectory, "Resources", "INFINITAS", "rois.json");
+        if (!File.Exists(path)) return; // 同梱されていない環境ではスキップ
+
+        var resource = RoiResourceLoader.Load(path);
+
+        Assert.False(resource.IsEmpty);
+        Assert.True(resource.TryGet(RecognitionRoiKeys.LampColor1P, out var lamp1p));
+        Assert.True(resource.TryGet(RecognitionRoiKeys.LampColor2P, out var lamp2p));
+        Assert.True(resource.TryGet(RecognitionRoiKeys.DifficultyColor, out _));
+        Assert.True(resource.TryGet(RecognitionRoiKeys.WithSide(RecognitionFieldKeys.MissCount, PlaySide.OneP), out _));
+        Assert.True(resource.TryGet(RecognitionRoiKeys.WithSide(RecognitionFieldKeys.MissCount, PlaySide.TwoP), out _));
+        Assert.True(resource.TryGet(RecognitionRoiKeys.WithSide(RecognitionFieldKeys.ExScore, PlaySide.OneP), out _));
+        Assert.True(resource.TryGet(RecognitionRoiKeys.WithSide(RecognitionFieldKeys.ExScore, PlaySide.TwoP), out _));
+
+        // 1P と 2P で異なる x 座標を持つことを確認
+        Assert.NotEqual(lamp1p.X, lamp2p.X);
+        Assert.True(lamp1p.X < lamp2p.X, "1P サイドは画面左、2P サイドは画面右");
+    }
 }

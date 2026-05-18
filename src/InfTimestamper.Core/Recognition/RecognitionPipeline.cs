@@ -19,6 +19,7 @@ public sealed class RecognitionPipeline
     private readonly ILogger<RecognitionPipeline> _logger;
     private readonly Dictionary<string, string> _selectionFields = new();
     private RecognizedState _currentState = RecognizedState.Unknown;
+    private PlaySide _lastKnownSide = PlaySide.Unknown;
 
     public RecognitionPipeline(FrameRecognizer recognizer, ILogger<RecognitionPipeline>? logger = null)
     {
@@ -28,6 +29,8 @@ public sealed class RecognitionPipeline
 
     public RecognizedState CurrentState => _currentState;
 
+    public PlaySide LastKnownSide => _lastKnownSide;
+
     public IReadOnlyDictionary<string, string> PendingSelection => _selectionFields;
 
     public event EventHandler<RecognitionStateChangedEventArgs>? StateChanged;
@@ -36,14 +39,14 @@ public sealed class RecognitionPipeline
 
     public FrameRecognition ProcessFrame(ObsScreenshot screenshot)
     {
-        var rec = _recognizer.Recognize(screenshot);
+        var rec = _recognizer.Recognize(screenshot, _lastKnownSide);
         HandleRecognition(rec);
         return rec;
     }
 
     public FrameRecognition ProcessFrame(Mat normalizedFrame, DateTimeOffset capturedAt)
     {
-        var rec = _recognizer.RecognizeFrame(normalizedFrame, capturedAt);
+        var rec = _recognizer.RecognizeFrame(normalizedFrame, capturedAt, _lastKnownSide);
         HandleRecognition(rec);
         return rec;
     }
@@ -52,6 +55,7 @@ public sealed class RecognitionPipeline
     {
         _selectionFields.Clear();
         _currentState = RecognizedState.Unknown;
+        _lastKnownSide = PlaySide.Unknown;
     }
 
     // テストや上位の事前認識済みフレームの注入用
@@ -59,6 +63,14 @@ public sealed class RecognitionPipeline
 
     private void HandleRecognition(FrameRecognition rec)
     {
+        // 現フレームで side が検出できた場合は更新（SongSelect の矢印アイコンで判明する）。
+        // 検出不能なフレーム（Result など）では従前の last known side を維持する。
+        if (rec.DetectedSide != PlaySide.Unknown && rec.DetectedSide != _lastKnownSide)
+        {
+            _logger.LogDebug("プレイサイド更新: {Old} → {New}", _lastKnownSide, rec.DetectedSide);
+            _lastKnownSide = rec.DetectedSide;
+        }
+
         var oldState = _currentState;
         var transitioned = rec.State != oldState;
 

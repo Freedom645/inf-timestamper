@@ -12,6 +12,9 @@ public class RecognitionPipelineTests
     private static FrameRecognition Frame(RecognizedState state, DateTimeOffset at, Dictionary<string, string>? fields = null)
         => new(at, state, null, fields ?? Empty);
 
+    private static FrameRecognition Frame(RecognizedState state, DateTimeOffset at, PlaySide side, Dictionary<string, string>? fields = null)
+        => new(at, state, null, fields ?? Empty, side);
+
     [Fact]
     public void Inject_FirstFrame_FiresStateChanged()
     {
@@ -149,5 +152,50 @@ public class RecognitionPipelineTests
 
         Assert.Empty(pipe.PendingSelection);
         Assert.Equal(RecognizedState.Unknown, pipe.CurrentState);
+        Assert.Equal(PlaySide.Unknown, pipe.LastKnownSide);
+    }
+
+    [Fact]
+    public void Inject_FrameWithDetectedSide_UpdatesLastKnownSide()
+    {
+        var pipe = NewPipeline();
+        var t = DateTimeOffset.Now;
+
+        Assert.Equal(PlaySide.Unknown, pipe.LastKnownSide);
+
+        pipe.InjectRecognition(Frame(RecognizedState.SongSelect, t, PlaySide.OneP));
+
+        Assert.Equal(PlaySide.OneP, pipe.LastKnownSide);
+    }
+
+    [Fact]
+    public void Inject_SubsequentFrameWithUnknownSide_KeepsLastKnownSide()
+    {
+        var pipe = NewPipeline();
+        var t = DateTimeOffset.Now;
+
+        // SongSelect で 1P 検出
+        pipe.InjectRecognition(Frame(RecognizedState.SongSelect, t, PlaySide.OneP));
+        // Result では side マーカーが無くても 1P が維持される
+        pipe.InjectRecognition(Frame(RecognizedState.Result, t.AddMinutes(2), PlaySide.Unknown));
+
+        Assert.Equal(PlaySide.OneP, pipe.LastKnownSide);
+    }
+
+    [Fact]
+    public void Inject_SideChangesBetweenSongs_UpdatesLastKnownSide()
+    {
+        var pipe = NewPipeline();
+        var t = DateTimeOffset.Now;
+
+        pipe.InjectRecognition(Frame(RecognizedState.SongSelect, t, PlaySide.OneP));
+        Assert.Equal(PlaySide.OneP, pipe.LastKnownSide);
+
+        // 次曲で 2P サイドへ
+        pipe.InjectRecognition(Frame(RecognizedState.PlayStart, t.AddSeconds(5)));
+        pipe.InjectRecognition(Frame(RecognizedState.Result, t.AddMinutes(2)));
+        pipe.InjectRecognition(Frame(RecognizedState.SongSelect, t.AddMinutes(3), PlaySide.TwoP));
+
+        Assert.Equal(PlaySide.TwoP, pipe.LastKnownSide);
     }
 }

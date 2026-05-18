@@ -31,6 +31,7 @@ public static class HashResourceLoader
             Difficulty = BuildIcons(dto.Difficulty),
             DjLevel = BuildIcons(dto.DjLevel),
             Lamp = BuildIcons(dto.Lamp),
+            PlayMode = BuildIcons(dto.PlayMode),
         };
     }
 
@@ -63,14 +64,31 @@ public static class HashResourceLoader
         var list = new List<IconHashEntry>(raw.Count);
         foreach (var e in raw)
         {
+            // phash が指定されていれば pHash を採用、なければ ahash を採用。
+            // 両方無指定だと値 0 になるので caller の責任 (ロード後の validate に任せる)。
+            var (hash, algo) = e.Phash.HasValue
+                ? (e.Phash.Value, HashAlgorithm.Perceptual)
+                : (e.Ahash, HashAlgorithm.Average);
+
+            var side = ParseSide(e.Side);
+
             list.Add(new IconHashEntry(
                 e.Value ?? throw new InvalidDataException("icon エントリに value が欠けています。"),
                 e.Roi,
-                e.Ahash,
-                e.Threshold ?? HashResource.DefaultThreshold));
+                hash,
+                e.Threshold ?? HashResource.DefaultThreshold,
+                algo,
+                side));
         }
         return list;
     }
+
+    private static PlaySide ParseSide(string? raw) => raw?.ToLowerInvariant() switch
+    {
+        "1p" => PlaySide.OneP,
+        "2p" => PlaySide.TwoP,
+        _ => PlaySide.Unknown,
+    };
 
     private static JsonSerializerOptions CreateOptions()
     {
@@ -95,6 +113,9 @@ public static class HashResourceLoader
         public List<IconEntryDto>? DjLevel { get; set; }
 
         public List<IconEntryDto>? Lamp { get; set; }
+
+        [JsonPropertyName("play_mode")]
+        public List<IconEntryDto>? PlayMode { get; set; }
     }
 
     private sealed class StateEntryDto
@@ -110,6 +131,8 @@ public static class HashResourceLoader
         public string? Value { get; set; }
         public Roi Roi { get; set; } = new(0, 0, 0, 0);
         public ulong Ahash { get; set; }
+        public ulong? Phash { get; set; }
         public int? Threshold { get; set; }
+        public string? Side { get; set; }
     }
 }

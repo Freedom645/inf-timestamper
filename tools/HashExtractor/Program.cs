@@ -30,11 +30,11 @@ internal static class Program
 
             if (options.RoiCsvPath is not null)
             {
-                RunBatch(frame, hasher, options.RoiCsvPath);
+                RunBatch(frame, hasher, options.RoiCsvPath, options.Algorithm);
             }
             else if (options.Roi is not null)
             {
-                var hash = ExtractHash(frame, options.Roi, hasher);
+                var hash = ExtractHash(frame, options.Roi, hasher, options.Algorithm);
                 Console.WriteLine(FormatLine("hash", options.Roi, hash));
             }
             else
@@ -57,6 +57,7 @@ internal static class Program
         string? imagePath = null;
         string? roiArg = null;
         string? csvPath = null;
+        string algo = "ahash";
 
         for (int i = 0; i < args.Length; i++)
         {
@@ -71,6 +72,9 @@ internal static class Program
                 case "--batch" when i + 1 < args.Length:
                     csvPath = args[++i];
                     break;
+                case "--algo" when i + 1 < args.Length:
+                    algo = args[++i];
+                    break;
             }
         }
 
@@ -78,7 +82,7 @@ internal static class Program
         if (roiArg is null && csvPath is null) return null;
 
         Roi? roi = roiArg is null ? null : ParseRoi(roiArg);
-        return new Options(imagePath, roi, csvPath);
+        return new Options(imagePath, roi, csvPath, algo);
     }
 
     private static Roi ParseRoi(string s)
@@ -93,7 +97,7 @@ internal static class Program
             int.Parse(parts[3], CultureInfo.InvariantCulture));
     }
 
-    private static void RunBatch(Mat frame, ImageHasher hasher, string csvPath)
+    private static void RunBatch(Mat frame, ImageHasher hasher, string csvPath, string algorithm)
     {
         if (!File.Exists(csvPath))
             throw new FileNotFoundException($"バッチ定義ファイルが見つかりません: {csvPath}");
@@ -120,7 +124,7 @@ internal static class Program
                     int.Parse(parts[2], CultureInfo.InvariantCulture),
                     int.Parse(parts[3], CultureInfo.InvariantCulture),
                     int.Parse(parts[4], CultureInfo.InvariantCulture));
-                var hash = ExtractHash(frame, roi, hasher);
+                var hash = ExtractHash(frame, roi, hasher, algorithm);
                 Console.WriteLine(FormatLine(name, roi, hash));
             }
             catch (Exception ex)
@@ -130,7 +134,7 @@ internal static class Program
         }
     }
 
-    private static ulong ExtractHash(Mat frame, Roi roi, ImageHasher hasher)
+    private static ulong ExtractHash(Mat frame, Roi roi, ImageHasher hasher, string algorithm)
     {
         if (!roi.IsValid)
             throw new ArgumentException($"無効な ROI: [{roi.X},{roi.Y},{roi.Width},{roi.Height}]");
@@ -139,7 +143,11 @@ internal static class Program
                 $"ROI が正規化後フレーム ({frame.Width}x{frame.Height}) の範囲外: [{roi.X},{roi.Y},{roi.Width},{roi.Height}]");
 
         using var sub = new Mat(frame, new Rect(roi.X, roi.Y, roi.Width, roi.Height));
-        return hasher.ComputeAverageHash(sub);
+        return algorithm.ToLowerInvariant() switch
+        {
+            "phash" or "perceptual" => hasher.ComputePerceptualHash(sub),
+            _ => hasher.ComputeAverageHash(sub),
+        };
     }
 
     private static string FormatLine(string name, Roi roi, ulong hash)
@@ -149,13 +157,14 @@ internal static class Program
     {
         Console.Error.WriteLine("""
 Usage:
-  HashExtractor --image <path> --roi <x,y,w,h>
-  HashExtractor --image <path> --batch <csv-path>
+  HashExtractor --image <path> --roi <x,y,w,h> [--algo ahash|phash]
+  HashExtractor --image <path> --batch <csv-path> [--algo ahash|phash]
 
 Options:
   --image <path>       1920x1080 に正規化される入力画像（PNG / JPEG など）
-  --roi   <x,y,w,h>    単一 ROI の aHash を計算
+  --roi   <x,y,w,h>    単一 ROI のハッシュを計算
   --batch <csv-path>   バッチ計算（CSV: name,x,y,w,h）
+  --algo  ahash|phash  aHash (既定) または pHash を選択
 
 CSV 行の例:
   song_select_1p, 1700, 30, 100, 60
@@ -168,5 +177,5 @@ CSV 行の例:
 """);
     }
 
-    private sealed record Options(string ImagePath, Roi? Roi, string? RoiCsvPath);
+    private sealed record Options(string ImagePath, Roi? Roi, string? RoiCsvPath, string Algorithm);
 }
