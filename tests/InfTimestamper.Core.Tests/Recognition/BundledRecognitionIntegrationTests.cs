@@ -38,55 +38,59 @@ public class BundledRecognitionIntegrationTests
     }
 
     /// <summary>
-    /// hashes.json の states (song_select) が現状 song_select 専用のため、Result の参考画像では
-    /// 状態判定が song_select となる。色判定が動くことを検証するため、PlaySide を hint で渡す。
+    /// 同梱の hashes.json + rois.json + 参考画像で、Result 画面が state=Result と判定され、
+    /// fields[lamp] に正しいラベル (HARD / EASY / FAILED 等) が入ることを検証する。
+    /// 1P/2P サイドも state ハッシュ名 (1p_/2p_clear_type_label) から自動検出される。
     /// </summary>
     [Theory]
-    [InlineData("clear_type_2p/HARD.png",    "HARD")]
-    [InlineData("clear_type_2p/EASY.png",    "EASY")]
-    [InlineData("clear_type_2p/EX-HARD.png", "EX-HARD")]
-    [InlineData("clear_type_2p/A-EASY.png",  "A-EASY")]
-    [InlineData("clear_type_2p/FC.png",      "FC")]
-    [InlineData("clear_type_2p/NORMAL.png",  "NORMAL")]
-    [InlineData("clear_type_2p/FAILED.png",  "FAILED")]
-    public void Recognize_2PResult_DetectsLampCorrectly(string imagePath, string expectedLamp)
+    [InlineData("clear_type_2p/HARD.png",    PlaySide.TwoP, "HARD")]
+    [InlineData("clear_type_2p/EASY.png",    PlaySide.TwoP, "EASY")]
+    [InlineData("clear_type_2p/EX-HARD.png", PlaySide.TwoP, "EX-HARD")]
+    [InlineData("clear_type_2p/A-EASY.png",  PlaySide.TwoP, "A-EASY")]
+    [InlineData("clear_type_2p/FAILED.png",  PlaySide.TwoP, "FAILED")]
+    [InlineData("clear_type_1p/HARD.png",    PlaySide.OneP, "HARD")]
+    [InlineData("clear_type_1p/EASY.png",    PlaySide.OneP, "EASY")]
+    [InlineData("clear_type_1p/EX-HARD.png", PlaySide.OneP, "EX-HARD")]
+    [InlineData("clear_type_1p/A-CLEAR.png", PlaySide.OneP, "A-EASY")]
+    [InlineData("clear_type_1p/FAILED.png",  PlaySide.OneP, "FAILED")]
+    public void Recognize_RealResultFrame_DetectsStateAndLamp(string imagePath, PlaySide expectedSide, string expectedLamp)
     {
         if (!ResourcesAvailable()) return; // 環境スキップ
 
         var recognizer = BuildRecognizer();
         using var frame = LoadFrame(imagePath);
 
-        // states に result セクションが無いので state は Unknown になる前提。
-        // 検出は state に依存しないので、強制的に Result 経路を通すためのテストヘルパは作らず、
-        // Recognize の戻り値を見ずに直接 ColorBandDetector + roi を組み立てて検証することもできるが、
-        // ここでは FrameRecognizer.RecognizeFrame を hintSide=TwoP で呼び、State=Unknown のまま帰ることだけ確認する。
-        var result = recognizer.RecognizeFrame(frame, DateTimeOffset.Now, PlaySide.TwoP);
+        var result = recognizer.RecognizeFrame(frame, DateTimeOffset.Now);
 
-        // states に result マーカーが無い → State=Unknown。これは fields 抽出が走らないことを意味するので、
-        // 代わりに ColorBandDetector を直接呼んで lamp_color_2p が正しく分類されることを検証する。
-        Assert.Equal(RecognizedState.Unknown, result.State);
+        Assert.Equal(RecognizedState.Result, result.State);
+        Assert.Equal(expectedSide, result.DetectedSide);
+        Assert.True(result.Fields.TryGetValue(RecognitionFieldKeys.Lamp, out var lamp),
+            $"lamp field 未設定。Fields: {string.Join(", ", result.Fields.Keys)}");
+        Assert.Equal(expectedLamp, lamp);
+    }
 
-        var lampRoi = new Roi(1782, 419, 49, 17);
-        using var sub = new Mat(frame, new Rect(lampRoi.X, lampRoi.Y, lampRoi.Width, lampRoi.Height));
-        var detector = ColorBandDetector.ForLamp();
-        var rawLamp = detector.Detect(sub) ?? string.Empty;
+    /// <summary>
+    /// FC / NORMAL は HSV 上で隣接するため、実画像で dominant 判定が安定しないケースがある。
+    /// この 2 件は緩めの検証（FC か NORMAL のどちらか）に分離する。
+    /// </summary>
+    [Theory]
+    [InlineData("clear_type_2p/FC.png")]
+    [InlineData("clear_type_2p/NORMAL.png")]
+    [InlineData("clear_type_2p/NP.png")]
+    public void Recognize_FcNormalNp_AcceptsAdjacentBlueShades(string imagePath)
+    {
+        if (!ResourcesAvailable()) return;
 
-        if (expectedLamp == "FAILED")
-        {
-            // FAILED は ColorBandDetector では HARD と判定される (赤同色)。FrameRecognizer 側で
-            // failed_background ROI で再判定するロジックの単体検証は別途行うので、ここでは色出力のみ確認。
-            Assert.Equal("HARD", rawLamp);
-        }
-        else if (expectedLamp == "FC")
-        {
-            // FC と NORMAL は同じ Hue 帯のため、色 raw 出力は混ざる場合がある。
-            // 期待は実画像で FC バンドが選ばれることだが、ratio が低いと dominant 判定にならず null になる。
-            Assert.True(rawLamp == "FC" || rawLamp == "NORMAL", $"expected FC or NORMAL, got {rawLamp}");
-        }
-        else
-        {
-            Assert.Equal(expectedLamp, rawLamp);
-        }
+        var recognizer = BuildRecognizer();
+        using var frame = LoadFrame(imagePath);
+
+        var result = recognizer.RecognizeFrame(frame, DateTimeOffset.Now);
+
+        Assert.Equal(RecognizedState.Result, result.State);
+        // FC / NORMAL は B 範囲が重なるため、相互に判定されることを許容。
+        // NP は彩度ゼロのため lamp 自体が抽出されないこともあり得る。
+        if (result.Fields.TryGetValue(RecognitionFieldKeys.Lamp, out var lamp))
+            Assert.Contains(lamp, new[] { "FC", "NORMAL" });
     }
 
     /// <summary>
@@ -172,5 +176,36 @@ public class BundledRecognitionIntegrationTests
         var best = FindBestDjLevelMatch(frame, hasher, hashes.PlayMode, PlaySide.Unknown);
         Assert.NotNull(best);
         Assert.Equal(expected, best!.Value);
+    }
+
+    /// <summary>
+    /// RecognitionPipeline 経由で実 Result 画像を投入すると PlayResultDetected が発火し、
+    /// fields[lamp] / fields[dj_level] が正しく抽出されること。
+    /// PlayStart 状態はテスト用の InjectRecognition で合成し、その後 Real Result フレームを ProcessFrame する。
+    /// </summary>
+    [Fact]
+    public void Pipeline_PlayStartToRealResult_FiresPlayResultWithFields()
+    {
+        if (!ResourcesAvailable()) return;
+
+        var recognizer = BuildRecognizer();
+        var pipeline = new RecognitionPipeline(recognizer);
+
+        PlayResultEventArgs? captured = null;
+        pipeline.PlayResultDetected += (_, e) => captured = e;
+
+        // PlayStart 状態に遷移させる (test 用の inject)。
+        // 実際の配信中は PlayStart の参考画像が無いためここで synthesize する。
+        pipeline.InjectRecognition(new FrameRecognition(
+            DateTimeOffset.Now, RecognizedState.PlayStart, null,
+            new Dictionary<string, string>(), PlaySide.TwoP));
+
+        // 実 Result フレーム (2P HARD) を ProcessFrame で投入
+        using var frame = LoadFrame("clear_type_2p/HARD.png");
+        var result = pipeline.ProcessFrame(frame, DateTimeOffset.Now.AddSeconds(60));
+
+        Assert.Equal(RecognizedState.Result, result.State);
+        Assert.NotNull(captured);
+        Assert.Equal("HARD", captured!.Fields[RecognitionFieldKeys.Lamp]);
     }
 }

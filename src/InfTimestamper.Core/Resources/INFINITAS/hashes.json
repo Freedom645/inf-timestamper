@@ -30,7 +30,20 @@
       }
     ],
     "play_start": [],
-    "result": []
+    "result": [
+      {
+        "name": "1p_clear_type_label",
+        "roi": [10, 419, 140, 30],
+        "ahash": "0x7f7f7f3f00000000",
+        "threshold": 6
+      },
+      {
+        "name": "2p_clear_type_label",
+        "roi": [1420, 419, 150, 30],
+        "ahash": "0xfcfcfcfcc0000000",
+        "threshold": 6
+      }
+    ]
   },
   "difficulty": [],
   "dj_level": [
