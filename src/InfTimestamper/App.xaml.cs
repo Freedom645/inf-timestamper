@@ -114,6 +114,11 @@ public partial class App : Application
                 services.AddSingleton<SongTitleMatcher>();
                 services.AddSingleton<IOcrService>(sp =>
                 {
+                    // 第一候補: Windows.Media.Ocr (装飾フォントへの強さで Tesseract より一般的に優位)。
+                    // 失敗 / 利用不可なら Tesseract に fallback。
+                    var winOcr = new WindowsMediaOcrService(sp.GetRequiredService<ILogger<WindowsMediaOcrService>>());
+                    if (winOcr.IsAvailable) return winOcr;
+
                     var tessdataPath = Path.Combine(AppContext.BaseDirectory, "tessdata");
                     return new TesseractOcrService(
                         tessdataPath,

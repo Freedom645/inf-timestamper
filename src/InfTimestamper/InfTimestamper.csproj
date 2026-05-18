@@ -16,7 +16,9 @@
 
   <PropertyGroup>
     <OutputType>WinExe</OutputType>
-    <TargetFramework>net8.0-windows</TargetFramework>
+    <!-- Windows.Media.Ocr / Windows.Graphics.Imaging を使うため Windows 10 19041 TFM を指定。
+         May 2020 Update 以降の Windows が前提。INFINITAS 実機ユーザはほぼ全員満たす想定 -->
+    <TargetFramework>net8.0-windows10.0.19041.0</TargetFramework>
     <Nullable>enable</Nullable>
     <ImplicitUsings>enable</ImplicitUsings>
     <UseWPF>true</UseWPF>

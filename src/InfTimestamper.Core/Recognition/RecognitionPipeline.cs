@@ -15,11 +15,19 @@ public sealed class RecognitionPipeline
         RecognitionFieldKeys.Level,
     };
 
+    /// <summary>
+    /// SongSelect 入場直後 (= 状態遷移直後) の N フレームを認識用に信用しない安定化バッファ。
+    /// 1 だと「入場フレームをスキップして 2 フレーム目以降を信用」する。INFINITAS のフェード遷移は
+    /// 約 1Hz の取得周期内で完了するため 1 で十分なケースが多い。
+    /// </summary>
+    public const int SongSelectStabilityFrames = 1;
+
     private readonly FrameRecognizer _recognizer;
     private readonly ILogger<RecognitionPipeline> _logger;
     private readonly Dictionary<string, string> _selectionFields = new();
     private RecognizedState _currentState = RecognizedState.Unknown;
     private PlaySide _lastKnownSide = PlaySide.Unknown;
+    private int _framesInCurrentState = 0;
 
     public RecognitionPipeline(FrameRecognizer recognizer, ILogger<RecognitionPipeline>? logger = null)
     {
@@ -56,6 +64,7 @@ public sealed class RecognitionPipeline
         _selectionFields.Clear();
         _currentState = RecognizedState.Unknown;
         _lastKnownSide = PlaySide.Unknown;
+        _framesInCurrentState = 0;
     }
 
     // テストや上位の事前認識済みフレームの注入用
@@ -77,6 +86,7 @@ public sealed class RecognitionPipeline
         if (transitioned)
         {
             _currentState = rec.State;
+            _framesInCurrentState = 1; // 入場フレーム = 1 フレーム目
 
             // SongSelect への遷移時は前曲の保持データをクリア
             if (rec.State == RecognizedState.SongSelect)
@@ -85,10 +95,19 @@ public sealed class RecognitionPipeline
             StateChanged?.Invoke(this, new RecognitionStateChangedEventArgs(oldState, rec.State));
             _logger.LogDebug("認識状態遷移: {Old} → {New}", oldState, rec.State);
         }
+        else
+        {
+            _framesInCurrentState++;
+        }
 
-        // SongSelect / PlayStart フレームで選曲情報を継続蓄積
-        if (rec.State == RecognizedState.SongSelect || rec.State == RecognizedState.PlayStart)
+        // SongSelect では入場直後の N フレーム (画面遷移中) を破棄し、安定後のフィールドだけ蓄積。
+        // 遷移直後は OCR ROI に前画面の残像やフェードイン途中の中途半端な文字が混入することが多い。
+        // PlayStart はそもそも FrameRecognizer が fields を抽出しないので影響なし。
+        if (rec.State == RecognizedState.SongSelect
+            && _framesInCurrentState > SongSelectStabilityFrames)
+        {
             UpdateSelectionFields(rec.Fields);
+        }
 
         if (!transitioned) return;
 

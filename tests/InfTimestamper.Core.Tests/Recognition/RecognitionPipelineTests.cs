@@ -54,7 +54,14 @@ public class RecognitionPipelineTests
 
         var t = DateTimeOffset.Now;
 
+        // 1 フレーム目: SongSelect 入場直後 (遷移中) のためフィールドは破棄される
         pipe.InjectRecognition(Frame(RecognizedState.SongSelect, t, new Dictionary<string, string>
+        {
+            [RecognitionFieldKeys.Title] = "transition garbage",
+        }));
+
+        // 2 フレーム目以降: 安定状態。フィールドが蓄積される
+        pipe.InjectRecognition(Frame(RecognizedState.SongSelect, t.AddSeconds(1), new Dictionary<string, string>
         {
             [RecognitionFieldKeys.Title] = "Test Song",
             [RecognitionFieldKeys.DiffShort] = "SPA",
@@ -62,7 +69,7 @@ public class RecognitionPipelineTests
         }));
 
         // 連続フレーム（追加情報を蓄積）
-        pipe.InjectRecognition(Frame(RecognizedState.SongSelect, t.AddSeconds(1), new Dictionary<string, string>
+        pipe.InjectRecognition(Frame(RecognizedState.SongSelect, t.AddSeconds(2), new Dictionary<string, string>
         {
             [RecognitionFieldKeys.DiffLong] = "ANOTHER",
         }));
@@ -77,6 +84,30 @@ public class RecognitionPipelineTests
         Assert.Equal("SPA", captured.Fields[RecognitionFieldKeys.DiffShort]);
         Assert.Equal("ANOTHER", captured.Fields[RecognitionFieldKeys.DiffLong]);
         Assert.Equal("11", captured.Fields[RecognitionFieldKeys.Level]);
+    }
+
+    [Fact]
+    public void Inject_FirstSongSelectFrame_FieldsAreDiscarded()
+    {
+        var pipe = NewPipeline();
+        PlayStartedEventArgs? captured = null;
+        pipe.PlayStarted += (_, e) => captured = e;
+
+        var t = DateTimeOffset.Now;
+
+        // SongSelect 入場直後の 1 フレーム目のフィールドは安定化バッファで破棄される
+        pipe.InjectRecognition(Frame(RecognizedState.SongSelect, t, new Dictionary<string, string>
+        {
+            [RecognitionFieldKeys.Title] = "TRANSITION FRAGMENT",
+        }));
+
+        // 続けて PlayStart に遷移 (2 フレーム目を経ずに移行)
+        pipe.InjectRecognition(Frame(RecognizedState.PlayStart, t.AddSeconds(1)));
+
+        Assert.NotNull(captured);
+        // 1 フレーム目は破棄されたので、PlayStart の merged fields に title は載らない
+        Assert.False(captured!.Fields.ContainsKey(RecognitionFieldKeys.Title),
+            $"想定: title 未設定。実際: {captured.Fields.GetValueOrDefault(RecognitionFieldKeys.Title, "")}");
     }
 
     [Fact]
