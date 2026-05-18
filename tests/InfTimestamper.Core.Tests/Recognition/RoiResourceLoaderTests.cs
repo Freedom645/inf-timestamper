@@ -49,11 +49,11 @@ public class RoiResourceLoaderTests
         Assert.False(resource.IsEmpty);
         Assert.True(resource.TryGet(RecognitionRoiKeys.LampColor1P, out var lamp1p));
         Assert.True(resource.TryGet(RecognitionRoiKeys.LampColor2P, out var lamp2p));
-        Assert.True(resource.TryGet(RecognitionRoiKeys.DifficultyColor, out _));
         Assert.True(resource.TryGet(RecognitionRoiKeys.WithSide(RecognitionFieldKeys.MissCount, PlaySide.OneP), out _));
         Assert.True(resource.TryGet(RecognitionRoiKeys.WithSide(RecognitionFieldKeys.MissCount, PlaySide.TwoP), out _));
         Assert.True(resource.TryGet(RecognitionRoiKeys.WithSide(RecognitionFieldKeys.ExScore, PlaySide.OneP), out _));
         Assert.True(resource.TryGet(RecognitionRoiKeys.WithSide(RecognitionFieldKeys.ExScore, PlaySide.TwoP), out _));
+        Assert.True(resource.TryGet(RecognitionFieldKeys.Title, out _));
 
         // 1P と 2P で異なる x 座標を持つことを確認
         Assert.NotEqual(lamp1p.X, lamp2p.X);

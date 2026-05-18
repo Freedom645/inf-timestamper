@@ -1,22 +1,26 @@
 {
-  // INFINITAS リザルト画面 (1920x1080) の ROI 定義。
-  // 1P/2P サフィックスでプレイサイドを区別する。
-  // FrameRecognizer は state ハッシュ名 (1p_/2p_) から検出した side に応じて
-  // *_1p / *_2p の ROI を選択する。座標は [x, y, w, h]。
+  // INFINITAS 認識用 ROI 定義 (フレーム正規化基準: 1920x1080)。
+  // 1P/2P サフィックスでプレイサイドを区別する。FrameRecognizer は state ハッシュ名
+  // (1p_/2p_) から検出した side に応じて *_1p / *_2p の ROI を選択する。座標は [x, y, w, h]。
 
+  // ----- SongSelect 画面 -----
+  // 楽曲名 (OCR)。1P/2P 共通で中央上部に表示される。長い英文タイトル / 日本語タイトル両対応。
+  "title":            [280,  310, 1000, 80],
+
+  // ----- Result 画面 (1P/2P 別) -----
+  // ランプ色判定: CLEAR TYPE 現在値の狭い ROI で HARD/EASY/EX-HARD/NORMAL/FC/A-EASY を分類
   "lamp_color_1p":    [430,  419,  50, 17],
   "lamp_color_2p":    [1782, 419,  49, 17],
 
+  // EX SCORE OCR
   "ex_score_1p":      [350,  555, 140, 30],
   "ex_score_2p":      [1720, 555, 140, 30],
 
+  // MISS COUNT OCR
   "miss_count_1p":    [350,  635, 140, 30],
   "miss_count_2p":    [1720, 635, 140, 30],
-
-  "difficulty_color": [715, 1040, 150, 20],
 
   // FAILED 判定: FAILED 時のみ画面全体が赤いオーバーレイになるので、
   // ウィジェットや背景キャラを含まない中央上部の広い領域で HARD バンド比率を見る
   "failed_background": [800, 100, 400, 200]
 }
-

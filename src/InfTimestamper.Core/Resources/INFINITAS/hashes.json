@@ -29,7 +29,20 @@
         "threshold": 10
       }
     ],
-    "play_start": [],
+    "play_start": [
+      {
+        "name": "1p_graph_information",
+        "roi": [640, 0, 200, 30],
+        "ahash": "0xffff80b9ffff0000",
+        "threshold": 6
+      },
+      {
+        "name": "2p_graph_information",
+        "roi": [1080, 0, 200, 30],
+        "ahash": "0xffff8171ffff0000",
+        "threshold": 6
+      }
+    ],
     "result": [
       {
         "name": "1p_clear_type_label",

@@ -72,12 +72,14 @@ public class BundledRecognitionIntegrationTests
     /// <summary>
     /// FC / NORMAL は HSV 上で隣接するため、実画像で dominant 判定が安定しないケースがある。
     /// この 2 件は緩めの検証（FC か NORMAL のどちらか）に分離する。
+    /// NP は彩度ゼロのため lamp 自体が抽出されない (lamp field 未設定) ことを確認。
     /// </summary>
     [Theory]
+    [InlineData("clear_type_1p/FC.png")]
+    [InlineData("clear_type_1p/NORMAL.png")]
     [InlineData("clear_type_2p/FC.png")]
     [InlineData("clear_type_2p/NORMAL.png")]
-    [InlineData("clear_type_2p/NP.png")]
-    public void Recognize_FcNormalNp_AcceptsAdjacentBlueShades(string imagePath)
+    public void Recognize_FcNormal_AcceptsAdjacentBlueShades(string imagePath)
     {
         if (!ResourcesAvailable()) return;
 
@@ -87,10 +89,31 @@ public class BundledRecognitionIntegrationTests
         var result = recognizer.RecognizeFrame(frame, DateTimeOffset.Now);
 
         Assert.Equal(RecognizedState.Result, result.State);
-        // FC / NORMAL は B 範囲が重なるため、相互に判定されることを許容。
-        // NP は彩度ゼロのため lamp 自体が抽出されないこともあり得る。
-        if (result.Fields.TryGetValue(RecognitionFieldKeys.Lamp, out var lamp))
-            Assert.Contains(lamp, new[] { "FC", "NORMAL" });
+        // FC / NORMAL は H 範囲が重なるため、相互に判定されることを許容。
+        Assert.True(result.Fields.TryGetValue(RecognitionFieldKeys.Lamp, out var lamp),
+            $"lamp 未設定。Fields: {string.Join(", ", result.Fields.Keys)}");
+        Assert.Contains(lamp, new[] { "FC", "NORMAL" });
+    }
+
+    /// <summary>
+    /// NO PLAY (NP) は lamp テキストが彩度ゼロのため lamp field が抽出されない。
+    /// State 判定は Result に到達するが、fields[lamp] は未設定となる。
+    /// </summary>
+    [Theory]
+    [InlineData("clear_type_1p/NP.png")]
+    [InlineData("clear_type_2p/NP.png")]
+    public void Recognize_NoPlay_LeavesLampUnset(string imagePath)
+    {
+        if (!ResourcesAvailable()) return;
+
+        var recognizer = BuildRecognizer();
+        using var frame = LoadFrame(imagePath);
+
+        var result = recognizer.RecognizeFrame(frame, DateTimeOffset.Now);
+
+        Assert.Equal(RecognizedState.Result, result.State);
+        Assert.False(result.Fields.ContainsKey(RecognitionFieldKeys.Lamp),
+            $"NP は lamp が抽出されないはず。実際: {result.Fields.GetValueOrDefault(RecognitionFieldKeys.Lamp, "")}");
     }
 
     /// <summary>
@@ -176,6 +199,90 @@ public class BundledRecognitionIntegrationTests
         var best = FindBestDjLevelMatch(frame, hasher, hashes.PlayMode, PlaySide.Unknown);
         Assert.NotNull(best);
         Assert.Equal(expected, best!.Value);
+    }
+
+    /// <summary>
+    /// 実 SongSelect フレームで state=SongSelect が検出されること (dj-kata 由来の song_select arrow hash を利用)。
+    /// 1P/2P の自動判定 (DetectedSide) も確認する。
+    /// </summary>
+    [Theory]
+    [InlineData("song_select_1p/Screenshot 2026-05-18 14-40-33.png", PlaySide.OneP)]
+    [InlineData("song_select_1p/Screenshot 2026-05-18 14-41-31.png", PlaySide.OneP)]
+    [InlineData("song_select_2p/Screenshot 2026-05-18 14-50-44.png", PlaySide.TwoP)]
+    [InlineData("song_select_2p/Screenshot 2026-05-18 14-50-53.png", PlaySide.TwoP)]
+    public void Recognize_RealSongSelectFrame_DetectsStateAndSide(string imagePath, PlaySide expectedSide)
+    {
+        if (!ResourcesAvailable()) return;
+
+        var recognizer = BuildRecognizer();
+        using var frame = LoadFrame(imagePath);
+
+        var result = recognizer.RecognizeFrame(frame, DateTimeOffset.Now);
+
+        Assert.Equal(RecognizedState.SongSelect, result.State);
+        Assert.Equal(expectedSide, result.DetectedSide);
+    }
+
+    /// <summary>
+    /// 実 PlayStart フレームで state=PlayStart が検出されること。
+    /// GRAPH INFORMATION ヘッダ位置 (1P/2P で x が異なる) を marker としている。
+    /// </summary>
+    [Theory]
+    [InlineData("play_start_1p/Screenshot 2026-05-18 14-45-06.png", PlaySide.OneP)]
+    [InlineData("play_start_1p/Screenshot 2026-05-18 14-48-19.png", PlaySide.OneP)]
+    [InlineData("play_start_2p/Screenshot 2026-05-18 14-51-18.png", PlaySide.TwoP)]
+    [InlineData("play_start_2p/Screenshot 2026-05-18 14-54-20.png", PlaySide.TwoP)]
+    [InlineData("play_start_2p/Screenshot 2026-05-18 14-59-12.png", PlaySide.TwoP)]
+    public void Recognize_RealPlayStartFrame_DetectsStateAndSide(string imagePath, PlaySide expectedSide)
+    {
+        if (!ResourcesAvailable()) return;
+
+        var recognizer = BuildRecognizer();
+        using var frame = LoadFrame(imagePath);
+
+        var result = recognizer.RecognizeFrame(frame, DateTimeOffset.Now);
+
+        Assert.Equal(RecognizedState.PlayStart, result.State);
+        Assert.Equal(expectedSide, result.DetectedSide);
+    }
+
+    /// <summary>
+    /// SongSelect → PlayStart → Result の end-to-end 遷移を実画像で検証する。
+    /// 各遷移で StateChanged が発火し、PlayStart 遷移で PlayStarted、Result 遷移で PlayResultDetected が発火することを確認。
+    /// </summary>
+    [Fact]
+    public void Pipeline_RealFrameSequence_FiresAllTransitions()
+    {
+        if (!ResourcesAvailable()) return;
+
+        var recognizer = BuildRecognizer();
+        var pipeline = new RecognitionPipeline(recognizer);
+
+        var transitions = new List<RecognitionStateChangedEventArgs>();
+        PlayStartedEventArgs? playStartedEvt = null;
+        PlayResultEventArgs? playResultEvt = null;
+
+        pipeline.StateChanged += (_, e) => transitions.Add(e);
+        pipeline.PlayStarted += (_, e) => playStartedEvt = e;
+        pipeline.PlayResultDetected += (_, e) => playResultEvt = e;
+
+        var t = DateTimeOffset.Now;
+        using (var ss = LoadFrame("song_select_2p/Screenshot 2026-05-18 14-50-44.png"))
+            pipeline.ProcessFrame(ss, t);
+        using (var ps = LoadFrame("play_start_2p/Screenshot 2026-05-18 14-51-18.png"))
+            pipeline.ProcessFrame(ps, t.AddSeconds(5));
+        using (var rs = LoadFrame("clear_type_2p/HARD.png"))
+            pipeline.ProcessFrame(rs, t.AddMinutes(2));
+
+        Assert.Equal(3, transitions.Count);
+        Assert.Equal(RecognizedState.SongSelect, transitions[0].NewState);
+        Assert.Equal(RecognizedState.PlayStart, transitions[1].NewState);
+        Assert.Equal(RecognizedState.Result, transitions[2].NewState);
+
+        Assert.NotNull(playStartedEvt);
+        Assert.NotNull(playResultEvt);
+        Assert.Equal("HARD", playResultEvt!.Fields[RecognitionFieldKeys.Lamp]);
+        Assert.Equal(PlaySide.TwoP, pipeline.LastKnownSide);
     }
 
     /// <summary>
