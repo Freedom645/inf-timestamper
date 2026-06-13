@@ -13,7 +13,6 @@ public class AppSettingsTests
         Assert.NotNull(settings.General);
         Assert.NotNull(settings.Obs);
         Assert.NotNull(settings.Infinitas);
-        Assert.NotNull(settings.Infinitas.CaptureObs);
 
         Assert.Equal(AppSettings.DefaultObsHost, settings.Obs.Host);
         Assert.Equal(AppSettings.DefaultObsPort, settings.Obs.Port);

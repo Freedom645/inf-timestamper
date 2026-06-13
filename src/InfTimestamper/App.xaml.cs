@@ -5,6 +5,7 @@ using InfTimestamper.Core.Coordination;
 using InfTimestamper.Core.Obs;
 using InfTimestamper.Core.Persistence;
 using InfTimestamper.Core.Recognition;
+using InfTimestamper.Core.Reflux;
 using InfTimestamper.Core.Settings;
 using InfTimestamper.Core.States;
 using InfTimestamper.Core.Threading;
@@ -132,22 +133,19 @@ public partial class App : Application
                     enabled: true,
                     maxFiles: 500,
                     logger: sp.GetRequiredService<ILogger<DebugFrameStore>>()));
+
+                // ゲームのプレイ検知は Reflux のファイル監視で行う（OBS は配信開始/終了検知に限定）
+                services.AddSingleton<RefluxPlayWatcher>(sp => new RefluxPlayWatcher(
+                    sp.GetRequiredService<ILogger<RefluxPlayWatcher>>()));
                 services.AddSingleton<RecordingCoordinator>(sp => new RecordingCoordinator(
                     sp.GetRequiredService<AppStateMachine>(),
-                    sp.GetRequiredService<RecognitionPipeline>(),
+                    sp.GetRequiredService<RefluxPlayWatcher>(),
                     sp.GetRequiredService<IUiDispatcher>(),
                     streamConnectionFactory: () => new ObsWebSocketConnection(
                         sp.GetRequiredService<ILogger<ObsWebSocketConnection>>()),
                     managerFactory: conn => new ObsConnectionManager(
                         conn,
                         sp.GetRequiredService<ILogger<ObsConnectionManager>>()),
-                    captureFactory: conn => new ObsScreenshotCapture(
-                        conn,
-                        sp.GetRequiredService<ILogger<ObsScreenshotCapture>>(),
-                        TimeSpan.FromSeconds(1)),
-                    captureConnectionFactory: () => new ObsWebSocketConnection(
-                        sp.GetRequiredService<ILogger<ObsWebSocketConnection>>()),
-                    debugFrameStore: sp.GetRequiredService<DebugFrameStore>(),
                     logger: sp.GetRequiredService<ILogger<RecordingCoordinator>>()));
 
                 services.AddSingleton<MainWindowViewModel>(sp => new MainWindowViewModel(

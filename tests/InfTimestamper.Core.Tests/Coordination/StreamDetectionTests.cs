@@ -1,9 +1,8 @@
 using InfTimestamper.Core.Coordination;
 using InfTimestamper.Core.Obs;
-using InfTimestamper.Core.Recognition;
+using InfTimestamper.Core.Reflux;
 using InfTimestamper.Core.States;
 using InfTimestamper.Core.Tests.Obs;
-using InfTimestamper.Core.Tests.Recognition;
 using InfTimestamper.Core.Threading;
 using Microsoft.Extensions.Logging.Abstractions;
 
@@ -14,20 +13,17 @@ public class StreamDetectionTests
     private static (RecordingCoordinator coord, AppStateMachine state, FakeObsConnection conn) Build()
     {
         var state = new AppStateMachine();
-        var recognizer = new FrameRecognizer(new ImageHasher(), new NoOpOcrService(), HashResource.Empty(), RoiResource.Empty());
-        var pipeline = new RecognitionPipeline(recognizer);
+        var watcher = new RefluxPlayWatcher(NullLogger<RefluxPlayWatcher>.Instance, TimeSpan.Zero);
         var conn = new FakeObsConnection();
         var coord = new RecordingCoordinator(
             state,
-            pipeline,
+            watcher,
             ImmediateUiDispatcher.Instance,
             streamConnectionFactory: () => conn,
-            managerFactory: c => new ObsConnectionManager(c, NullLogger<ObsConnectionManager>.Instance, new TestDelayProvider(), TimeSpan.FromMilliseconds(50)),
-            captureFactory: c => new ObsScreenshotCapture(c, NullLogger<ObsScreenshotCapture>.Instance, TimeSpan.FromMilliseconds(50)));
+            managerFactory: c => new ObsConnectionManager(c, NullLogger<ObsConnectionManager>.Instance, new TestDelayProvider(), TimeSpan.FromMilliseconds(50)));
         coord.Configure(new RecordingCoordinatorOptions
         {
             StreamObs = new ObsConnectionOptions("127.0.0.1", 4455, ""),
-            GameSourceName = "INF",
         });
         return (coord, state, conn);
     }

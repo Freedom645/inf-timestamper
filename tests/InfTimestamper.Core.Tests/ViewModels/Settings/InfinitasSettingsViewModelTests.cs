@@ -1,4 +1,5 @@
 using InfTimestamper.Core.Settings;
+using InfTimestamper.Core.Tests.ViewModels;
 using InfTimestamper.ViewModels.Settings;
 
 namespace InfTimestamper.Core.Tests.ViewModels.Settings;
@@ -10,9 +11,7 @@ public class InfinitasSettingsViewModelTests
         return new InfinitasSettingsViewModel(new InfinitasSettings
         {
             TimestampFormat = format,
-            GameSourceName = "INF",
-            TwoPcEnabled = false,
-            CaptureObs = new ObsConnectionSettings(),
+            RefluxDirectory = @"C:\reflux",
         });
     }
 
@@ -46,17 +45,24 @@ public class InfinitasSettingsViewModelTests
     public void ToModel_PreservesAllFields()
     {
         var vm = Make("$timestamp");
-        vm.GameSourceName = "INFINITAS";
-        vm.TwoPcEnabled = true;
-        vm.CaptureObs.Host = "192.168.1.99";
-        vm.CaptureObs.Port = 4500;
+        vm.RefluxDirectory = @"D:\games\reflux";
 
         var model = vm.ToModel();
         Assert.Equal("$timestamp", model.TimestampFormat);
-        Assert.Equal("INFINITAS", model.GameSourceName);
-        Assert.True(model.TwoPcEnabled);
-        Assert.Equal("192.168.1.99", model.CaptureObs.Host);
-        Assert.Equal(4500, model.CaptureObs.Port);
+        Assert.Equal(@"D:\games\reflux", model.RefluxDirectory);
+    }
+
+    [Fact]
+    public void BrowseRefluxDirectory_AppliesSelectedFolder()
+    {
+        var dialog = new FakeDialogService { FolderBrowserResult = @"E:\reflux\out" };
+        var vm = new InfinitasSettingsViewModel(
+            new InfinitasSettings { TimestampFormat = "$timestamp", RefluxDirectory = "old" },
+            dialog);
+
+        vm.BrowseRefluxDirectoryCommand.Execute(null);
+
+        Assert.Equal(@"E:\reflux\out", vm.RefluxDirectory);
     }
 
     [Fact]

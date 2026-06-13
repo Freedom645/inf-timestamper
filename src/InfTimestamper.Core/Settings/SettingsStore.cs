@@ -95,16 +95,9 @@ public sealed class SettingsStore
         settings.Infinitas ??= new InfinitasSettings
         {
             TimestampFormat = AppSettings.DefaultTimestampFormat,
-            CaptureObs = new ObsConnectionSettings { Host = AppSettings.DefaultObsHost, Port = AppSettings.DefaultObsPort },
         };
 
         if (string.IsNullOrEmpty(settings.Infinitas.TimestampFormat))
             settings.Infinitas.TimestampFormat = AppSettings.DefaultTimestampFormat;
-
-        settings.Infinitas.CaptureObs ??= new ObsConnectionSettings
-        {
-            Host = AppSettings.DefaultObsHost,
-            Port = AppSettings.DefaultObsPort,
-        };
     }
 }

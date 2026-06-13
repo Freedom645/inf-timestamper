@@ -24,9 +24,7 @@ public sealed class SettingsDialogViewModel : ObservableBase
 
         Infinitas = new InfinitasSettingsViewModel(
             settings.Infinitas ?? new InfinitasSettings { TimestampFormat = AppSettings.DefaultTimestampFormat },
-            tester,
-            dialog,
-            ResolveActiveCaptureObs);
+            dialog);
 
         ConfirmCommand = new RelayCommand(Confirm);
         CancelCommand = new RelayCommand(Cancel);
@@ -43,11 +41,6 @@ public sealed class SettingsDialogViewModel : ObservableBase
 
     public RelayCommand ConfirmCommand { get; }
     public RelayCommand CancelCommand { get; }
-
-    private ObsConnectionOptions ResolveActiveCaptureObs()
-        => Infinitas.TwoPcEnabled
-            ? Infinitas.CaptureObs.ToOptions()
-            : Obs.ToOptions();
 
     private void Confirm()
     {

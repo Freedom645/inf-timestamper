@@ -36,14 +36,7 @@ public sealed class AppSettings
         Infinitas = new InfinitasSettings
         {
             TimestampFormat = DefaultTimestampFormat,
-            GameSourceName = string.Empty,
-            TwoPcEnabled = false,
-            CaptureObs = new ObsConnectionSettings
-            {
-                Host = DefaultObsHost,
-                Port = DefaultObsPort,
-                Password = string.Empty,
-            },
+            RefluxDirectory = string.Empty,
         },
     };
 
@@ -86,12 +79,7 @@ public sealed class InfinitasSettings
     [JsonPropertyOrder(0)]
     public string TimestampFormat { get; set; } = AppSettings.DefaultTimestampFormat;
 
+    /// <summary>Reflux の出力ディレクトリ（playstate.txt / title.txt / level.txt / latest.json を含む）。</summary>
     [JsonPropertyOrder(1)]
-    public string GameSourceName { get; set; } = string.Empty;
-
-    [JsonPropertyOrder(2)]
-    public bool TwoPcEnabled { get; set; }
-
-    [JsonPropertyOrder(3)]
-    public ObsConnectionSettings CaptureObs { get; set; } = new();
+    public string RefluxDirectory { get; set; } = string.Empty;
 }

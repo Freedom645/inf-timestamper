@@ -104,49 +104,20 @@
                                    FontFamily="Consolas, Cascadia Mono" />
                     </Border>
 
-                    <TextBlock Text="OBS ゲーム画面ソース名" FontWeight="Bold" Margin="0,12,0,4" />
+                    <TextBlock Text="Reflux 出力ディレクトリ" FontWeight="Bold" Margin="0,12,0,4" />
                     <Grid>
                         <Grid.ColumnDefinitions>
                             <ColumnDefinition Width="*" />
                             <ColumnDefinition Width="Auto" />
                         </Grid.ColumnDefinitions>
-                        <ComboBox Grid.Column="0"
-                                  IsEditable="True"
-                                  ItemsSource="{Binding Infinitas.AvailableSources}"
-                                  Text="{Binding Infinitas.GameSourceName, UpdateSourceTrigger=PropertyChanged}"
-                                  Padding="4" />
-                        <Button Grid.Column="1" Content="OBSから取得" Width="100" Margin="6,0,0,0"
-                                Command="{Binding Infinitas.FetchSourcesCommand}" />
+                        <TextBox Grid.Column="0"
+                                 Text="{Binding Infinitas.RefluxDirectory, UpdateSourceTrigger=PropertyChanged}"
+                                 Padding="4" />
+                        <Button Grid.Column="1" Content="参照..." Width="80" Margin="6,0,0,0"
+                                Command="{Binding Infinitas.BrowseRefluxDirectoryCommand}" />
                     </Grid>
-
-                    <CheckBox Content="2 台 PC 構成（ゲーム画面取得用 OBS を別に指定）"
-                              IsChecked="{Binding Infinitas.TwoPcEnabled}"
-                              Margin="0,12,0,4" />
-                    <Border BorderBrush="LightGray" BorderThickness="1" Padding="8" Margin="0,4,0,0"
-                            IsEnabled="{Binding Infinitas.TwoPcEnabled}">
-                        <Grid>
-                            <Grid.ColumnDefinitions>
-                                <ColumnDefinition Width="120" />
-                                <ColumnDefinition Width="*" />
-                            </Grid.ColumnDefinitions>
-                            <Grid.RowDefinitions>
-                                <RowDefinition Height="Auto" />
-                                <RowDefinition Height="Auto" />
-                                <RowDefinition Height="Auto" />
-                            </Grid.RowDefinitions>
-                            <TextBlock Grid.Row="0" Grid.Column="0" Text="ホスト" VerticalAlignment="Center" />
-                            <TextBox  Grid.Row="0" Grid.Column="1"
-                                      Text="{Binding Infinitas.CaptureObs.Host, UpdateSourceTrigger=PropertyChanged}" Padding="4" Margin="0,2" />
-                            <TextBlock Grid.Row="1" Grid.Column="0" Text="ポート" VerticalAlignment="Center" />
-                            <TextBox  Grid.Row="1" Grid.Column="1"
-                                      Text="{Binding Infinitas.CaptureObs.Port, UpdateSourceTrigger=PropertyChanged}" Padding="4" Margin="0,2" />
-                            <TextBlock Grid.Row="2" Grid.Column="0" Text="パスワード" VerticalAlignment="Center" />
-                            <PasswordBox Grid.Row="2" Grid.Column="1" x:Name="CaptureObsPasswordBox" Padding="4" Margin="0,2" />
-                        </Grid>
-                    </Border>
-                    <Button Content="接続テスト（ゲーム画面取得用）" Width="200" HorizontalAlignment="Left" Margin="0,8,0,0"
-                            Command="{Binding Infinitas.CaptureObs.TestConnectionCommand}"
-                            IsEnabled="{Binding Infinitas.TwoPcEnabled}" />
+                    <TextBlock Text="Reflux が playstate.txt / latest.json を出力するフォルダを指定します。"
+                               Foreground="Gray" TextWrapping="Wrap" Margin="0,4,0,0" />
                 </StackPanel>
             </TabItem>
         </TabControl>

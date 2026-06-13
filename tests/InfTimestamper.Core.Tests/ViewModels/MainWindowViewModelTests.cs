@@ -3,6 +3,7 @@ using InfTimestamper.Core.Models;
 using InfTimestamper.Core.Obs;
 using InfTimestamper.Core.Persistence;
 using InfTimestamper.Core.Recognition;
+using InfTimestamper.Core.Reflux;
 using InfTimestamper.Core.Settings;
 using InfTimestamper.Core.States;
 using InfTimestamper.Core.Tests.Obs;
@@ -374,75 +375,55 @@ public class MainWindowViewModelTests
         Assert.False(File.Exists(path));
     }
 
-    private static (MainWindowViewModel vm, AppStateMachine state, RecognitionPipeline pipeline, RecordingCoordinator coord)
+    private static (MainWindowViewModel vm, AppStateMachine state, RefluxPlayWatcher watcher, RecordingCoordinator coord)
         BuildVmWithCoordinator()
     {
         var state = new AppStateMachine();
-        var recognizer = new FrameRecognizer(
-            new ImageHasher(),
-            new NoOpOcrService(),
-            HashResource.Empty(),
-            RoiResource.Empty());
-        var pipeline = new RecognitionPipeline(recognizer);
+        var watcher = new RefluxPlayWatcher(Microsoft.Extensions.Logging.Abstractions.NullLogger<RefluxPlayWatcher>.Instance, TimeSpan.Zero);
         var fakeConn = new FakeObsConnection();
         var coord = new RecordingCoordinator(
             state,
-            pipeline,
+            watcher,
             ImmediateUiDispatcher.Instance,
             streamConnectionFactory: () => fakeConn,
-            managerFactory: c => new ObsConnectionManager(c, Microsoft.Extensions.Logging.Abstractions.NullLogger<ObsConnectionManager>.Instance, new TestDelayProvider(), TimeSpan.FromMilliseconds(50)),
-            captureFactory: c => new ObsScreenshotCapture(c, Microsoft.Extensions.Logging.Abstractions.NullLogger<ObsScreenshotCapture>.Instance, TimeSpan.FromMilliseconds(50)));
+            managerFactory: c => new ObsConnectionManager(c, Microsoft.Extensions.Logging.Abstractions.NullLogger<ObsConnectionManager>.Instance, new TestDelayProvider(), TimeSpan.FromMilliseconds(50)));
 
         var vm = new MainWindowViewModel(state, new FakeClipboardService(), new FakeDialogService(), new JsonRecordStore());
         vm.BindCoordinator(coord);
-        return (vm, state, pipeline, coord);
+        return (vm, state, watcher, coord);
     }
 
     [Fact]
-    public void Pipeline_PlayStarted_AddsTimestampWithFields()
+    public void Reflux_PlayStarted_AddsTimestampWithFields()
     {
-        var (vm, _, pipeline, _) = BuildVmWithCoordinator();
+        var (vm, _, watcher, _) = BuildVmWithCoordinator();
 
-        pipeline.InjectRecognition(new FrameRecognition(
-            DateTimeOffset.UnixEpoch.AddMinutes(1),
-            RecognizedState.PlayStart,
-            null,
-            new Dictionary<string, string>
-            {
-                ["title"] = "Test Song",
-                ["diff_s"] = "SPA",
-                ["level"] = "11",
-            }));
+        using var harness = new RefluxTestHarness(watcher);
+        harness.EnterPlay("Test Song", 11);
 
         Assert.Equal(1, vm.TimestampCount);
         Assert.True(vm.Timestamps[0].Entry.TryGetFieldAsString("title", out var title));
         Assert.Equal("Test Song", title);
-        Assert.True(vm.Timestamps[0].Entry.TryGetFieldAsString("diff_s", out var diff));
-        Assert.Equal("SPA", diff);
+        Assert.True(vm.Timestamps[0].Entry.TryGetFieldAsString("level", out var level));
+        Assert.Equal("11", level);
     }
 
     [Fact]
-    public void Pipeline_PlayResultDetected_MergesIntoLatestEntry()
+    public void Reflux_PlayResultDetected_MergesIntoLatestEntry()
     {
-        var (vm, _, pipeline, _) = BuildVmWithCoordinator();
+        var (vm, _, watcher, _) = BuildVmWithCoordinator();
 
-        pipeline.InjectRecognition(new FrameRecognition(
-            DateTimeOffset.UnixEpoch.AddMinutes(1),
-            RecognizedState.PlayStart,
-            null,
-            new Dictionary<string, string> { ["title"] = "Song" }));
-
-        pipeline.InjectRecognition(new FrameRecognition(
-            DateTimeOffset.UnixEpoch.AddMinutes(3),
-            RecognizedState.Result,
-            null,
-            new Dictionary<string, string>
-            {
-                ["miss_count"] = "5",
-                ["dj_level"] = "AAA",
-                ["lamp"] = "FC",
-                ["ex_score"] = "1500",
-            }));
+        using var harness = new RefluxTestHarness(watcher);
+        harness.EnterPlay("Song", 11);
+        harness.LeavePlay(new RefluxLatestJson
+        {
+            Title = "Song",
+            Grade = "AAA",
+            Lamp = "FC",
+            ExScore = "1500",
+            Bad = "2",
+            Poor = "3",
+        });
 
         var entry = vm.Timestamps[0].Entry;
         Assert.True(entry.TryGetFieldAsString("miss_count", out var miss));

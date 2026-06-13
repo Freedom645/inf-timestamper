@@ -17,7 +17,6 @@ public partial class SettingsDialog : Window
         // PasswordBox は SecureString のため Binding 非対応。VM から流し込み、
         // 確定前に VM に戻す
         ObsPasswordBox.Password = viewModel.Obs.Password;
-        CaptureObsPasswordBox.Password = viewModel.Infinitas.CaptureObs.Password;
 
         viewModel.RequestClose += OnRequestClose;
         Closed += (_, _) => viewModel.RequestClose -= OnRequestClose;
@@ -26,7 +25,6 @@ public partial class SettingsDialog : Window
         {
             // VM 確定処理の直前に PasswordBox の値を VM に戻す
             viewModel.Obs.Password = ObsPasswordBox.Password;
-            viewModel.Infinitas.CaptureObs.Password = CaptureObsPasswordBox.Password;
             DialogResult = viewModel.DialogResult;
             Close();
         }

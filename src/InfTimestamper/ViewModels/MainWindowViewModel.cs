@@ -268,16 +268,11 @@ public sealed class MainWindowViewModel : ObservableBase
         if (_coordinator is null) return;
 
         var streamObs = new ObsConnectionOptions(_settings.Obs.Host, _settings.Obs.Port, _settings.Obs.Password);
-        var captureObs = _settings.Infinitas.TwoPcEnabled && _settings.Infinitas.CaptureObs is not null
-            ? new ObsConnectionOptions(_settings.Infinitas.CaptureObs.Host, _settings.Infinitas.CaptureObs.Port, _settings.Infinitas.CaptureObs.Password)
-            : null;
 
         _coordinator.Configure(new RecordingCoordinatorOptions
         {
             StreamObs = streamObs,
-            CaptureObs = captureObs,
-            TwoPcEnabled = _settings.Infinitas.TwoPcEnabled,
-            GameSourceName = _settings.Infinitas.GameSourceName,
+            RefluxDirectory = _settings.Infinitas.RefluxDirectory ?? string.Empty,
         });
     }
 

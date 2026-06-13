@@ -1,5 +1,6 @@
 using InfTimestamper.Core.Obs;
 using InfTimestamper.Core.Recognition;
+using InfTimestamper.Core.Reflux;
 using InfTimestamper.Core.States;
 using InfTimestamper.Core.Threading;
 using Microsoft.Extensions.Logging;
@@ -10,50 +11,38 @@ namespace InfTimestamper.Core.Coordination;
 public sealed class RecordingCoordinator : IAsyncDisposable
 {
     private readonly AppStateMachine _stateMachine;
-    private readonly RecognitionPipeline _pipeline;
+    private readonly RefluxPlayWatcher _watcher;
     private readonly IUiDispatcher _dispatcher;
     private readonly Func<IObsConnection> _streamConnectionFactory;
-    private readonly Func<IObsConnection>? _captureConnectionFactory;
     private readonly Func<IObsConnection, ObsConnectionManager> _managerFactory;
-    private readonly Func<IObsConnection, ObsScreenshotCapture> _captureFactory;
-    private readonly DebugFrameStore? _debugFrameStore;
     private readonly ILogger<RecordingCoordinator> _logger;
 
     private IObsConnection? _streamConnection;
-    private IObsConnection? _captureConnection;
     private ObsConnectionManager? _streamManager;
-    private ObsScreenshotCapture? _screenshotCapture;
     private CancellationTokenSource? _cts;
     private Task? _managerTask;
-    private RecognizedState _lastRecState = RecognizedState.Unknown;
     private bool _disposed;
 
     private RecordingCoordinatorOptions _options = new();
 
     public RecordingCoordinator(
         AppStateMachine stateMachine,
-        RecognitionPipeline pipeline,
+        RefluxPlayWatcher watcher,
         IUiDispatcher dispatcher,
         Func<IObsConnection> streamConnectionFactory,
         Func<IObsConnection, ObsConnectionManager> managerFactory,
-        Func<IObsConnection, ObsScreenshotCapture> captureFactory,
-        Func<IObsConnection>? captureConnectionFactory = null,
-        DebugFrameStore? debugFrameStore = null,
         ILogger<RecordingCoordinator>? logger = null)
     {
         _stateMachine = stateMachine ?? throw new ArgumentNullException(nameof(stateMachine));
-        _pipeline = pipeline ?? throw new ArgumentNullException(nameof(pipeline));
+        _watcher = watcher ?? throw new ArgumentNullException(nameof(watcher));
         _dispatcher = dispatcher ?? throw new ArgumentNullException(nameof(dispatcher));
         _streamConnectionFactory = streamConnectionFactory ?? throw new ArgumentNullException(nameof(streamConnectionFactory));
         _managerFactory = managerFactory ?? throw new ArgumentNullException(nameof(managerFactory));
-        _captureFactory = captureFactory ?? throw new ArgumentNullException(nameof(captureFactory));
-        _captureConnectionFactory = captureConnectionFactory;
-        _debugFrameStore = debugFrameStore;
         _logger = logger ?? NullLogger<RecordingCoordinator>.Instance;
 
         _stateMachine.StateChanged += OnStateChanged;
-        _pipeline.PlayStarted += OnPlayStarted;
-        _pipeline.PlayResultDetected += OnPlayResultDetected;
+        _watcher.PlayStarted += OnPlayStarted;
+        _watcher.PlayResultDetected += OnPlayResultDetected;
     }
 
     public RecordingCoordinatorOptions Options => _options;
@@ -83,16 +72,16 @@ public sealed class RecordingCoordinator : IAsyncDisposable
             return;
         }
 
-        // 接続が必要な状態（WaitingForStream / Recording）
+        // 配信検知のため OBS 接続が必要な状態（WaitingForStream / Recording）
         if (newState is AppState.WaitingForStream or AppState.Recording)
         {
             EnsureConnectionStarted();
         }
 
-        // 画面取得が必要な状態（Recording）
+        // ゲームのプレイ検知（Reflux ファイル監視）が必要な状態（Recording）
         if (newState == AppState.Recording)
         {
-            EnsureCaptureStarted();
+            EnsureRefluxWatcherStarted();
         }
     }
 
@@ -140,54 +129,33 @@ public sealed class RecordingCoordinator : IAsyncDisposable
         });
     }
 
-    private void EnsureCaptureStarted()
+    private void EnsureRefluxWatcherStarted()
     {
-        if (_screenshotCapture is not null) return;
+        if (_watcher.IsRunning) return;
 
-        if (string.IsNullOrEmpty(_options.GameSourceName))
+        if (string.IsNullOrWhiteSpace(_options.RefluxDirectory))
         {
-            _logger.LogWarning("OBS ゲーム画面ソース名が未指定のため、画面取得を開始しません。");
+            _logger.LogWarning("Reflux 出力ディレクトリが未指定のため、ファイル監視を開始しません。");
             return;
         }
 
-        var captureConn = ResolveCaptureConnection();
-        if (captureConn is null) return;
-
-        _screenshotCapture = _captureFactory(captureConn);
-        _screenshotCapture.ScreenshotCaptured += OnScreenshotCaptured;
-        _screenshotCapture.CaptureFailed += OnScreenshotFailed;
-
-        _logger.LogInformation("画面取得ループを開始します: ソース={Source}", _options.GameSourceName);
-        _screenshotCapture.Start(_options.GameSourceName, _cts?.Token ?? CancellationToken.None);
-    }
-
-    private IObsConnection? ResolveCaptureConnection()
-    {
-        // 1 台 PC 構成または Two PC 無効: Stream 接続を共用
-        if (!_options.TwoPcEnabled || _captureConnectionFactory is null)
-            return _streamConnection;
-
-        // 2 台 PC 構成: 別接続を作成（D2a では Stream 接続のみ管理する簡易構成）
-        // 別接続のライフサイクル管理は D2b 以降で本格化
-        if (_captureConnection is null)
+        try
         {
-            _captureConnection = _captureConnectionFactory();
-            _logger.LogInformation("2 台 PC 構成: ゲーム画面取得用 OBS への接続を確立予定（D2b で結線）");
+            _watcher.Start(_options.RefluxDirectory);
+            _logger.LogInformation("Reflux ファイル監視を開始しました: {Directory}", _options.RefluxDirectory);
         }
-        return _captureConnection;
+        catch (Exception ex)
+        {
+            // 監視開始失敗は記録自体には影響しない（要件: ダイアログを出さずログのみ）
+            _logger.LogWarning(ex, "Reflux ファイル監視の開始に失敗しました: {Directory}", _options.RefluxDirectory);
+        }
     }
 
     private void StopAll()
     {
         try { _cts?.Cancel(); } catch { /* ignore */ }
 
-        if (_screenshotCapture is not null)
-        {
-            _screenshotCapture.ScreenshotCaptured -= OnScreenshotCaptured;
-            _screenshotCapture.CaptureFailed -= OnScreenshotFailed;
-            try { _screenshotCapture.StopAsync().GetAwaiter().GetResult(); } catch { /* swallow */ }
-            _screenshotCapture = null;
-        }
+        try { _watcher.StopAsync().GetAwaiter().GetResult(); } catch { /* swallow */ }
 
         if (_streamManager is not null)
         {
@@ -202,42 +170,9 @@ public sealed class RecordingCoordinator : IAsyncDisposable
             _streamConnection = null;
         }
 
-        if (_captureConnection is not null)
-        {
-            try { _captureConnection.DisposeAsync().AsTask().GetAwaiter().GetResult(); } catch { /* swallow */ }
-            _captureConnection = null;
-        }
-
         _cts?.Dispose();
         _cts = null;
         _managerTask = null;
-        _lastRecState = RecognizedState.Unknown;
-    }
-
-    private void OnScreenshotCaptured(object? sender, ObsScreenshotCapturedEventArgs e)
-    {
-        try
-        {
-            var rec = _pipeline.ProcessFrame(e.Screenshot);
-
-            // 認識状態が遷移したフレームのみデバッグ保存する。1Hz × 全保存だと量が多すぎるため、
-            // 状態境界の代表フレーム (SongSelect / PlayStart / Result 入場時) に絞る。
-            if (_debugFrameStore is not null && _debugFrameStore.IsEnabled && rec.State != _lastRecState)
-            {
-                _debugFrameStore.Save(e.Screenshot.PngBytes, e.Screenshot.CapturedAt, rec.State.ToString());
-                _lastRecState = rec.State;
-            }
-        }
-        catch (Exception ex)
-        {
-            _logger.LogWarning(ex, "認識パイプラインでエラーが発生しました。");
-        }
-    }
-
-    private void OnScreenshotFailed(object? sender, ObsScreenshotFailureEventArgs e)
-    {
-        // 認識失敗自体は ObsScreenshotCapture 側でログ済み。ここでは UI 通知に振り替え可能だが
-        // 現状は静観（要件: ダイアログを出さない、ログのみ）
     }
 
     private void OnManagerStateChanged(object? sender, ObsConnectionManagerStateChangedEventArgs e)
@@ -258,8 +193,8 @@ public sealed class RecordingCoordinator : IAsyncDisposable
         _disposed = true;
 
         _stateMachine.StateChanged -= OnStateChanged;
-        _pipeline.PlayStarted -= OnPlayStarted;
-        _pipeline.PlayResultDetected -= OnPlayResultDetected;
+        _watcher.PlayStarted -= OnPlayStarted;
+        _watcher.PlayResultDetected -= OnPlayResultDetected;
         StopAll();
         return ValueTask.CompletedTask;
     }
@@ -268,9 +203,7 @@ public sealed class RecordingCoordinator : IAsyncDisposable
 public sealed class RecordingCoordinatorOptions
 {
     public ObsConnectionOptions? StreamObs { get; set; }
-    public ObsConnectionOptions? CaptureObs { get; set; }
-    public bool TwoPcEnabled { get; set; }
-    public string GameSourceName { get; set; } = string.Empty;
+    public string RefluxDirectory { get; set; } = string.Empty;
 }
 
 public sealed class RecordingObsStatusChangedEventArgs : EventArgs

@@ -26,15 +26,13 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 - GUI：WPF（MVVM パターン）
 - 配布形態：single-file self-contained publish（単一 exe）
 - 主要ライブラリ：
-  - OBS WebSocket：`OBSWebSocketDotNet`
-  - 画像処理：`OpenCvSharp`
-  - 画像ハッシュ：`CoenM.ImageHash`
-  - OCR：`Tesseract.NET`（tessdata 同梱）
+  - OBS WebSocket：`OBSWebSocketDotNet`（配信開始/終了の検知）
+  - ファイル監視：`System.IO.FileSystemWatcher`（標準。Reflux 出力の監視 = ゲーム検知の主機構）
   - JSON：`System.Text.Json`（標準）
-  - ファイル監視：`System.IO.FileSystemWatcher`（標準）
   - ロギング：`Microsoft.Extensions.Logging` + `Serilog`（候補）
   - 自己アップデート：`Velopack`
   - ULID 生成：`NUlid` 等
+  - 画像処理：`OpenCvSharp` / 画像ハッシュ：`CoenM.ImageHash` / OCR：`Tesseract.NET`（いずれも dormant な画像認識実装の残置に伴い同梱）
 
 ## アーキテクチャ上の要点
 
@@ -42,7 +40,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 メイン状態機械は `初期状態 → 配信開始待ち → 記録中 → 記録終了` の 4 状態。`記録操作ボタン` 1 つの表示文言・挙動が状態によって 4 通りに切り替わる UX なので、ボタンを状態ごとに分けず**現在状態をビューに射影する設計**が必須（WPF の DataTrigger / Style で表現可能）。
 
-`記録中` は内側にゲーム検知のサブ状態機械（`選曲中 → プレイ開始 → プレイリザルト`）を持つ。タイムスタンプとして記録される日時は **`プレイ開始` 遷移のタイミング**であり、`配信開始時間`（= `記録中` への遷移時刻）が相対時刻計算の基準になる。
+`記録中` は内側にゲーム検知のサブ状態機械（`プレイ開始 → プレイリザルト`）を持つ。タイムスタンプとして記録される日時は **`プレイ開始` 遷移のタイミング**であり、`配信開始時間`（= `記録中` への遷移時刻）が相対時刻計算の基準になる。ゲーム検知は Reflux のファイル監視で行う（下記）。
 
 遷移トリガ:
 - `配信開始待ち → 記録中`: OBS WebSocket の配信開始イベント、または「強制開始」ボタン
@@ -51,23 +49,20 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 OBS 接続が一時切断されても `記録中` 状態は維持し、自動再接続（指数バックオフ）でリカバリする方針。「停止」ボタンか、再接続後に配信が既に終了していたことが判明した場合のみ `記録終了` へ。
 
-### OBS 接続の抽象化
+### OBS 接続の役割
 
-INFINITAS は「配信検知用 OBS」と「ゲーム画面取得用 OBS」を分離する **2 台 PC 構成オプション**を持つ。1 台構成なら同一接続を両用途で使い、2 台構成なら別接続を使う。**画像取得・状態検知ロジックを OBS 接続インスタンスから疎結合に保つ**こと（同じコードパスで両構成が動くように、接続を依存注入する設計）。
+OBS WebSocket は **配信開始/終了の検知**（= タイムスタンプの基準時刻となる `記録中` への遷移）にのみ使う。ゲームのプレイ検知は Reflux 側で行うため、OBS のゲーム画面取得（`GetSourceScreenshot`）・2 台 PC 構成は廃止した。接続管理（再接続バックオフ等）は `Obs/` に残る。
 
-画面取得は `GetSourceScreenshot` リクエストに対し、ユーザが設定した `OBSゲーム画面ソース名` を対象とする。シーン全体ではなく**特定ソース単位**で取得することで、テロップ／ワイプの影響を受けない。取得周期は 1Hz。
+### ゲーム検知の方針（Reflux ファイル監視）
 
-### 画像認識の方針
+INFINITAS のプレイ開始とプレイデータは、**Reflux が出力するファイル群のファイル監視**で取得する（`Core/Reflux/`）。当初は OBS スクリーンショットの画像認識 + OCR で取得する設計だったが、OCR の精度向上が困難なため Reflux 方式へ切り替えた。前段 Python 実装（`reflux_file_watcher.py`）の移植。
 
-INFINITAS のプレイ状態とプレイデータはゲーム画面の画像認識で取得する。MVP は自前実装で進める（参考実装の事情はメモリ参照）。
-
-- **状態判定（選曲中／プレイ開始／プレイリザルト）**：画像ハッシュ（aHash／pHash）+ ROI 単位のハミング距離判定。1P/2P・SP/DP・キーボードプレイ等のサブパターンごとに参照ハッシュを保持し、いずれかがしきい値以下で該当状態と判定。
-- **固定文言フィールド**（`$diff_l` / `$diff_s` / `$lamp` / `$dj_level`）：同様に画像ハッシュ照合。
-- **動的数値フィールド**（`$miss_count` / `$ex_score` / `$level`）：Tesseract の数字限定 OCR。
-- **楽曲名**（`$title`）：Tesseract OCR + 楽曲データベース（`Resources/INFINITAS/songs.json`）への Levenshtein fuzzy match。
-- **解像度**：1920×1080 を内部正規化基準に固定。1360 幅入力は左右パディングで 1920 に揃える。
-- **同期重複防止**：エントリ生成は状態遷移エッジでのみ行う（連続フレームでの状態維持はノーオペ）。
-- 検知失敗・取得失敗はダイアログを出さず、状態ラベルに控えめ表示しログにのみ詳細を残す（配信中のポップアップ忌避）。
+- **監視**：`RefluxPlayWatcher` が `FileSystemWatcher` で `playstate.txt` を監視。`off`/`menu` → `play` でプレイ開始、`play` → 非 `play` でプレイリザルトと判定。
+- **プレイ開始**：`title.txt` / `level.txt` を読み `$title` / `$level` を充填。`playStartedAt` = エッジ検知時刻。
+- **プレイリザルト**：`latest.json` を読み、`RefluxFieldMapper` で各識別子（`$diff_*` / `$dj_level` / `$lamp` / `$miss_count` / `$ex_score` 等）へ変換して直近エントリにマージ。マッピングは実出力サンプル未確認の暫定値で、`RefluxFieldMapper` に集約（調整はここだけ）。
+- **重複防止**：エントリ操作は状態遷移エッジでのみ行う（同一状態の連続通知はノーオペ）。
+- 監視失敗・読込失敗はダイアログを出さず、配信開始/終了の記録には影響させない（ログのみ）。
+- **画像認識は dormant**：旧実装（`Recognition/` 一式、`Resources/INFINITAS/hashes.json` / `rois.json` / `songs.json` / `reference_images/`、OpenCvSharp・Tesseract・ImageHash 依存）は未配線で残置。将来の代替手段として再利用可能。
 
 ### フォーマット識別子システム
 

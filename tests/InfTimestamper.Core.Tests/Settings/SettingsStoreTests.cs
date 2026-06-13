@@ -43,8 +43,7 @@ public class SettingsStoreTests
         settings.Obs.Port = 4567;
         settings.Obs.Password = "secret";
         settings.Infinitas.TimestampFormat = "[$timestamp] $title";
-        settings.Infinitas.GameSourceName = "INF";
-        settings.Infinitas.TwoPcEnabled = true;
+        settings.Infinitas.RefluxDirectory = @"C:\reflux\out";
         settings.General.AutoUpdateCheck = false;
 
         store.SaveAtomic(settings, path);
@@ -55,8 +54,7 @@ public class SettingsStoreTests
         Assert.Equal(4567, loaded.Obs.Port);
         Assert.Equal("secret", loaded.Obs.Password);
         Assert.Equal("[$timestamp] $title", loaded.Infinitas.TimestampFormat);
-        Assert.Equal("INF", loaded.Infinitas.GameSourceName);
-        Assert.True(loaded.Infinitas.TwoPcEnabled);
+        Assert.Equal(@"C:\reflux\out", loaded.Infinitas.RefluxDirectory);
         Assert.False(loaded.General.AutoUpdateCheck);
     }
 
