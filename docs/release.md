@@ -7,7 +7,7 @@ Velopack による自動アップデートを前提とする。
 
 - Windows 11（x64）
 - .NET SDK 9.0 以降（プロジェクトのターゲットは net8.0 / net8.0-windows）
-- `vpk` CLI（Velopack のリリースツール）
+- `vpk` CLI（Velopack のリリースツール）。**アプリが参照している Velopack パッケージと同じバージョンを入れること**
 - GitHub の Personal Access Token（リリース作成権限）
 
 ## 1. リリース前チェック
@@ -56,11 +56,15 @@ dotnet publish src/InfTimestamper/InfTimestamper.csproj `
 
 ## 4. Velopack でリリースバンドル化
 
-`vpk` CLI を未インストールならインストール:
+`vpk` CLI を未インストールならインストールする。
+**`src/InfTimestamper/InfTimestamper.csproj` の `Velopack` パッケージと同じバージョンを指定する**
+（CLI とライブラリのバージョンが食い違うと生成物が壊れる）。
 
 ```powershell
-dotnet tool install -g vpk
+dotnet tool install -g vpk --version 0.0.1298
 ```
+
+新しい vpk があると警告が出るが、上げるときは csproj の `Velopack` も合わせて上げること。
 
 リリースバンドルの作成:
 
@@ -70,17 +74,32 @@ vpk pack `
   --packVersion 1.0.0 `
   --packDir publish/InfTimestamper-win-x64 `
   --mainExe InfTimestamper.exe `
-  --packTitle "INF-TIMESTAMPER"
+  --packTitle "INF-TIMESTAMPER" `
+  --packAuthors "Freedom645" `
+  --icon src/InfTimestamper/Assets/icon.ico
 ```
 
-成果物は `Releases/` 配下に出る:
-- `Setup.exe`: 新規インストーラ
-- `*.nupkg`: 差分アップデートに使う Velopack パッケージ
-- `RELEASES`: バージョン索引ファイル
+成果物は `Releases/` 配下に出る（`.gitignore` 済み）:
+
+| ファイル | 内容 |
+| --- | --- |
+| `InfTimestamper-win-Setup.exe` | 新規インストーラ（約 69MB）。Releases に上げる主役 |
+| `InfTimestamper-1.0.0-full.nupkg` | 自己アップデートが取得する Velopack パッケージ（約 66MB） |
+| `InfTimestamper-win-Portable.zip` | インストール不要の展開配置版。自己アップデートは効かない |
+| `RELEASES` / `releases.win.json` / `assets.win.json` | バージョン索引。**アップデート検出に必要なので必ず一緒に上げる** |
+
+`--exclude` の既定が `.*\.pdb` なので pdb はパッケージに入らない。
+
+### コード署名について
+
+署名パラメータを渡していないため、生成物は未署名になる（`No signing parameters provided` の警告が出る）。
+未署名の実行ファイルは Windows SmartScreen で警告が表示され、ユーザは「詳細情報」→「実行」を
+選ぶ必要がある。コード署名証明書を用意する場合は `--signParams` または `--signTemplate` を使う。
 
 ## 5. GitHub Releases へ公開
 
-GitHub Web 上で新規 Release を作成し、上記成果物をアップロード。または `vpk` の upload コマンドで:
+GitHub Web 上で新規 Release を作成し、`Releases/` 配下の成果物を**すべて**アップロードする
+（索引ファイルが無いと自己アップデートが動かない）。または `vpk` の upload コマンドで:
 
 ```powershell
 vpk upload github `
