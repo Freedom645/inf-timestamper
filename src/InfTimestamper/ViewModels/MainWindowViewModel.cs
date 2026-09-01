@@ -203,6 +203,19 @@ public sealed class MainWindowViewModel : ObservableBase
         _ => StartCommand,
     };
 
+    /// <summary>
+    /// 記録操作ボタンの隣のボタン。既定は「リセット」だが、`配信開始待ち` では
+    /// 「停止」として配信開始待ちの解除（→ `初期状態`）に使う。
+    /// 記録操作ボタンがその状態では「強制開始」に変わるため、待機をやめる導線が他に無い。
+    /// </summary>
+    public string SecondaryButtonText => State == AppState.WaitingForStream ? "停止" : "リセット";
+
+    public RelayCommand SecondaryCommand => State == AppState.WaitingForStream ? StopCommand : ResetCommand;
+
+    public string SecondaryHintText => State == AppState.WaitingForStream
+        ? "配信開始待ちを解除して初期状態に戻します"
+        : "現在の記録をリセットします（記録終了状態のみ）";
+
     public string HintText
     {
         get => _hintText;
@@ -739,6 +752,9 @@ public sealed class MainWindowViewModel : ObservableBase
         RaisePropertyChanged(nameof(StateLabel));
         RaisePropertyChanged(nameof(PrimaryButtonText));
         RaisePropertyChanged(nameof(PrimaryCommand));
+        RaisePropertyChanged(nameof(SecondaryButtonText));
+        RaisePropertyChanged(nameof(SecondaryCommand));
+        RaisePropertyChanged(nameof(SecondaryHintText));
         RaisePropertyChanged(nameof(CanReset));
         RaisePropertyChanged(nameof(IsGameSelectable));
 

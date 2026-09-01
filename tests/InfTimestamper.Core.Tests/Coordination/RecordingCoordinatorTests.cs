@@ -91,6 +91,23 @@ public class RecordingCoordinatorTests
     }
 
     [Fact]
+    public async Task StopFromWaitingForStream_ReturnsToInitial_DisconnectsObs()
+    {
+        // 「配信開始待ち」で停止したときも OBS 連携を解除する（要件: 初期状態に戻す）
+        var coordinator = BuildCoordinator(out var state, out _, out var conn);
+        await using (coordinator)
+        {
+            state.Start();
+            await WaitUntilAsync(() => coordinator.CurrentObsState == ObsConnectionManagerState.Connected, 1000);
+
+            state.Stop();
+
+            Assert.Equal(AppState.Initial, state.State);
+            await WaitUntilAsync(() => conn.DisposeCount > 0, 1000);
+        }
+    }
+
+    [Fact]
     public void OnPlayStartedFromWatcher_BubblesViaCoordinator()
     {
         var coordinator = BuildCoordinator(out _, out var watcher, out _);

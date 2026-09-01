@@ -45,10 +45,10 @@
                         Command="{Binding PrimaryCommand}"
                         Width="120" Height="32" Margin="0,0,8,0"
                         behaviors:HintTextBehavior.Text="記録の開始 / 強制開始 / 停止 / 再開を切り替えます" />
-                <Button Content="リセット"
-                        Command="{Binding ResetCommand}"
+                <Button Content="{Binding SecondaryButtonText}"
+                        Command="{Binding SecondaryCommand}"
                         Width="80" Height="32" Margin="0,0,8,0"
-                        behaviors:HintTextBehavior.Text="現在の記録をリセットします（記録終了状態のみ）" />
+                        behaviors:HintTextBehavior.Text="{Binding SecondaryHintText}" />
                 <Button Content="コピー"
                         Command="{Binding CopyCommand}"
                         Width="80" Height="32"
