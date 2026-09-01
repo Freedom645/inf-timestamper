@@ -4,15 +4,29 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## リポジトリの状態
 
-実装前のリポジトリ。現時点では `docs/要件.md` のみが存在し、ソースコード・ビルド設定・テスト・依存関係定義は未配置。
+実装は一通り完了している。MVP に必要な機能（状態機械・OBS 接続・ゲーム検知・フォーマット展開・永続化・設定画面・ログ・自己アップデート）はコード側が揃い、`dotnet build` 警告 0 / `dotnet test` 全緑。残っているのは主にユーザ実環境での検証（Velopack バンドル作成、GitHub Releases アップロード、別 PC での通しテスト、実機での配信〜プレイ〜リザルトの通し確認）。
 
-技術スタックは確定済み（下記）だが、ビルド/lint/テストの定型コマンドはまだ存在しない。確立した時点で本ファイルへ追記する。
+進捗と「次にやること」の正本は `docs/実装計画.md`（フェーズ別の DoD とセッション引き継ぎメモ）。**作業を始める前にその「現在のフェーズ」節を読むこと。**
+
+### 定型コマンド
+
+```powershell
+dotnet build InfTimestamper.sln              # 警告 0 を維持する
+dotnet test InfTimestamper.sln               # xUnit。Core.Tests のみ
+dotnet publish src/InfTimestamper/InfTimestamper.csproj -c Release -r win-x64 --self-contained -p:PublishSingleFile=true -p:IncludeNativeLibrariesForSelfExtract=true
+```
+
+- lint/formatter は導入していない（アナライザ既定のみ）。
+- `tools/` 配下の診断ツール（`ColorAnalyzer` / `HashExtractor` / `OcrTester` / `RoiCropper`）は **`.sln` に含まれていない**。個別に `dotnet run --project tools/<名前>` で実行する。
+- リリース手順は `docs/release.md`、認識用データの生成手順は `docs/data-preparation.md`。
 
 ## プロジェクト概要
 
 **INF-TIMESTAMPER** — Windows スタンドアロンアプリ。OBS を使った音楽ゲーム配信に対し、YouTube アーカイブ向けのタイムスタンプ（チャプター文字列）を自動生成する。
 
-対応ゲームは **コナステ版 beatmaniaIIDX INFINITAS** のみ（MVP スコープ）。将来のゲーム追加に備えた拡張余地は `game` フィールド等に確保しているが、現状は INFINITAS 専用設計で進める。
+対応ゲームは **コナステ版 beatmaniaIIDX INFINITAS** のみ（MVP スコープ）。将来のゲーム追加に備えた拡張余地は `game` フィールド等に確保しているが、現状は INFINITAS 専用設計。
+
+次の拡張として **pop'n music 対応**（`popn-lively-tracker` の出力ファイル監視）を予定している。2 つ目のゲームを通す時点で「ゲーム抽象化」を抽出する方針（詳細と設計論点は `docs/実装計画.md` Phase 9）。
 
 ### 前段アプリとの関係
 
@@ -29,10 +43,14 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
   - OBS WebSocket：`OBSWebSocketDotNet`（配信開始/終了の検知）
   - ファイル監視：`System.IO.FileSystemWatcher`（標準。Reflux 出力の監視 = ゲーム検知の主機構）
   - JSON：`System.Text.Json`（標準）
-  - ロギング：`Microsoft.Extensions.Logging` + `Serilog`（候補）
+  - ロギング：`Microsoft.Extensions.Logging` + `Serilog`（`Serilog.Sinks.File`）
+  - DI / ホスト：`Microsoft.Extensions.Hosting`
   - 自己アップデート：`Velopack`
-  - ULID 生成：`NUlid` 等
-  - 画像処理：`OpenCvSharp` / 画像ハッシュ：`CoenM.ImageHash` / OCR：`Tesseract.NET`（いずれも dormant な画像認識実装の残置に伴い同梱）
+  - ULID 生成：`NUlid`
+  - 画像処理：`OpenCvSharp4`（+ `runtime.win`）／画像ハッシュ：`CoenM.ImageSharp.ImageHash` ／ OCR：`Tesseract` と `Windows.Media.Ocr`（いずれも dormant な画像認識実装の残置に伴い同梱）
+  - テスト：xUnit
+
+TFM は Core / Tests が `net8.0`・`net8.0-windows10.0.19041.0`、WPF が `net8.0-windows10.0.19041.0`（`Windows.Media.Ocr` を使うため 19041 を指定）。WPF は独自 `Main`（`Program.cs`）で Velopack をブートストラップするため、`App.xaml` を `ApplicationDefinition` から外して `Page` として扱っている。
 
 ## アーキテクチャ上の要点
 
@@ -59,7 +77,7 @@ INFINITAS のプレイ開始とプレイデータは、**Reflux が出力する�
 
 - **監視**：`RefluxPlayWatcher` が `FileSystemWatcher` で `playstate.txt` を監視。`off`/`menu` → `play` でプレイ開始、`play` → 非 `play` でプレイリザルトと判定。
 - **プレイ開始**：`title.txt` / `level.txt` を読み `$title` / `$level` を充填。`playStartedAt` = エッジ検知時刻。
-- **プレイリザルト**：`latest.json` を読み、`RefluxFieldMapper` で各識別子（`$diff_*` / `$dj_level` / `$lamp` / `$miss_count` / `$ex_score` 等）へ変換して直近エントリにマージ。マッピングは実出力サンプル未確認の暫定値で、`RefluxFieldMapper` に集約（調整はここだけ）。
+- **プレイリザルト**：`latest.json` を読み、`RefluxFieldMapper` で各識別子（`$diff_*` / `$dj_level` / `$lamp` / `$miss_count` / `$ex_score` 等）へ変換して直近エントリにマージ。マッピングは `RefluxFieldMapper` に集約（調整はここだけ）。実機サンプル（`docs/sample/reflux/`）で全フィールドが正しく展開されることを確認済み。
 - **重複防止**：エントリ操作は状態遷移エッジでのみ行う（同一状態の連続通知はノーオペ）。
 - 監視失敗・読込失敗はダイアログを出さず、配信開始/終了の記録には影響させない（ログのみ）。
 - **画像認識は dormant**：旧実装（`Recognition/` 一式、`Resources/INFINITAS/hashes.json` / `rois.json` / `songs.json` / `reference_images/`、OpenCvSharp・Tesseract・ImageHash 依存）は未配線で残置。将来の代替手段として再利用可能。
@@ -92,8 +110,53 @@ INFINITAS のプレイ開始とプレイデータは、**Reflux が出力する�
 
 ### 自己アップデート
 
-起動時に GitHub Releases API で最新バージョンを照会し、更新があればユーザ確認のうえセルフアップデート（`Velopack` 想定）。専用の進捗ウィンドウを別途持つ。`基本設定タブ` で起動時自動チェックを OFF にできる。
+起動時に GitHub Releases API で最新バージョンを照会し、更新があればユーザ確認のうえ `Velopack` でセルフアップデートする。専用の進捗ウィンドウ（`UpdateProgressWindow`）を持つ。`基本設定タブ` で起動時自動チェックを OFF にできる。
+
+Velopack 未インストール環境（開発実行・ZIP 解凍配置）では `IUpdateService.IsInstalled` が false になり、リリースページをブラウザで開くフォールバックへ切り替わる。
 
 ## ファイル構成
 
-- `docs/要件.md` — 機能要件・UI 仕様・状態遷移・識別子定義・JSONスキーマ・画像認識仕様・エラーハンドリング方針の正本（日本語、約590行）
+```
+inf-timestamper/
+├── InfTimestamper.sln              3 プロジェクトのみ（tools/ は含まない）
+├── docs/
+│   ├── 要件.md                     仕様の正本
+│   ├── 実装計画.md                 フェーズ別の進捗・DoD・引き継ぎメモ
+│   ├── data-preparation.md         tessdata と認識用データ（songs/hashes/rois）の整備手順
+│   ├── release.md                  publish → vpk pack → GitHub Releases のリリース手順
+│   └── sample/                     外部ツールの実出力サンプル（reflux / popn-tracker）
+├── src/
+│   ├── InfTimestamper/             WPF 本体。Views / ViewModels / Services / Converters / Behaviors、
+│   │                               App.xaml.cs（DI 組立）、Program.cs（独自 Main + Velopack）
+│   └── InfTimestamper.Core/        UI 非依存のドメイン層（下記）
+├── tests/
+│   └── InfTimestamper.Core.Tests/  xUnit。ViewModel のテストもここに置く
+└── tools/                          診断ツール群（sln 外。個別に dotnet run）
+```
+
+`InfTimestamper.Core/` の内訳:
+
+| ディレクトリ | 役割 |
+| --- | --- |
+| `Coordination/` | `RecordingCoordinator` — 状態機械・Reflux 監視・永続化を束ねる中核 |
+| `States/` | `AppStateMachine` — 4 状態のメイン状態機械 |
+| `Reflux/` | ゲーム検知。`RefluxPlayWatcher` / `RefluxLatestJson` / `RefluxFieldMapper` |
+| `Obs/` | OBS WebSocket 接続と再接続バックオフ。配信開始/終了の検知のみ |
+| `Persistence/` | `JsonRecordStore` — バックアップ JSON のアトミック保存と異常終了復旧 |
+| `Formatting/` | `FormatExpander` — `$identifier` の展開 |
+| `Models/` | `StreamRecord` / `TimestampEntry` / `GameId` 等 |
+| `Settings/` | `AppSettings` / `SettingsStore` |
+| `Updates/` | GitHub Releases 照会とバージョン比較 |
+| `Threading/` | `IUiDispatcher`（UI スレッドへのマーシャリング抽象） |
+| `Recognition/` | **dormant**。画像認識・OCR の旧実装。未配線 |
+| `Resources/INFINITAS/` | `songs.json`（publish 同梱）と、dormant な `hashes.json` / `rois.json` / `reference_images/`（後者はライセンス配慮で untracked） |
+
+`tools/` の内訳（すべて dormant な画像認識のための診断ツール）:
+
+| ツール | 役割 |
+| --- | --- |
+| `generate_songs_json.ps1` | IIDX-Data-Table から `songs.json` を生成 |
+| `RoiCropper` | 指定 ROI を切り抜いて PNG 保存（ROI 座標の確定用） |
+| `ColorAnalyzer` | ROI の HSV ヒストグラムと色バンド出現数を出力 |
+| `HashExtractor` | 参照画像から aHash / pHash を抽出して `hashes.json` へ充填 |
+| `OcrTester` | 単一画像 + ROI で OCR を試行（`--dump` で前処理後画像を保存） |
