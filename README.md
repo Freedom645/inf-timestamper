@@ -59,9 +59,20 @@ OBS に繋がらない場合や、外部ツールを使わない場合でも、�
 
 ## インストール
 
-[Releases](https://github.com/Freedom645/inf-timestamper/releases) から `Setup.exe` をダウンロードして実行してください。
+[Releases](https://github.com/Freedom645/inf-timestamper/releases) から `InfTimestamper-win-Setup.exe` をダウンロードして実行してください。
 
 以降のバージョンアップは、起動時の自動チェックからアプリ内で更新できます（設定でオフにできます）。
+
+> [!NOTE]
+> **起動時に「WindowsによってPCが保護されました」と表示されます。**
+>
+> 個人開発の無償ツールのため、コード署名証明書（年数万円）を取得していません。署名されていない実行ファイルは、ダウンロード数が一定に達するまで Windows SmartScreen が警告を出します。
+>
+> インストールを続けるには、警告画面の **「詳細情報」→「実行」** を選択してください。
+>
+> ソースコードはすべてこのリポジトリで公開しています。内容が気になる場合は、[Releases](https://github.com/Freedom645/inf-timestamper/releases) から `InfTimestamper-win-Portable.zip`（インストール不要の展開配置版）を使うか、ご自身でビルドしてください。
+
+インストーラを使わず展開して使いたい場合は `InfTimestamper-win-Portable.zip` を利用できます。ただし**アプリ内の自動アップデートは動かない**ため、更新のたびに手動で入れ替える必要があります。
 
 ## 使い方
 

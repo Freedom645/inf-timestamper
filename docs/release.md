@@ -58,10 +58,10 @@ dotnet publish src/InfTimestamper/InfTimestamper.csproj `
 
 `vpk` CLI を未インストールならインストールする。
 **`src/InfTimestamper/InfTimestamper.csproj` の `Velopack` パッケージと同じバージョンを指定する**
-（CLI とライブラリのバージョンが食い違うと生成物が壊れる）。
+（CLI とライブラリのバージョンが食い違うと生成物が壊れる）。現在は 1.2.0。
 
 ```powershell
-dotnet tool install -g vpk --version 0.0.1298
+dotnet tool install -g vpk --version 1.2.0
 ```
 
 新しい vpk があると警告が出るが、上げるときは csproj の `Velopack` も合わせて上げること。
@@ -83,8 +83,8 @@ vpk pack `
 
 | ファイル | 内容 |
 | --- | --- |
-| `InfTimestamper-win-Setup.exe` | 新規インストーラ（約 69MB）。Releases に上げる主役 |
-| `InfTimestamper-1.0.0-full.nupkg` | 自己アップデートが取得する Velopack パッケージ（約 66MB） |
+| `InfTimestamper-win-Setup.exe` | 新規インストーラ（約 71MB）。Releases に上げる主役 |
+| `InfTimestamper-1.0.0-full.nupkg` | 自己アップデートが取得する Velopack パッケージ（約 67MB） |
 | `InfTimestamper-win-Portable.zip` | インストール不要の展開配置版。自己アップデートは効かない |
 | `RELEASES` / `releases.win.json` / `assets.win.json` | バージョン索引。**アップデート検出に必要なので必ず一緒に上げる** |
 
