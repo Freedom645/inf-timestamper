@@ -24,7 +24,10 @@ public class MainWindowViewModelTests
             new AppStateMachine(),
             clip ?? new FakeClipboardService(),
             dialog ?? new FakeDialogService(),
-            store ?? new JsonRecordStore());
+            store ?? new JsonRecordStore(),
+            TestSettingsFactory.CreateDefault(),
+            null,
+            null);
 
     private static MainWindowViewModel NewVmWith(FakeDialogService dialog)
         => NewVm(null, dialog, null);
@@ -325,7 +328,7 @@ public class MainWindowViewModelTests
     public void OpenSettings_AppliesDialogResult_UpdatesFormatAndPersists()
     {
         var dialog = new FakeDialogService();
-        var updated = AppSettings.CreateDefault();
+        var updated = TestSettingsFactory.CreateDefault();
         updated.Infinitas.TimestampFormat = "$title [$level]";
         dialog.SettingsResult = updated;
 
@@ -338,7 +341,7 @@ public class MainWindowViewModelTests
             new FakeClipboardService(),
             dialog,
             new JsonRecordStore(),
-            AppSettings.CreateDefault(),
+            TestSettingsFactory.CreateDefault(),
             store,
             path);
 
@@ -363,7 +366,7 @@ public class MainWindowViewModelTests
             new FakeClipboardService(),
             dialog,
             new JsonRecordStore(),
-            AppSettings.CreateDefault(),
+            TestSettingsFactory.CreateDefault(),
             new SettingsStore(),
             path);
 

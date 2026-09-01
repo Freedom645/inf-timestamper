@@ -44,6 +44,24 @@
                               Margin="0,12,0,4" />
                     <CheckBox Content="アプリ終了時に確認ダイアログを表示（記録中または未保存の編集時）"
                               IsChecked="{Binding General.ConfirmOnExit}" />
+
+                    <CheckBox x:Name="IncludeStreamStartRowCheckBox"
+                              Content="タイムスタンプの先頭に配信開始行（00:00:00）を入れる"
+                              IsChecked="{Binding General.IncludeStreamStartRow}"
+                              Margin="0,12,0,4" />
+                    <Grid Margin="20,0,0,0"
+                          IsEnabled="{Binding IsChecked, ElementName=IncludeStreamStartRowCheckBox}">
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="Auto" />
+                            <ColumnDefinition Width="*" />
+                        </Grid.ColumnDefinitions>
+                        <TextBlock Grid.Column="0" Text="見出し文言" VerticalAlignment="Center" Margin="0,0,6,0" />
+                        <TextBox Grid.Column="1"
+                                 Text="{Binding General.StreamStartRowLabel, UpdateSourceTrigger=PropertyChanged}"
+                                 Padding="4" />
+                    </Grid>
+                    <TextBlock Text="YouTube のチャプタ機能は先頭が 0 秒のチャプタであることを要求します。"
+                               Foreground="Gray" TextWrapping="Wrap" Margin="20,4,0,0" />
                 </StackPanel>
             </TabItem>
 

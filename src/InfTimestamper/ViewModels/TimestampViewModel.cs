@@ -3,7 +3,7 @@ using InfTimestamper.Core.Models;
 
 namespace InfTimestamper.ViewModels;
 
-public sealed class TimestampViewModel : ObservableBase
+public sealed class TimestampViewModel : ObservableBase, ITimestampRow
 {
     private readonly TimestampEntry _entry;
     private DateTimeOffset _streamStartedAt;

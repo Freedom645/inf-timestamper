@@ -1,5 +1,6 @@
 using InfTimestamper.Core.Persistence;
 using InfTimestamper.Core.Settings;
+using InfTimestamper.Core.Tests.TestHelpers;
 using InfTimestamper.Core.States;
 using InfTimestamper.Core.Tests.Updates;
 using InfTimestamper.Core.Updates;
@@ -19,7 +20,7 @@ public class MainWindowSelfUpdateTests
             new FakeClipboardService(),
             dialog,
             new JsonRecordStore(),
-            AppSettings.CreateDefault(),
+            TestSettingsFactory.CreateDefault(),
             null,
             null,
             checker,

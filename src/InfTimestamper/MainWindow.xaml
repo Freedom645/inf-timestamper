@@ -92,8 +92,9 @@
             <!-- タイムスタンプリスト -->
             <ListBox Grid.Row="3"
                      x:Name="TimestampList"
-                     ItemsSource="{Binding Timestamps}"
+                     ItemsSource="{Binding DisplayRows}"
                      SelectionMode="Extended"
+                     VirtualizingStackPanel.IsVirtualizing="False"
                      HorizontalContentAlignment="Stretch"
                      ScrollViewer.HorizontalScrollBarVisibility="Auto"
                      ScrollViewer.VerticalScrollBarVisibility="Auto"
@@ -105,8 +106,9 @@
                                             RelativeSource={RelativeSource AncestorType=ContextMenu}}" />
                     </ContextMenu>
                 </ListBox.ContextMenu>
-                <ListBox.ItemTemplate>
-                    <DataTemplate>
+                <ListBox.Resources>
+                    <!-- プレイ記録の行 -->
+                    <DataTemplate DataType="{x:Type vm:TimestampViewModel}">
                         <Grid>
                             <Grid.ColumnDefinitions>
                                 <ColumnDefinition Width="Auto" />
@@ -122,7 +124,25 @@
                                        FontFamily="Consolas, Cascadia Mono" />
                         </Grid>
                     </DataTemplate>
-                </ListBox.ItemTemplate>
+                    <!-- 先頭の「配信開始」行。プレイ記録ではないので選択・編集はできない -->
+                    <DataTemplate DataType="{x:Type vm:StreamStartRowViewModel}">
+                        <Grid>
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="Auto" />
+                                <ColumnDefinition Width="*" />
+                            </Grid.ColumnDefinitions>
+                            <CheckBox Grid.Column="0"
+                                      Visibility="Hidden"
+                                      VerticalAlignment="Center"
+                                      Margin="0,0,8,0" />
+                            <TextBlock Grid.Column="1"
+                                       Text="{Binding DisplayText}"
+                                       VerticalAlignment="Center"
+                                       Foreground="Gray"
+                                       FontFamily="Consolas, Cascadia Mono" />
+                        </Grid>
+                    </DataTemplate>
+                </ListBox.Resources>
             </ListBox>
         </Grid>
     </DockPanel>

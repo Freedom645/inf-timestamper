@@ -37,7 +37,7 @@ public class MainWindowConfirmDialogTests
     [Fact]
     public void Reset_WithConfirmOn_PromptsBeforeReset()
     {
-        var settings = AppSettings.CreateDefault();
+        var settings = TestSettingsFactory.CreateDefault();
         settings.General.ConfirmOnReset = true;
         var dialog = new FakeDialogService { ConfirmResult = false };
 
@@ -60,7 +60,7 @@ public class MainWindowConfirmDialogTests
     [Fact]
     public void Reset_WithConfirmOff_SkipsConfirmation()
     {
-        var settings = AppSettings.CreateDefault();
+        var settings = TestSettingsFactory.CreateDefault();
         settings.General.ConfirmOnReset = false;
         var dialog = new FakeDialogService { ConfirmResult = false };
 
@@ -77,7 +77,7 @@ public class MainWindowConfirmDialogTests
     [Fact]
     public void RequestExitConfirmation_NoEntriesAndNotRecording_AllowsExit()
     {
-        var settings = AppSettings.CreateDefault();
+        var settings = TestSettingsFactory.CreateDefault();
         settings.General.ConfirmOnExit = true;
         var dialog = new FakeDialogService { ConfirmResult = false };
 
@@ -88,7 +88,7 @@ public class MainWindowConfirmDialogTests
     [Fact]
     public void RequestExitConfirmation_Recording_PromptsAndRespectsResult()
     {
-        var settings = AppSettings.CreateDefault();
+        var settings = TestSettingsFactory.CreateDefault();
         settings.General.ConfirmOnExit = true;
         var dialog = new FakeDialogService { ConfirmResult = false };
 
@@ -105,7 +105,7 @@ public class MainWindowConfirmDialogTests
     [Fact]
     public void RequestExitConfirmation_ConfirmDisabled_AlwaysAllowsExit()
     {
-        var settings = AppSettings.CreateDefault();
+        var settings = TestSettingsFactory.CreateDefault();
         settings.General.ConfirmOnExit = false;
         var dialog = new FakeDialogService { ConfirmResult = false };
 
@@ -120,7 +120,7 @@ public class MainWindowConfirmDialogTests
     public void CheckUnfinishedRecords_LoadsWhenUserAccepts()
     {
         using var temp = new TempDirectory();
-        var settings = AppSettings.CreateDefault();
+        var settings = TestSettingsFactory.CreateDefault();
         settings.General.BackupDirectory = temp.Path;
         var dialog = new FakeDialogService { ConfirmResult = true };
         var store = new JsonRecordStore();
@@ -154,7 +154,7 @@ public class MainWindowConfirmDialogTests
     public void CheckUnfinishedRecords_NoUnfinished_DoesNothing()
     {
         using var temp = new TempDirectory();
-        var settings = AppSettings.CreateDefault();
+        var settings = TestSettingsFactory.CreateDefault();
         settings.General.BackupDirectory = temp.Path;
         var dialog = new FakeDialogService { ConfirmResult = true };
 
@@ -169,7 +169,7 @@ public class MainWindowConfirmDialogTests
     public void CheckUnfinishedRecords_UserDeclines_DoesNotLoad()
     {
         using var temp = new TempDirectory();
-        var settings = AppSettings.CreateDefault();
+        var settings = TestSettingsFactory.CreateDefault();
         settings.General.BackupDirectory = temp.Path;
         var dialog = new FakeDialogService { ConfirmResult = false };
         var store = new JsonRecordStore();

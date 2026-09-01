@@ -53,7 +53,7 @@ public class MainWindowGameSelectionTests
             new FakeClipboardService(),
             new FakeDialogService(),
             new JsonRecordStore(),
-            settings ?? AppSettings.CreateDefault(),
+            settings ?? TestSettingsFactory.CreateDefault(),
             new SettingsStore(),
             settingsPath);
         vm.BindCoordinator(coordinator);
@@ -63,7 +63,7 @@ public class MainWindowGameSelectionTests
 
     private static AppSettings SettingsWithBothGames()
     {
-        var settings = AppSettings.CreateDefault();
+        var settings = TestSettingsFactory.CreateDefault();
         settings.Infinitas.TimestampFormat = "$timestamp $title [$diff_s $level]";
         settings.Infinitas.RefluxDirectory = @"C:\reflux";
         settings.Popn.TimestampFormat = "$timestamp $title ($rank, $medal)";

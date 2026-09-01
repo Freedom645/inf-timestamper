@@ -1,6 +1,7 @@
 using System.Net.Http;
 using InfTimestamper.Core.Persistence;
 using InfTimestamper.Core.Settings;
+using InfTimestamper.Core.Tests.TestHelpers;
 using InfTimestamper.Core.States;
 using InfTimestamper.Core.Tests.Updates;
 using InfTimestamper.Core.Updates;
@@ -14,7 +15,7 @@ public class MainWindowVersionCheckTests
         FakeDialogService dialog,
         FakeGitHubReleaseChecker? checker)
     {
-        var settings = AppSettings.CreateDefault();
+        var settings = TestSettingsFactory.CreateDefault();
         return new MainWindowViewModel(
             new AppStateMachine(),
             new FakeClipboardService(),

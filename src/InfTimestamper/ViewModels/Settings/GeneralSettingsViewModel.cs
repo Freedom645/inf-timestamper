@@ -11,6 +11,8 @@ public sealed class GeneralSettingsViewModel : ObservableBase
     private string _backupDirectory = string.Empty;
     private bool _confirmOnReset;
     private bool _confirmOnExit;
+    private bool _includeStreamStartRow;
+    private string _streamStartRowLabel = AppSettings.DefaultStreamStartRowLabel;
     private string _selectedGame = string.Empty;
 
     public GeneralSettingsViewModel(GeneralSettings model)
@@ -23,6 +25,10 @@ public sealed class GeneralSettingsViewModel : ObservableBase
         _backupDirectory = model.BackupDirectory ?? string.Empty;
         _confirmOnReset = model.ConfirmOnReset;
         _confirmOnExit = model.ConfirmOnExit;
+        _includeStreamStartRow = model.IncludeStreamStartRow;
+        _streamStartRowLabel = string.IsNullOrWhiteSpace(model.StreamStartRowLabel)
+            ? AppSettings.DefaultStreamStartRowLabel
+            : model.StreamStartRowLabel;
         // ゲーム選択はメインウィンドウ側の操作なので、設定ダイアログでは触らずそのまま持ち回る
         _selectedGame = model.SelectedGame ?? string.Empty;
         _dialog = dialog;
@@ -54,6 +60,19 @@ public sealed class GeneralSettingsViewModel : ObservableBase
         set => SetField(ref _confirmOnExit, value);
     }
 
+    /// <summary>タイムスタンプ先頭に「00:00:00 配信開始」行を入れるか（YouTube のチャプタ用）。</summary>
+    public bool IncludeStreamStartRow
+    {
+        get => _includeStreamStartRow;
+        set => SetField(ref _includeStreamStartRow, value);
+    }
+
+    public string StreamStartRowLabel
+    {
+        get => _streamStartRowLabel;
+        set => SetField(ref _streamStartRowLabel, value ?? string.Empty);
+    }
+
     public RelayCommand BrowseBackupDirectoryCommand { get; }
 
     public GeneralSettings ToModel() => new()
@@ -62,6 +81,10 @@ public sealed class GeneralSettingsViewModel : ObservableBase
         BackupDirectory = _backupDirectory,
         ConfirmOnReset = _confirmOnReset,
         ConfirmOnExit = _confirmOnExit,
+        IncludeStreamStartRow = _includeStreamStartRow,
+        StreamStartRowLabel = string.IsNullOrWhiteSpace(_streamStartRowLabel)
+            ? AppSettings.DefaultStreamStartRowLabel
+            : _streamStartRowLabel,
         SelectedGame = _selectedGame,
     };
 

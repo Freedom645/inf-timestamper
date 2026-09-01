@@ -86,6 +86,9 @@ public sealed class SettingsStore
         if (string.IsNullOrEmpty(settings.General.BackupDirectory))
             settings.General.BackupDirectory = AppSettings.DefaultBackupDirectory();
 
+        if (string.IsNullOrWhiteSpace(settings.General.StreamStartRowLabel))
+            settings.General.StreamStartRowLabel = AppSettings.DefaultStreamStartRowLabel;
+
         settings.Obs ??= new ObsConnectionSettings
         {
             Host = AppSettings.DefaultObsHost,

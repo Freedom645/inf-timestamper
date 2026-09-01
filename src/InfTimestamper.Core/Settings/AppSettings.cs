@@ -9,6 +9,7 @@ public sealed class AppSettings
     public const string DefaultTimestampFormat = "$timestamp $title [$diff_s $level]";
     public const string DefaultObsHost = "127.0.0.1";
     public const int DefaultObsPort = 4455;
+    public const string DefaultStreamStartRowLabel = "配信開始";
 
     [JsonPropertyOrder(0)]
     public int SchemaVersion { get; set; } = CurrentSchemaVersion;
@@ -103,6 +104,17 @@ public sealed class GeneralSettings
     /// </summary>
     [JsonPropertyOrder(4)]
     public string SelectedGame { get; set; } = GameIdExtensions.InfinitasSerialized;
+
+    /// <summary>
+    /// タイムスタンプリストとコピー結果の先頭に「00:00:00 配信開始」行を入れるか。
+    /// YouTube のチャプタ機能は先頭が 0 秒のチャプタであることを要求するため既定で ON。
+    /// </summary>
+    [JsonPropertyOrder(5)]
+    public bool IncludeStreamStartRow { get; set; } = true;
+
+    /// <summary>配信開始行の見出し文言。空の場合は既定値を使う。</summary>
+    [JsonPropertyOrder(6)]
+    public string StreamStartRowLabel { get; set; } = AppSettings.DefaultStreamStartRowLabel;
 }
 
 public sealed class ObsConnectionSettings

@@ -45,6 +45,16 @@ public sealed class MainWindowViewModel : ObservableBase
     private int _obsRetryAttempt;
     private RecordingCoordinator? _coordinator;
     private GameId _selectedGame = GameId.Infinitas;
+    private StreamStartRowViewModel? _streamStartRow;
+
+    /// <summary>自動バックアップの書込先。記録開始時／過去記録読込時に確定し、リセットで破棄する。</summary>
+    private string? _backupPath;
+
+    /// <summary>最後の保存以降に記録が変更されたか。終了確認ダイアログの要否判定に使う。</summary>
+    private bool _isDirty;
+
+    /// <summary>直近の自動バックアップが失敗しているか（状態ラベルに `保存エラー` を出す）。</summary>
+    private bool _backupSaveFailed;
 
     public MainWindowViewModel(
         AppStateMachine stateMachine,
@@ -114,7 +124,10 @@ public sealed class MainWindowViewModel : ObservableBase
         ResetCommand = new RelayCommand(ExecuteReset, () => State == AppState.RecordingEnded);
         CopyCommand = new RelayCommand(ExecuteCopy, () => Timestamps.Count > 0);
 
-        EditStreamStartedAtCommand = new RelayCommand(ExecuteEditStreamStartedAt, () => StreamStartedAt is not null);
+        // 配信開始時間が "-" のままでも、記録があるなら編集で入れ直せるようにする
+        // （OBS 検知の取りこぼし等で基準時刻が欠けた記録を救済する導線）
+        EditStreamStartedAtCommand = new RelayCommand(ExecuteEditStreamStartedAt,
+            () => StreamStartedAt is not null || Timestamps.Count > 0);
         EditSelectedTimestampsCommand = new RelayCommand(ExecuteEditSelectedTimestamps,
             () => Timestamps.Any(t => t.IsSelected));
         OpenRecordCommand = new RelayCommand(ExecuteOpenRecord, () => State == AppState.Initial);
@@ -125,9 +138,18 @@ public sealed class MainWindowViewModel : ObservableBase
         ShowAboutCommand = new RelayCommand(ExecuteShowAbout);
         OpenGitHubCommand = new RelayCommand(ExecuteOpenGitHub);
         CheckLatestVersionCommand = new RelayCommand(ExecuteCheckLatestVersion, () => _releaseChecker is not null);
+
+        RefreshStreamStartRow();
     }
 
     public ObservableCollection<TimestampViewModel> Timestamps { get; } = new();
+
+    /// <summary>
+    /// 画面のタイムスタンプリストとクリップボードコピーの実体。
+    /// <see cref="Timestamps"/>（プレイ記録のみ）の先頭に「配信開始」行を差し込んだもので、
+    /// <see cref="Timestamps"/> 側の変更に追従して同期される。
+    /// </summary>
+    public ObservableCollection<ITimestampRow> DisplayRows { get; } = new();
 
     public AppState State => _stateMachine.State;
 
@@ -170,6 +192,10 @@ public sealed class MainWindowViewModel : ObservableBase
     {
         get
         {
+            // 保存先に書けていないことはユーザ操作を要するので最優先で出す
+            if (_backupSaveFailed)
+                return "保存エラー";
+
             // OBS 再接続中は要件 L535 に従ったラベルを優先表示
             if (_obsStatus == ObsConnectionManagerState.Reconnecting && _obsRetryAttempt >= 1)
                 return $"OBS再接続中（試行 {_obsRetryAttempt} 回目）";
@@ -268,10 +294,10 @@ public sealed class MainWindowViewModel : ObservableBase
         var vm = new TimestampViewModel(entry, _record.Stream.StartedAt, _format);
         InsertSorted(vm);
         _record.Timestamps.Add(entry);
-        _record.UpdatedAt = DateTimeOffset.Now;
         RaisePropertyChanged(nameof(TimestampCount));
         CopyCommand.RaiseCanExecuteChanged();
         SaveRecordCommand.RaiseCanExecuteChanged();
+        MarkDirtyAndSaveBackup();
     }
 
     public void SetStreamStartedAt(DateTimeOffset startedAt)
@@ -283,6 +309,8 @@ public sealed class MainWindowViewModel : ObservableBase
             ts.UpdateStreamStartedAt(startedAt);
         EditStreamStartedAtCommand.RaiseCanExecuteChanged();
         SaveRecordCommand.RaiseCanExecuteChanged();
+        RefreshStreamStartRow();
+        MarkDirtyAndSaveBackup();
     }
 
     public void NotifySelectionChanged()
@@ -350,10 +378,9 @@ public sealed class MainWindowViewModel : ObservableBase
             if (!string.IsNullOrEmpty(value))
                 latestEntry.SetField(key, value);
         }
-        _record.UpdatedAt = DateTimeOffset.Now;
-
         var vm = Timestamps.FirstOrDefault(t => ReferenceEquals(t.Entry, latestEntry));
         vm?.NotifyEntryUpdated();
+        MarkDirtyAndSaveBackup();
     }
 
     private void OnObsStatusChanged(object? sender, RecordingObsStatusChangedEventArgs e)
@@ -480,13 +507,28 @@ public sealed class MainWindowViewModel : ObservableBase
         if (_settings.General?.ConfirmOnExit != true) return true;
 
         var isRecording = State == AppState.Recording;
-        var hasEntries = Timestamps.Count > 0;
-        if (!isRecording && !hasEntries) return true;
+        // 自動バックアップ済みの記録で警告を出さないよう、件数ではなく未保存フラグで判定する
+        if (!isRecording && !_isDirty) return true;
 
         var message = isRecording
             ? "記録中の状態でアプリを終了しようとしています。終了しますか？"
             : "未保存の記録があります。終了しますか？";
         return _dialog.Confirm("終了確認", message);
+    }
+
+    /// <summary>
+    /// アプリ終了時の最終保存。失敗した場合はダイアログで通知する
+    /// （要件「アプリ終了時の最終保存失敗」）。
+    /// </summary>
+    public void SaveOnExit()
+    {
+        if (!_isDirty || string.IsNullOrEmpty(_backupPath)) return;
+
+        if (!TrySaveBackup())
+        {
+            _dialog.ShowError("保存エラー",
+                "保存先ディレクトリへの書込に失敗しました。保存先を変更してください");
+        }
     }
 
     public void CheckUnfinishedRecords()
@@ -515,7 +557,7 @@ public sealed class MainWindowViewModel : ObservableBase
 
         try
         {
-            LoadRecord(unfinished.Record);
+            LoadRecord(unfinished.Record, unfinished.FilePath);
         }
         catch (Exception ex)
         {
@@ -531,32 +573,22 @@ public sealed class MainWindowViewModel : ObservableBase
         TryStateOp(() => _stateMachine.Start(), "開始");
     }
 
+    // 配信開始/終了時刻の確定は OnStateMachineChanged に集約している。
+    // ボタン操作と OBS の検知イベントで別々に書いていたため、OBS 検知経由だけ
+    // stream.startedAt / endedAt が入らない不具合になっていた。
     private void ExecuteForceStart()
     {
-        TryStateOp(() =>
-        {
-            _stateMachine.ForceStart();
-            SetStreamStartedAt(DateTimeOffset.Now);
-        }, "強制開始");
+        TryStateOp(() => _stateMachine.ForceStart(), "強制開始");
     }
 
     private void ExecuteStop()
     {
-        TryStateOp(() =>
-        {
-            _stateMachine.Stop();
-            if (State == AppState.RecordingEnded)
-                _record.Stream.EndedAt = DateTimeOffset.Now;
-        }, "停止");
+        TryStateOp(() => _stateMachine.Stop(), "停止");
     }
 
     private void ExecuteResume()
     {
-        TryStateOp(() =>
-        {
-            _stateMachine.Resume();
-            _record.Stream.EndedAt = null;
-        }, "再開");
+        TryStateOp(() => _stateMachine.Resume(), "再開");
     }
 
     private void ExecuteReset()
@@ -571,7 +603,11 @@ public sealed class MainWindowViewModel : ObservableBase
         {
             _stateMachine.Reset();
             _record = new StreamRecord { Game = _selectedGame };
+            _backupPath = null;
+            _isDirty = false;
+            ClearBackupSaveError();
             Timestamps.Clear();
+            RefreshStreamStartRow();
             RaisePropertyChanged(nameof(StreamStartedAt));
             RaisePropertyChanged(nameof(StreamStartedAtText));
             RaisePropertyChanged(nameof(TimestampCount));
@@ -583,8 +619,12 @@ public sealed class MainWindowViewModel : ObservableBase
 
     private void ExecuteEditStreamStartedAt()
     {
-        if (StreamStartedAt is null) return;
-        var result = _dialog.ShowDateTimeEditor(new[] { StreamStartedAt.Value });
+        // 未設定（"-" 表示）なら、最初のプレイ記録の時刻を初期値にして編集させる
+        var seed = StreamStartedAt
+            ?? Timestamps.FirstOrDefault()?.PlayStartedAt
+            ?? DateTimeOffset.Now;
+
+        var result = _dialog.ShowDateTimeEditor(new[] { seed });
         if (result is null || result.Count == 0) return;
         SetStreamStartedAt(result[0]);
     }
@@ -603,9 +643,8 @@ public sealed class MainWindowViewModel : ObservableBase
             selected[i].Entry.PlayStartedAt = result[i];
             selected[i].NotifyEntryUpdated();
         }
-        _record.UpdatedAt = DateTimeOffset.Now;
-
         ReorderTimestamps();
+        MarkDirtyAndSaveBackup();
     }
 
     private void ExecuteOpenRecord()
@@ -616,7 +655,7 @@ public sealed class MainWindowViewModel : ObservableBase
         try
         {
             var record = _recordStore.Load(path);
-            LoadRecord(record);
+            LoadRecord(record, path);
         }
         catch (IncompatibleSchemaException ex)
         {
@@ -649,6 +688,16 @@ public sealed class MainWindowViewModel : ObservableBase
 
         // 選択中ゲームのフォーマット文字列を即時反映
         Format = _settings.TimestampFormatFor(_selectedGame);
+
+        // 配信開始行の有無・文言が変わった可能性がある
+        RefreshStreamStartRow();
+
+        // 保存先を設定し直した場合、記録中でも次の保存タイミングから書けるようにする
+        if (State is AppState.Recording or AppState.RecordingEnded)
+        {
+            EnsureBackupPath();
+            if (_isDirty) TrySaveBackup();
+        }
 
         // OBS 接続情報や監視ディレクトリが変わった可能性があるので Coordinator にも反映
         ApplySettingsToCoordinator();
@@ -684,6 +733,7 @@ public sealed class MainWindowViewModel : ObservableBase
         try
         {
             _recordStore.SaveAtomic(_record, path);
+            _isDirty = false;
             _dialog.ShowInfo("保存完了", $"記録を保存しました:\n{path}");
         }
         catch (Exception ex)
@@ -693,12 +743,17 @@ public sealed class MainWindowViewModel : ObservableBase
         }
     }
 
-    private void LoadRecord(StreamRecord record)
+    private void LoadRecord(StreamRecord record, string? sourcePath)
     {
         if (_stateMachine.State == AppState.Initial)
             _stateMachine.OpenFile();
 
         _record = record;
+
+        // 「記録再開」で続きを記録した場合も同じファイルへ書き戻す
+        _backupPath = string.IsNullOrEmpty(sourcePath) ? null : sourcePath;
+        _isDirty = false;
+        ClearBackupSaveError();
 
         // ファイルのゲームに合わせる（読込後は記録終了状態なので選択コンボは触れない）
         if (_selectedGame != record.Game)
@@ -713,6 +768,7 @@ public sealed class MainWindowViewModel : ObservableBase
         foreach (var entry in record.Timestamps.OrderBy(e => e.PlayStartedAt))
             Timestamps.Add(new TimestampViewModel(entry, record.Stream.StartedAt, _format));
 
+        RefreshStreamStartRow();
         RaisePropertyChanged(nameof(StreamStartedAt));
         RaisePropertyChanged(nameof(StreamStartedAtText));
         RaisePropertyChanged(nameof(TimestampCount));
@@ -734,8 +790,8 @@ public sealed class MainWindowViewModel : ObservableBase
     {
         if (Timestamps.Count == 0) return;
         var sb = new StringBuilder();
-        foreach (var ts in Timestamps)
-            sb.AppendLine(ts.DisplayText);
+        foreach (var row in DisplayRows)
+            sb.AppendLine(row.DisplayText);
         try
         {
             _clipboard.SetText(sb.ToString());
@@ -748,6 +804,8 @@ public sealed class MainWindowViewModel : ObservableBase
 
     private void OnStateMachineChanged(object? sender, StateChangedEventArgs e)
     {
+        ApplyRecordTransition(e.OldState, e.NewState);
+
         RaisePropertyChanged(nameof(State));
         RaisePropertyChanged(nameof(StateLabel));
         RaisePropertyChanged(nameof(PrimaryButtonText));
@@ -768,10 +826,163 @@ public sealed class MainWindowViewModel : ObservableBase
 
     private void OnTimestampsChanged(object? sender, NotifyCollectionChangedEventArgs e)
     {
+        SyncDisplayRows(e);
         RaisePropertyChanged(nameof(TimestampCount));
         CopyCommand.RaiseCanExecuteChanged();
         SaveRecordCommand.RaiseCanExecuteChanged();
         EditSelectedTimestampsCommand.RaiseCanExecuteChanged();
+        EditStreamStartedAtCommand.RaiseCanExecuteChanged();
+    }
+
+    /// <summary>
+    /// 「配信開始待ち → 記録中」等の遷移に伴う記録データ側の副作用。
+    /// ボタン操作でも OBS の配信開始/終了検知でも同じ経路を通るように、
+    /// 状態機械のイベント 1 箇所にまとめている。
+    /// </summary>
+    private void ApplyRecordTransition(AppState oldState, AppState newState)
+    {
+        if (oldState == AppState.WaitingForStream && newState == AppState.Recording)
+        {
+            // 記録中への遷移時刻が相対タイムスタンプの基準になる
+            if (_record.Stream.StartedAt == default)
+                SetStreamStartedAt(DateTimeOffset.Now);
+            _record.Stream.EndedAt = null;
+            EnsureBackupPath();
+            MarkDirtyAndSaveBackup();
+        }
+        else if (oldState == AppState.RecordingEnded && newState == AppState.Recording)
+        {
+            // 記録再開。終了時刻を取り消して続きを記録する
+            _record.Stream.EndedAt = null;
+            EnsureBackupPath();
+            MarkDirtyAndSaveBackup();
+        }
+        else if (oldState == AppState.Recording && newState == AppState.RecordingEnded)
+        {
+            _record.Stream.EndedAt = DateTimeOffset.Now;
+            MarkDirtyAndSaveBackup();
+        }
+    }
+
+    // --- 配信開始行 -------------------------------------------------------
+
+    /// <summary>設定と配信開始時間の有無に合わせて、リスト先頭の「配信開始」行を出し入れする。</summary>
+    private void RefreshStreamStartRow()
+    {
+        var enabled = _settings.General?.IncludeStreamStartRow != false && StreamStartedAt is not null;
+
+        if (!enabled)
+        {
+            if (_streamStartRow is not null)
+            {
+                DisplayRows.Remove(_streamStartRow);
+                _streamStartRow = null;
+            }
+            return;
+        }
+
+        var label = _settings.General?.StreamStartRowLabel;
+        if (string.IsNullOrWhiteSpace(label))
+            label = AppSettings.DefaultStreamStartRowLabel;
+
+        if (_streamStartRow is null)
+        {
+            _streamStartRow = new StreamStartRowViewModel(label);
+            DisplayRows.Insert(0, _streamStartRow);
+        }
+        else
+        {
+            _streamStartRow.Label = label;
+        }
+    }
+
+    /// <summary><see cref="Timestamps"/> の変更を <see cref="DisplayRows"/> へ写す。</summary>
+    private void SyncDisplayRows(NotifyCollectionChangedEventArgs e)
+    {
+        var offset = _streamStartRow is null ? 0 : 1;
+
+        switch (e.Action)
+        {
+            case NotifyCollectionChangedAction.Add when e.NewItems is not null && e.NewStartingIndex >= 0:
+                for (var i = 0; i < e.NewItems.Count; i++)
+                    DisplayRows.Insert(e.NewStartingIndex + offset + i, (ITimestampRow)e.NewItems[i]!);
+                break;
+
+            case NotifyCollectionChangedAction.Remove when e.OldItems is not null && e.OldStartingIndex >= 0:
+                for (var i = e.OldItems.Count - 1; i >= 0; i--)
+                    DisplayRows.RemoveAt(e.OldStartingIndex + offset + i);
+                break;
+
+            default:
+                // Reset / Move / Replace や添字不明のケースは作り直す（件数が小さいので十分速い）
+                RebuildDisplayRows();
+                break;
+        }
+    }
+
+    private void RebuildDisplayRows()
+    {
+        DisplayRows.Clear();
+        if (_streamStartRow is not null)
+            DisplayRows.Add(_streamStartRow);
+        foreach (var ts in Timestamps)
+            DisplayRows.Add(ts);
+    }
+
+    // --- 自動バックアップ -------------------------------------------------
+
+    /// <summary>バックアップの書込先を確定する（既に決まっていれば何もしない）。</summary>
+    private void EnsureBackupPath()
+    {
+        if (!string.IsNullOrEmpty(_backupPath)) return;
+
+        var dir = _settings.General?.BackupDirectory;
+        if (string.IsNullOrEmpty(dir)) return;
+
+        var startedAt = _record.Stream.StartedAt == default ? DateTimeOffset.Now : _record.Stream.StartedAt;
+        _backupPath = Path.Combine(dir, JsonRecordStore.GenerateFileName(_record.Game, startedAt));
+    }
+
+    private void MarkDirtyAndSaveBackup()
+    {
+        _record.UpdatedAt = DateTimeOffset.Now;
+        _isDirty = true;
+        TrySaveBackup();
+    }
+
+    /// <summary>
+    /// バックアップへ上書き保存する。失敗しても記録は継続し、状態ラベルに `保存エラー` を出して
+    /// 次の保存タイミングで再試行する（要件「ファイル I/O 失敗」）。
+    /// </summary>
+    private bool TrySaveBackup()
+    {
+        var path = _backupPath;
+        if (string.IsNullOrEmpty(path)) return true;
+
+        try
+        {
+            _recordStore.SaveAtomic(_record, path);
+            _isDirty = false;
+            ClearBackupSaveError();
+            return true;
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "バックアップの保存に失敗しました: {Path}", path);
+            if (!_backupSaveFailed)
+            {
+                _backupSaveFailed = true;
+                RaisePropertyChanged(nameof(StateLabel));
+            }
+            return false;
+        }
+    }
+
+    private void ClearBackupSaveError()
+    {
+        if (!_backupSaveFailed) return;
+        _backupSaveFailed = false;
+        RaisePropertyChanged(nameof(StateLabel));
     }
 
     private void TryStateOp(Action op, string opName)
