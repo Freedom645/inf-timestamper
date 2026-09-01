@@ -66,7 +66,7 @@ dotnet tool install -g vpk --version 1.2.0
 
 新しい vpk があると警告が出るが、上げるときは csproj の `Velopack` も合わせて上げること。
 
-リリースバンドルの作成:
+リリースノートを `docs/release-notes/v{バージョン}.md` に書いてから、リリースバンドルを作成する:
 
 ```powershell
 vpk pack `
@@ -76,8 +76,12 @@ vpk pack `
   --mainExe InfTimestamper.exe `
   --packTitle "INF-TIMESTAMPER" `
   --packAuthors "Freedom645" `
-  --icon src/InfTimestamper/Assets/icon.ico
+  --icon src/InfTimestamper/Assets/icon.ico `
+  --releaseNotes docs/release-notes/v1.0.0.md
 ```
+
+`--releaseNotes` の内容は nupkg に埋め込まれ、`vpk upload github` 実行時に
+GitHub Release の本文としても使われる。
 
 成果物は `Releases/` 配下に出る（`.gitignore` 済み）:
 
@@ -98,19 +102,26 @@ vpk pack `
 
 ## 5. GitHub Releases へ公開
 
-GitHub Web 上で新規 Release を作成し、`Releases/` 配下の成果物を**すべて**アップロードする
-（索引ファイルが無いと自己アップデートが動かない）。または `vpk` の upload コマンドで:
+`vpk upload github` でアップロードする。`Releases/` 配下の成果物が
+すべて（索引ファイル含む）上がる。索引が無いと自己アップデートが動かないので、
+Web から手作業で上げる場合も全ファイルを忘れないこと。
 
 ```powershell
+$env:GH_TOKEN = gh auth token
 vpk upload github `
   --repoUrl https://github.com/Freedom645/inf-timestamper `
-  --token $env:GITHUB_TOKEN `
-  --releaseName "v1.0.0"
+  --token $env:GH_TOKEN `
+  --tag v1.0.0 `
+  --releaseName "v1.0.0" `
+  --targetCommitish main
 ```
 
-`token` は事前に環境変数または `gh auth login` で設定。
-
-タグは `v1.0.0` 形式。`VersionComparer` が `v` プレフィックスを許容するので、これでアプリ側のバージョンチェックが動く。
+- `--publish` を付けない限り**ドラフト**として作成される。中身を確認してから
+  GitHub 上で「Publish release」を押す運用にする
+- **ドラフトの間はタグが作成されない。** 公開した時点で `--targetCommitish` の
+  コミットにタグが打たれるので、**先に対象コミットを push しておくこと**
+- タグは `v1.0.0` 形式。`VersionComparer` が `v` プレフィックスを許容するので、
+  これでアプリ側のバージョンチェックが動く
 
 ## 6. リリース後の動作確認
 
