@@ -16,13 +16,7 @@ Velopack による自動アップデートを前提とする。
 - [ ] `dotnet build` で警告 0 / エラー 0
 - [ ] `docs/要件.md` と `docs/実装計画.md` の整合性
 - [ ] `src/InfTimestamper/InfTimestamper.csproj` のバージョン（後述）を更新
-- [ ] 楽曲 DB を最新化（INFINITAS に新曲が追加されている場合）
-
-```powershell
-powershell -NoProfile -ExecutionPolicy Bypass -File tools/generate_songs_json.ps1
-git add src/InfTimestamper.Core/Resources/INFINITAS/songs.json
-git commit -m "data: songs.json を最新化"
-```
+- [ ] INFINITAS / pop'n の双方で実機の通し確認
 
 ## 2. バージョン番号の更新
 
@@ -52,14 +46,13 @@ dotnet publish src/InfTimestamper/InfTimestamper.csproj `
 
 - `--self-contained true`: .NET ランタイムを exe に同梱（インストール不要で動く）
 - `-p:PublishSingleFile=true`: 単一 exe へまとめる
-- `-p:IncludeNativeLibrariesForSelfExtract=true`: OpenCvSharp / Tesseract / Velopack のネイティブ DLL を同梱
+- `-p:IncludeNativeLibrariesForSelfExtract=true`: WPF / Velopack のネイティブ DLL を単一 exe に取り込む
 
-出力フォルダ `publish/InfTimestamper-win-x64/` 内に exe と必要なリソース（`Resources/INFINITAS/songs.json` 等）が並ぶ。
+出力フォルダ `publish/InfTimestamper-win-x64/` に `InfTimestamper.exe` と pdb だけが並ぶ。
+外部リソースファイルは持たない（プレイ検知は外部ツールの出力を読むだけで、同梱データが不要なため）。
 
-### `tessdata` の同梱
-
-OCR を有効化するには `publish/InfTimestamper-win-x64/tessdata/eng.traineddata` を手動配置する必要がある。
-未配置時は `TesseractOcrService.IsAvailable = false` で OCR が無効化されるだけでアプリは起動する。
+`EnableCompressionInSingleFile` を csproj で有効にしているので、exe は約 73MB になる
+（無効時は約 165MB）。初回起動時に `%TEMP%` へ展開されるぶん、初回だけ起動が少し遅い。
 
 ## 4. Velopack でリリースバンドル化
 
@@ -103,14 +96,13 @@ vpk upload github `
 ## 6. リリース後の動作確認
 
 - [ ] 別 PC で `Setup.exe` を実行 → インストール完了
-- [ ] アプリを起動して動作確認（OBS 接続、状態遷移、コピー）
+- [ ] アプリを起動して動作確認（OBS 接続、ゲーム選択、状態遷移、コピー）
 - [ ] 設定ダイアログで「最新バージョンチェック」を押下 → "現在のバージョンが最新です"
 - [ ] 次のリリースを行ったら、起動時自動チェックで更新検出 → ダウンロード → 再起動
 
 ## 既知の制約
 
-- OpenCvSharp / Tesseract / Velopack のネイティブ DLL は `IncludeNativeLibrariesForSelfExtract` で同梱されるが、起動時に `%TEMP%` 配下に展開される。初回起動は若干遅延する場合がある
-- `tessdata` をアプリに同梱する場合、ライセンス（Apache 2.0）の表記をアプリの About やリリースノートに含めること
+- ネイティブ DLL は `IncludeNativeLibrariesForSelfExtract` で同梱されるが、起動時に `%TEMP%` 配下に展開される。単一 exe を圧縮しているぶんと合わせて、初回起動は若干遅延する
 - Velopack は exe を「インストール済みの場所」から動作させる前提なので、`Program Files` や `%LOCALAPPDATA%` 配下にインストールされる。ZIP 解凍配置や開発実行（`dotnet run`）では `IUpdateService.IsInstalled = false` で自動アップデートは動かず、リリースページ起動フォールバックが使われる
 
 ## ロールバック

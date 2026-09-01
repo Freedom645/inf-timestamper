@@ -17,8 +17,7 @@ dotnet publish src/InfTimestamper/InfTimestamper.csproj -c Release -r win-x64 --
 ```
 
 - lint/formatter は導入していない（アナライザ既定のみ）。
-- `tools/` 配下の診断ツール（`ColorAnalyzer` / `HashExtractor` / `OcrTester` / `RoiCropper`）は **`.sln` に含まれていない**。個別に `dotnet run --project tools/<名前>` で実行する。
-- リリース手順は `docs/release.md`、認識用データの生成手順は `docs/data-preparation.md`。
+- リリース手順は `docs/release.md`。
 
 ## プロジェクト概要
 
@@ -32,7 +31,7 @@ dotnet publish src/InfTimestamper/InfTimestamper.csproj -c Release -r win-x64 --
 
 本プロジェクトは [Freedom645/inf-timestamper](https://github.com/Freedom645/inf-timestamper)（Python 実装、v0.6.1 まで公開）の **C# フルリライト**。**同一リポジトリで v1.0.0 としてリリース**予定。`v0.6.1` タグで Python 実装を保存し、`main` を C# 実装で全面置換する。**v0.x の JSON データは v1.0 で読み込まない（クリーン切替）**。詳細は要件.md「前段アプリと本リライトの位置付け」節参照。
 
-権威ある仕様は `docs/要件.md`。UI 文言・画面構成・ボタン挙動・編集ダイアログ仕様・JSON スキーマ・画像認識の ROI 設計などはすべてそちらを参照する。本ファイルは「複数ファイルを横断しないと掴めない大局的な構造」のみを抽出している。
+権威ある仕様は `docs/要件.md`。UI 文言・画面構成・ボタン挙動・編集ダイアログ仕様・JSON スキーマ・データ取得仕様などはすべてそちらを参照する。本ファイルは「複数ファイルを横断しないと掴めない大局的な構造」のみを抽出している。
 
 ## 技術スタック（確定）
 
@@ -41,16 +40,15 @@ dotnet publish src/InfTimestamper/InfTimestamper.csproj -c Release -r win-x64 --
 - 配布形態：single-file self-contained publish（単一 exe）
 - 主要ライブラリ：
   - OBS WebSocket：`OBSWebSocketDotNet`（配信開始/終了の検知）
-  - ファイル監視：`System.IO.FileSystemWatcher`（標準。Reflux 出力の監視 = ゲーム検知の主機構）
+  - ファイル監視：`System.IO.FileSystemWatcher`（標準。外部ツールの出力監視 = ゲーム検知の主機構）
   - JSON：`System.Text.Json`（標準）
   - ロギング：`Microsoft.Extensions.Logging` + `Serilog`（`Serilog.Sinks.File`）
   - DI / ホスト：`Microsoft.Extensions.Hosting`
   - 自己アップデート：`Velopack`
   - ULID 生成：`NUlid`
-  - 画像処理：`OpenCvSharp4`（+ `runtime.win`）／画像ハッシュ：`CoenM.ImageSharp.ImageHash` ／ OCR：`Tesseract` と `Windows.Media.Ocr`（いずれも dormant な画像認識実装の残置に伴い同梱）
   - テスト：xUnit
 
-TFM は Core / Tests が `net8.0`・`net8.0-windows10.0.19041.0`、WPF が `net8.0-windows10.0.19041.0`（`Windows.Media.Ocr` を使うため 19041 を指定）。WPF は独自 `Main`（`Program.cs`）で Velopack をブートストラップするため、`App.xaml` を `ApplicationDefinition` から外して `Page` として扱っている。
+TFM は Core が `net8.0`、WPF / Tests が `net8.0-windows`。WPF は独自 `Main`（`Program.cs`）で Velopack をブートストラップするため、`App.xaml` を `ApplicationDefinition` から外して `Page` として扱っている。単一 exe は `EnableCompressionInSingleFile` で圧縮している（約 73MB）。
 
 ## アーキテクチャ上の要点
 
@@ -77,15 +75,13 @@ OBS WebSocket は **配信開始/終了の検知**（= タイムスタンプの�
 
 #### INFINITAS（Reflux ファイル監視）
 
-INFINITAS のプレイ開始とプレイデータは、**Reflux が出力するファイル群のファイル監視**で取得する（`Core/Reflux/`）。当初は OBS スクリーンショットの画像認識 + OCR で取得する設計だったが、OCR の精度向上が困難なため Reflux 方式へ切り替えた。前段 Python 実装（`reflux_file_watcher.py`）の移植。
+INFINITAS のプレイ開始とプレイデータは、**Reflux が出力するファイル群のファイル監視**で取得する（`Core/Reflux/`）。当初は OBS スクリーンショットの画像認識 + OCR で取得する設計だったが、OCR の精度向上が困難なため Reflux 方式へ切り替えた（画像認識の実装は Phase 9 で削除済み）。前段 Python 実装（`reflux_file_watcher.py`）の移植。
 
 - **監視**：`RefluxPlayWatcher` が `FileSystemWatcher` で `playstate.txt` を監視。`off`/`menu` → `play` でプレイ開始、`play` → 非 `play` でプレイリザルトと判定。
 - **プレイ開始**：`title.txt` / `level.txt` を読み `$title` / `$level` を充填。`playStartedAt` = エッジ検知時刻。
 - **プレイリザルト**：`latest.json` を読み、`RefluxFieldMapper` で各識別子（`$diff_*` / `$dj_level` / `$lamp` / `$miss_count` / `$ex_score` 等）へ変換して直近エントリにマージ。マッピングは `RefluxFieldMapper` に集約（調整はここだけ）。実機サンプル（`docs/sample/reflux/`）で全フィールドが正しく展開されることを確認済み。
 - **重複防止**：エントリ操作は状態遷移エッジでのみ行う（同一状態の連続通知はノーオペ）。
 - 監視失敗・読込失敗はダイアログを出さず、配信開始/終了の記録には影響させない（ログのみ）。
-- **画像認識は dormant**：旧実装（`Recognition/` 一式、`Resources/INFINITAS/hashes.json` / `rois.json` / `songs.json` / `reference_images/`、OpenCvSharp・Tesseract・ImageHash 依存）は未配線で残置。将来の代替手段として再利用可能。
-
 #### pop'n music（popn-lively-tracker ファイル監視）
 
 `PopnPlayWatcher` が `state.txt` と `result.json` の**両方**を監視する（`Core/Popn/`）。入力仕様は `popn-lively-tracker` の `docs/file-output.md`（互換契約）。
@@ -137,27 +133,26 @@ Velopack 未インストール環境（開発実行・ZIP 解凍配置）では 
 
 ```
 inf-timestamper/
-├── InfTimestamper.sln              3 プロジェクトのみ（tools/ は含まない）
+├── README.md                       利用者向けの説明
+├── InfTimestamper.sln              3 プロジェクト
 ├── docs/
 │   ├── 要件.md                     仕様の正本
 │   ├── 実装計画.md                 フェーズ別の進捗・DoD・引き継ぎメモ
-│   ├── data-preparation.md         tessdata と認識用データ（songs/hashes/rois）の整備手順
 │   ├── release.md                  publish → vpk pack → GitHub Releases のリリース手順
 │   └── sample/                     外部ツールの実出力サンプル（reflux / popn-tracker）
 ├── src/
 │   ├── InfTimestamper/             WPF 本体。Views / ViewModels / Services / Converters / Behaviors、
 │   │                               App.xaml.cs（DI 組立）、Program.cs（独自 Main + Velopack）
 │   └── InfTimestamper.Core/        UI 非依存のドメイン層（下記）
-├── tests/
-│   └── InfTimestamper.Core.Tests/  xUnit。ViewModel のテストもここに置く
-└── tools/                          診断ツール群（sln 外。個別に dotnet run）
+└── tests/
+    └── InfTimestamper.Core.Tests/  xUnit。ViewModel のテストもここに置く
 ```
 
 `InfTimestamper.Core/` の内訳:
 
 | ディレクトリ | 役割 |
 | --- | --- |
-| `Coordination/` | `RecordingCoordinator` — 状態機械・Reflux 監視・永続化を束ねる中核 |
+| `Coordination/` | `RecordingCoordinator` — 状態機械・プレイ監視・OBS 接続を束ねる中核 |
 | `States/` | `AppStateMachine` — 4 状態のメイン状態機械 |
 | `Games/` | ゲーム抽象化。`FieldKeys`（識別子キーの正本）/ `GameCatalog`（ゲーム別メタデータ）/ `IPlayWatcher` / `PlayEvents` |
 | `Reflux/` | INFINITAS のゲーム検知。`RefluxPlayWatcher` / `RefluxLatestJson` / `RefluxFieldMapper` |
@@ -169,15 +164,5 @@ inf-timestamper/
 | `Settings/` | `AppSettings` / `SettingsStore` |
 | `Updates/` | GitHub Releases 照会とバージョン比較 |
 | `Threading/` | `IUiDispatcher`（UI スレッドへのマーシャリング抽象） |
-| `Recognition/` | **dormant**。画像認識・OCR の旧実装。未配線 |
-| `Resources/INFINITAS/` | `songs.json`（publish 同梱）と、dormant な `hashes.json` / `rois.json` / `reference_images/`（後者はライセンス配慮で untracked） |
 
-`tools/` の内訳（すべて dormant な画像認識のための診断ツール）:
-
-| ツール | 役割 |
-| --- | --- |
-| `generate_songs_json.ps1` | IIDX-Data-Table から `songs.json` を生成 |
-| `RoiCropper` | 指定 ROI を切り抜いて PNG 保存（ROI 座標の確定用） |
-| `ColorAnalyzer` | ROI の HSV ヒストグラムと色バンド出現数を出力 |
-| `HashExtractor` | 参照画像から aHash / pHash を抽出して `hashes.json` へ充填 |
-| `OcrTester` | 単一画像 + ROI で OCR を試行（`--dump` で前処理後画像を保存） |
+同梱リソースは持たない。プレイ検知は外部ツールの出力を読むだけなので、publish 出力は exe 単体になる。

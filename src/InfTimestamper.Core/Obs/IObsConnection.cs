@@ -12,8 +12,6 @@ public interface IObsConnection : IAsyncDisposable
 
     Task DisconnectAsync();
 
-    Task<ObsScreenshot> GetScreenshotAsync(string sourceName, CancellationToken cancellationToken);
-
     Task<bool> IsStreamActiveAsync(CancellationToken cancellationToken);
 
     Task<ObsServerInfo> GetServerInfoAsync(CancellationToken cancellationToken);

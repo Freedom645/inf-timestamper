@@ -84,23 +84,6 @@ public sealed class ObsWebSocketConnection : IObsConnection
         return Task.CompletedTask;
     }
 
-    public Task<ObsScreenshot> GetScreenshotAsync(string sourceName, CancellationToken cancellationToken)
-    {
-        if (string.IsNullOrWhiteSpace(sourceName))
-            throw new ArgumentException("ソース名が指定されていません。", nameof(sourceName));
-
-        return Task.Run(
-            () =>
-            {
-                cancellationToken.ThrowIfCancellationRequested();
-                var capturedAt = DateTimeOffset.Now;
-                var dataUrl = _client.GetSourceScreenshot(sourceName, "png");
-                var bytes = DecodePngDataUrl(dataUrl);
-                return new ObsScreenshot(bytes, capturedAt);
-            },
-            cancellationToken);
-    }
-
     public Task<bool> IsStreamActiveAsync(CancellationToken cancellationToken)
     {
         return Task.Run<bool>(
@@ -205,18 +188,6 @@ public sealed class ObsWebSocketConnection : IObsConnection
         OutputState.OBS_WEBSOCKET_OUTPUT_STOPPED => ObsStreamState.Stopped,
         _ => ObsStreamState.Unknown,
     };
-
-    internal static byte[] DecodePngDataUrl(string dataUrl)
-    {
-        if (string.IsNullOrEmpty(dataUrl))
-            throw new InvalidDataException("OBS から空のスクリーンショットが返却されました。");
-
-        var base64 = dataUrl.StartsWith(PngDataUrlPrefix, StringComparison.OrdinalIgnoreCase)
-            ? dataUrl[PngDataUrlPrefix.Length..]
-            : ExtractBase64Payload(dataUrl);
-
-        return Convert.FromBase64String(base64);
-    }
 
     private static string ExtractBase64Payload(string dataUrl)
     {

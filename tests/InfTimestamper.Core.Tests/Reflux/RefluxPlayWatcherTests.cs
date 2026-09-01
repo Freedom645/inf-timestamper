@@ -1,5 +1,4 @@
 using InfTimestamper.Core.Games;
-using InfTimestamper.Core.Recognition;
 using InfTimestamper.Core.Reflux;
 using InfTimestamper.Core.Tests.TestHelpers;
 using Microsoft.Extensions.Logging.Abstractions;
@@ -22,8 +21,8 @@ public class RefluxPlayWatcherTests
         harness.EnterPlay("AA", 12);
 
         Assert.NotNull(started);
-        Assert.Equal("AA", started!.Fields[RecognitionFieldKeys.Title]);
-        Assert.Equal("12", started.Fields[RecognitionFieldKeys.Level]);
+        Assert.Equal("AA", started!.Fields[FieldKeys.Title]);
+        Assert.Equal("12", started.Fields[FieldKeys.Level]);
     }
 
     [Fact]
@@ -38,9 +37,9 @@ public class RefluxPlayWatcherTests
         harness.LeavePlay(new RefluxLatestJson { Grade = "AA", Lamp = "HC", ExScore = "1000" });
 
         Assert.NotNull(result);
-        Assert.Equal("AA", result!.Fields[RecognitionFieldKeys.DjLevel]);
-        Assert.Equal("HARD", result.Fields[RecognitionFieldKeys.Lamp]);
-        Assert.Equal("1000", result.Fields[RecognitionFieldKeys.ExScore]);
+        Assert.Equal("AA", result!.Fields[FieldKeys.DjLevel]);
+        Assert.Equal("HARD", result.Fields[FieldKeys.Lamp]);
+        Assert.Equal("1000", result.Fields[FieldKeys.ExScore]);
     }
 
     [Fact]

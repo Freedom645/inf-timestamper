@@ -11,7 +11,6 @@ internal sealed class FakeObsConnection : IObsConnection
     public event EventHandler<ObsStreamStateChangedEventArgs>? StreamStateChanged;
 
     public Func<ObsConnectionOptions, Task>? ConnectHandler { get; set; }
-    public Func<string, Task<ObsScreenshot>>? ScreenshotHandler { get; set; }
     public Func<Task<bool>>? StreamActiveHandler { get; set; }
     public Func<Task<ObsServerInfo>>? ServerInfoHandler { get; set; }
     public Func<Task<IReadOnlyList<string>>>? InputNamesHandler { get; set; }
@@ -34,11 +33,6 @@ internal sealed class FakeObsConnection : IObsConnection
         SimulateDisconnect();
         return Task.CompletedTask;
     }
-
-    public Task<ObsScreenshot> GetScreenshotAsync(string sourceName, CancellationToken cancellationToken)
-        => ScreenshotHandler is null
-            ? throw new InvalidOperationException("ScreenshotHandler 未設定")
-            : ScreenshotHandler(sourceName);
 
     public Task<bool> IsStreamActiveAsync(CancellationToken cancellationToken)
         => StreamActiveHandler is null

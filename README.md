@@ -15,9 +15,20 @@
 | ゲーム | プレイ検知に使う外部ツール |
 | --- | --- |
 | コナステ版 beatmania IIDX INFINITAS | [Reflux](https://github.com/olji/Reflux) |
-| pop'n music | [popn-lively-tracker](https://github.com/Freedom645/popn-lively-tracker) |
+| pop'n music | 別途トラッカーが必要（下記） |
 
 **1 配信 = 1 ゲーム**です。記録対象はメインウィンドウのゲーム選択で切り替えます（記録開始前のみ変更可能）。
+
+### pop'n music について
+
+pop'n のプレイ検知には、次の 2 ファイルを出力する外部トラッカーを別途用意する必要があります。**本アプリには含まれません。**
+
+| ファイル | 内容 |
+| --- | --- |
+| `state.txt` | 画面状態を 1 行で出力（`選曲画面` / `プレイ中` / `プレイ終了` / `待機`） |
+| `result.json` | プレイリザルト。`music`（`title` / `sheet` / `level`）、`rank_name`、`medal_name`、`score`、`judge.bad`、検知時刻 `time` を含む |
+
+`result.json` はリザルト画面の表示から数秒遅れて書かれても構いません。本アプリは `state.txt` が `プレイ中` に変わった時刻をプレイ開始として記録し、その後 `result.json` が書き換わった時点で成績を紐づけます。書き出しは一時ファイル経由の置き換え（アトミック）を想定しています。
 
 ## 仕組み
 
@@ -50,7 +61,7 @@ OBS に繋がらない場合や、外部ツールを使わない場合でも、�
 プレイ検知に使う外部ツールを起動し、その出力先フォルダを控えます。
 
 - INFINITAS: Reflux が `playstate.txt` / `title.txt` / `level.txt` / `latest.json` を出力するフォルダ
-- pop'n music: popn-lively-tracker の `state.txt` / `result.json` を出力するフォルダ
+- pop'n music: トラッカーが `state.txt` / `result.json` を出力するフォルダ
 
 ### 2. 設定
 
@@ -127,7 +138,6 @@ dotnet run --project src/InfTimestamper -- --log-level=Debug
 | [`docs/要件.md`](docs/要件.md) | 仕様の正本（UI・データ仕様・データ取得仕様） |
 | [`docs/実装計画.md`](docs/実装計画.md) | フェーズ別の進捗と設計判断の記録 |
 | [`docs/release.md`](docs/release.md) | publish → vpk pack → GitHub Releases の手順 |
-| [`docs/data-preparation.md`](docs/data-preparation.md) | 認識用データの整備手順 |
 | [`CLAUDE.md`](CLAUDE.md) | コードベースの構造メモ |
 
 ### 対応ゲームを増やすには
@@ -143,4 +153,4 @@ dotnet run --project src/InfTimestamper -- --log-level=Debug
 
 本アプリは Python 実装（v0.6.1 まで公開）を C# / .NET 8 / WPF で全面的に書き直したものです。Python 版は `v0.6.1` タグに保存されています。**v0.x で作成したデータは v1.0 では読み込めません。**
 
-当初は OBS のスクリーンショットに対する画像認識と OCR でプレイ内容を取得していましたが、装飾フォントに対する OCR の精度が上げられず、外部ツールのファイル監視方式へ切り替えました。画像認識の実装は将来の代替手段としてコードベースに残してあります（未使用）。
+当初は OBS のスクリーンショットに対する画像認識と OCR でプレイ内容を取得していましたが、装飾フォントに対する OCR の精度が上げられず、外部ツールのファイル監視方式へ切り替えました。画像認識まわりの実装は使われなくなったため削除しています（履歴は `v1.0.0` 以前のコミットに残っています）。

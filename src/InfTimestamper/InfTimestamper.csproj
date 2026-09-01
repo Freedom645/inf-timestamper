@@ -21,13 +21,14 @@
 
   <PropertyGroup>
     <OutputType>WinExe</OutputType>
-    <!-- Windows.Media.Ocr / Windows.Graphics.Imaging を使うため Windows 10 19041 TFM を指定。
-         May 2020 Update 以降の Windows が前提。INFINITAS 実機ユーザはほぼ全員満たす想定 -->
-    <TargetFramework>net8.0-windows10.0.19041.0</TargetFramework>
+    <TargetFramework>net8.0-windows</TargetFramework>
     <Nullable>enable</Nullable>
     <ImplicitUsings>enable</ImplicitUsings>
     <UseWPF>true</UseWPF>
     <StartupObject>InfTimestamper.Program</StartupObject>
+    <!-- single-file publish 時にバンドルを圧縮する（165MB → 73MB）。
+         初回起動時の展開が少し遅くなるが、配布サイズの削減を優先する -->
+    <EnableCompressionInSingleFile>true</EnableCompressionInSingleFile>
   </PropertyGroup>
 
   <!-- リリース時に更新する。GitHub Releases のタグは v{Version} 形式（VersionComparer が v を許容） -->
@@ -47,37 +48,5 @@
     <Page Include="App.xaml" />
   </ItemGroup>
 
-  <ItemGroup>
-    <!-- Core プロジェクトの Resources は ProjectReference 経由では PublishSingleFile 時に
-         出力されないため、Linked Content として明示的に WPF プロジェクトから参照する -->
-    <Content Include="..\InfTimestamper.Core\Resources\INFINITAS\songs.json">
-      <Link>Resources\INFINITAS\songs.json</Link>
-      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
-      <CopyToPublishDirectory>PreserveNewest</CopyToPublishDirectory>
-    </Content>
-    <Content Include="..\InfTimestamper.Core\Resources\INFINITAS\hashes.json"
-             Condition="Exists('..\InfTimestamper.Core\Resources\INFINITAS\hashes.json')">
-      <Link>Resources\INFINITAS\hashes.json</Link>
-      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
-      <CopyToPublishDirectory>PreserveNewest</CopyToPublishDirectory>
-    </Content>
-    <Content Include="..\InfTimestamper.Core\Resources\INFINITAS\rois.json"
-             Condition="Exists('..\InfTimestamper.Core\Resources\INFINITAS\rois.json')">
-      <Link>Resources\INFINITAS\rois.json</Link>
-      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
-      <CopyToPublishDirectory>PreserveNewest</CopyToPublishDirectory>
-    </Content>
-  </ItemGroup>
-
-  <!-- PublishSingleFile=true で Linked Content が publish にコピーされない問題への
-       明示的なフォールバック。publish 完了後に Resources を確実にコピーする -->
-  <Target Name="CopyInfinitasResourcesAfterPublish" AfterTargets="Publish">
-    <ItemGroup>
-      <_ResourceJson Include="..\InfTimestamper.Core\Resources\INFINITAS\*.json" />
-    </ItemGroup>
-    <Copy SourceFiles="@(_ResourceJson)"
-          DestinationFiles="@(_ResourceJson->'$(PublishDir)Resources\INFINITAS\%(Filename)%(Extension)')"
-          SkipUnchangedFiles="true" />
-  </Target>
 
 </Project>

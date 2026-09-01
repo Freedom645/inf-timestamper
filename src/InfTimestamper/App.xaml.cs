@@ -6,7 +6,6 @@ using InfTimestamper.Core.Games;
 using InfTimestamper.Core.Models;
 using InfTimestamper.Core.Obs;
 using InfTimestamper.Core.Persistence;
-using InfTimestamper.Core.Recognition;
 using InfTimestamper.Core.Popn;
 using InfTimestamper.Core.Reflux;
 using InfTimestamper.Core.Settings;
@@ -103,39 +102,7 @@ public partial class App : Application
                 services.AddSingleton<IDialogService>(sp =>
                     new WpfDialogService(() => Current?.MainWindow, sp.GetRequiredService<IObsConnectionTester>()));
 
-                // 認識層と OBS 接続層
                 services.AddSingleton<IUiDispatcher, WpfDispatcher>();
-                services.AddSingleton<IImageHasher, ImageHasher>();
-                services.AddSingleton<HashResource>(_ =>
-                    HashResourceLoader.Load(Path.Combine(AppContext.BaseDirectory, "Resources", "INFINITAS", "hashes.json")));
-                services.AddSingleton<RoiResource>(_ =>
-                    RoiResourceLoader.Load(Path.Combine(AppContext.BaseDirectory, "Resources", "INFINITAS", "rois.json")));
-                services.AddSingleton<SongRepository>(_ =>
-                {
-                    var songsPath = Path.Combine(AppContext.BaseDirectory, "Resources", "INFINITAS", "songs.json");
-                    return File.Exists(songsPath) ? SongRepository.LoadFromFile(songsPath) : new SongRepository(Array.Empty<SongRecord>());
-                });
-                services.AddSingleton<SongTitleMatcher>();
-                services.AddSingleton<IOcrService>(sp =>
-                {
-                    // 第一候補: Windows.Media.Ocr (装飾フォントへの強さで Tesseract より一般的に優位)。
-                    // 失敗 / 利用不可なら Tesseract に fallback。
-                    var winOcr = new WindowsMediaOcrService(sp.GetRequiredService<ILogger<WindowsMediaOcrService>>());
-                    if (winOcr.IsAvailable) return winOcr;
-
-                    var tessdataPath = Path.Combine(AppContext.BaseDirectory, "tessdata");
-                    return new TesseractOcrService(
-                        tessdataPath,
-                        TesseractOcrService.DefaultLanguage,
-                        sp.GetRequiredService<ILogger<TesseractOcrService>>());
-                });
-                services.AddSingleton<FrameRecognizer>();
-                services.AddSingleton<RecognitionPipeline>();
-                services.AddSingleton<DebugFrameStore>(sp => new DebugFrameStore(
-                    logsDir: Path.Combine(AppContext.BaseDirectory, "logs"),
-                    enabled: true,
-                    maxFiles: 500,
-                    logger: sp.GetRequiredService<ILogger<DebugFrameStore>>()));
 
                 // ゲームのプレイ検知は外部ツールの出力ファイル監視で行う（OBS は配信開始/終了検知に限定）
                 services.AddSingleton<RefluxPlayWatcher>(sp => new RefluxPlayWatcher(
