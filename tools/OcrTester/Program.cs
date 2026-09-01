@@ -25,11 +25,11 @@ internal static class Program
                 return 2;
             }
 
-            using var ocr = new TesseractOcrService(options.TessdataPath);
+            using var ocr = new TesseractOcrService(options.TessdataPath, options.Language,
+                Microsoft.Extensions.Logging.Abstractions.NullLogger<TesseractOcrService>.Instance);
             if (!ocr.IsAvailable)
             {
-                Console.Error.WriteLine($"Tesseract 初期化失敗。tessdata パス: {options.TessdataPath}");
-                Console.Error.WriteLine("必要ファイル: eng.traineddata, jpn.traineddata");
+                Console.Error.WriteLine($"Tesseract 初期化失敗。tessdata パス: {options.TessdataPath} 言語: {options.Language}");
                 return 3;
             }
 
@@ -43,6 +43,27 @@ internal static class Program
             }
 
             using var sub = new Mat(frame, new Rect(options.Roi.X, options.Roi.Y, options.Roi.Width, options.Roi.Height));
+
+            // デバッグ: 前処理パイプラインを TesseractOcrService と同じ手順で再現して保存。
+            // 何が Tesseract に渡っているかを目視で確認する。
+            if (options.DumpPath is not null)
+            {
+                using var upscaled = new Mat();
+                Cv2.Resize(sub, upscaled, new OpenCvSharp.Size(sub.Width * 3, sub.Height * 3),
+                    interpolation: InterpolationFlags.Cubic);
+                using var hsv = new Mat();
+                Cv2.CvtColor(upscaled, hsv, ColorConversionCodes.BGR2HSV);
+                var channels = Cv2.Split(hsv);
+                using var value = channels[2];
+                channels[0].Dispose();
+                channels[1].Dispose();
+                using var binary = new Mat();
+                Cv2.Threshold(value, binary, TesseractOcrService.BrightTextThreshold, 255, ThresholdTypes.Binary);
+                Cv2.BitwiseNot(binary, binary);
+                Cv2.ImWrite(options.DumpPath, binary);
+                Console.WriteLine($"preprocessed image saved to: {options.DumpPath}");
+            }
+
             var result = options.Mode == "digits"
                 ? ocr.RecognizeDigits(sub)
                 : ocr.RecognizeText(sub);
@@ -82,8 +103,9 @@ internal static class Program
 
     private static Options? ParseArgs(string[] args)
     {
-        string? imagePath = null, roiArg = null, mode = "text", songsJson = null;
+        string? imagePath = null, roiArg = null, mode = "text", songsJson = null, dumpPath = null;
         string tessdataPath = Path.Combine(AppContext.BaseDirectory, "tessdata");
+        string language = TesseractOcrService.DefaultLanguage;
         for (int i = 0; i < args.Length; i++)
         {
             switch (args[i])
@@ -93,10 +115,12 @@ internal static class Program
                 case "--mode" when i + 1 < args.Length: mode = args[++i]; break;
                 case "--tessdata" when i + 1 < args.Length: tessdataPath = args[++i]; break;
                 case "--songs" when i + 1 < args.Length: songsJson = args[++i]; break;
+                case "--dump" when i + 1 < args.Length: dumpPath = args[++i]; break;
+                case "--lang" when i + 1 < args.Length: language = args[++i]; break;
             }
         }
         if (imagePath is null || roiArg is null) return null;
-        return new Options(imagePath, ParseRoi(roiArg), mode, tessdataPath, songsJson);
+        return new Options(imagePath, ParseRoi(roiArg), mode, tessdataPath, songsJson, dumpPath, language);
     }
 
     private static Roi ParseRoi(string s)
@@ -117,5 +141,5 @@ Usage:
 """);
     }
 
-    private sealed record Options(string ImagePath, Roi? Roi, string Mode, string TessdataPath, string? SongsJson);
+    private sealed record Options(string ImagePath, Roi? Roi, string Mode, string TessdataPath, string? SongsJson, string? DumpPath, string Language);
 }

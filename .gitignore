@@ -60,6 +60,7 @@ frames/
 tools/RoiCropper/probe_*.csv
 tools/RoiCropper/out_*/
 tools/RoiCropper/out_*.png
+tools/OcrTester/dumps/
 
 # OS
 Thumbs.db

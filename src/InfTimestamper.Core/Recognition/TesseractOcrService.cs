@@ -83,24 +83,61 @@ public sealed class TesseractOcrService : IOcrService, IDisposable
         }
     }
 
+    public const int BrightTextThreshold = 200;
+
     /// <summary>
-    /// OCR 前処理: 2x 拡大 + グレースケール変換。
-    /// INFINITAS の文字は装飾付き (グラデーション、影、縁取り) なので二値化は使わず、
-    /// 拡大とグレースケール化で Tesseract が読みやすい状態にする。
-    /// Otsu 二値化は実画像では誤読を増やしたため採用しない (装飾文字のエッジ階調が失われる)。
+    /// OCR 前処理:
+    /// 1) 3x 拡大 (装飾フォントの細部を解像)
+    /// 2) HSV の V (明度) チャネル抽出
+    /// 3) しきい値 200 で二値化 (白系の文字本体のみ残す。グラデーションの暗い縁取りや背景は除去)
+    /// 4) 色反転 (Tesseract は黒文字 / 白背景を前提に学習されているため)
+    ///
+    /// INFINITAS のタイトル / レベル / スコア / DJ LEVEL のいずれも明るい白系の文字なので、
+    /// V チャネルの高輝度部分を抽出すれば背景の青グラデーション / アニメーション / 縁取りの暗色を排除できる。
     /// </summary>
     private static Mat Preprocess(Mat roi)
     {
         using var upscaled = new Mat();
-        Cv2.Resize(roi, upscaled, new OpenCvSharp.Size(roi.Width * 2, roi.Height * 2),
+        Cv2.Resize(roi, upscaled, new OpenCvSharp.Size(roi.Width * 3, roi.Height * 3),
             interpolation: InterpolationFlags.Cubic);
 
-        var gray = new Mat();
+        using var hsv = new Mat();
         if (upscaled.Channels() == 1)
-            upscaled.CopyTo(gray);
+        {
+            // 既にグレースケールならそのまま V 相当として使う
+            upscaled.CopyTo(hsv);
+        }
         else
-            Cv2.CvtColor(upscaled, gray, ColorConversionCodes.BGR2GRAY);
-        return gray;
+        {
+            Cv2.CvtColor(upscaled, hsv, ColorConversionCodes.BGR2HSV);
+        }
+
+        // V チャネル抽出
+        using var value = new Mat();
+        if (hsv.Channels() == 1)
+        {
+            hsv.CopyTo(value);
+        }
+        else
+        {
+            var channels = Cv2.Split(hsv);
+            try
+            {
+                channels[2].CopyTo(value); // V = channel index 2
+            }
+            finally
+            {
+                foreach (var ch in channels) ch.Dispose();
+            }
+        }
+
+        // 高輝度しきい値で二値化 (文字本体だけ残す)
+        var binary = new Mat();
+        Cv2.Threshold(value, binary, BrightTextThreshold, 255, ThresholdTypes.Binary);
+
+        // 反転: 白文字 → 黒文字
+        Cv2.BitwiseNot(binary, binary);
+        return binary;
     }
 
     public void Dispose()
