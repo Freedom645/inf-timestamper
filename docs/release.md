@@ -134,7 +134,8 @@ GitHub Release の本文としても使われる。
 | `InfTimestamper-win-Setup.exe` | 新規インストーラ（約 71MB）。Releases に上げる主役 |
 | `InfTimestamper-1.0.0-full.nupkg` | 自己アップデートが取得する Velopack パッケージ（約 67MB） |
 | `InfTimestamper-win-Portable.zip` | インストール不要の展開配置版。自己アップデートは効かない |
-| `RELEASES` / `releases.win.json` / `assets.win.json` | バージョン索引。**アップデート検出に必要なので必ず一緒に上げる** |
+| `RELEASES` / `releases.win.json` | バージョン索引。**アップデート検出に必要なので必ず一緒に上げる** |
+| `assets.win.json` | `vpk upload` がアップロード対象を決めるためのローカル用の記述ファイル。Releases には上げない（`vpk upload github` も上げない） |
 
 `--exclude` の既定が `.*\.pdb` なので pdb はパッケージに入らない。
 
