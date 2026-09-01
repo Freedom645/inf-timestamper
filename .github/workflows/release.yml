@@ -1,0 +1,152 @@
+name: リリース（ドラフト作成）
+
+# 手動実行のみ。Velopack のドラフトリリースは公開するまでタグを作らないため、
+# 「タグ push で起動」とは運用が噛み合わない（先にタグを作ると二重管理になる）。
+# リリース番号の正本は src/InfTimestamper/InfTimestamper.csproj の <Version>。
+on:
+  workflow_dispatch:
+    inputs:
+      dry_run:
+        description: GitHub Releases へ上げず、成果物をワークフローの Artifacts に置くだけにする
+        type: boolean
+        default: false
+
+permissions:
+  contents: write
+
+jobs:
+  release:
+    # WPF / single-file publish のため Windows ランナー必須
+    runs-on: windows-latest
+
+    steps:
+      - name: チェックアウト
+        uses: actions/checkout@v4
+
+      - name: .NET SDK をセットアップ
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: '9.0.x'
+
+      - name: バージョンとリリースノートを確定する
+        id: meta
+        shell: pwsh
+        run: |
+          $ErrorActionPreference = 'Stop'
+
+          # csproj は BOM 付きなので XmlDocument.Load で読む（Get-Content -Raw だと BOM で失敗する）
+          $proj = New-Object System.Xml.XmlDocument
+          $proj.Load((Resolve-Path 'src/InfTimestamper/InfTimestamper.csproj').Path)
+
+          $version = $proj.SelectSingleNode('/Project/PropertyGroup/Version').InnerText.Trim()
+          if ($version -notmatch '^\d+\.\d+\.\d+$') {
+            throw "csproj の <Version> が Major.Minor.Patch 形式ではありません: '$version'"
+          }
+
+          # vpk CLI は参照している Velopack ライブラリと同じバージョンでないと生成物が壊れる
+          $velopack = $proj.SelectSingleNode("/Project/ItemGroup/PackageReference[@Include='Velopack']").GetAttribute('Version')
+          if (-not $velopack) { throw 'Velopack の PackageReference が見つかりません。' }
+
+          $notes = "docs/release-notes/v$version.md"
+          if (-not (Test-Path $notes)) {
+            throw "リリースノートがありません: $notes（先に作成してコミットしてください）"
+          }
+
+          # 公開済みリリースを踏まないための保険。ドラフトはタグを作らないので、
+          # ドラフト作成の再実行はここを通る
+          $existing = git ls-remote --tags origin "refs/tags/v$version"
+          if ($existing) {
+            throw "タグ v$version は既に存在します。csproj の <Version> を上げてください。"
+          }
+
+          "version=$version"   >> $env:GITHUB_OUTPUT
+          "velopack=$velopack" >> $env:GITHUB_OUTPUT
+          "notes=$notes"       >> $env:GITHUB_OUTPUT
+
+          Write-Host "リリース対象: v$version (Velopack $velopack, リリースノート $notes)"
+
+      - name: 復元
+        run: dotnet restore InfTimestamper.sln
+
+      - name: ビルド（警告 0 を維持する）
+        # このリポジトリは警告 0 を不変条件にしているので、警告が出たらリリースを止める
+        run: dotnet build InfTimestamper.sln -c Release --no-restore -warnaserror
+
+      - name: テスト
+        run: dotnet test InfTimestamper.sln -c Release --no-build
+
+      - name: single-file publish
+        run: >
+          dotnet publish src/InfTimestamper/InfTimestamper.csproj
+          -c Release
+          -r win-x64
+          --self-contained true
+          -p:PublishSingleFile=true
+          -p:IncludeNativeLibrariesForSelfExtract=true
+          -o publish/InfTimestamper-win-x64
+
+      - name: vpk CLI を導入する
+        shell: pwsh
+        run: |
+          $ErrorActionPreference = 'Stop'
+          dotnet tool install -g vpk --version ${{ steps.meta.outputs.velopack }}
+          # dotnet global tool のパスは既定で PATH に入らないことがあるので明示する
+          "$env:USERPROFILE\.dotnet\tools" >> $env:GITHUB_PATH
+
+      - name: リリースバンドルを作成する
+        shell: pwsh
+        run: >
+          vpk pack
+          --packId InfTimestamper
+          --packVersion ${{ steps.meta.outputs.version }}
+          --packDir publish/InfTimestamper-win-x64
+          --mainExe InfTimestamper.exe
+          --packTitle "INF-TIMESTAMPER"
+          --packAuthors "${{ github.repository_owner }}"
+          --icon src/InfTimestamper/Assets/icon.ico
+          --releaseNotes ${{ steps.meta.outputs.notes }}
+
+      - name: 成果物をワークフローに残す
+        uses: actions/upload-artifact@v4
+        with:
+          name: InfTimestamper-v${{ steps.meta.outputs.version }}
+          # RELEASES / releases.win.json / assets.win.json も自己アップデートに必要なので丸ごと
+          path: Releases/
+          retention-days: 14
+
+      - name: ドラフトリリースを作成する
+        if: ${{ !inputs.dry_run }}
+        shell: pwsh
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        # --publish を付けないのでドラフトのまま作られる。
+        # 中身を確認してから GitHub 上で Publish release を押すとタグが打たれる。
+        run: >
+          vpk upload github
+          --repoUrl https://github.com/${{ github.repository }}
+          --token $env:GH_TOKEN
+          --tag v${{ steps.meta.outputs.version }}
+          --releaseName v${{ steps.meta.outputs.version }}
+          --targetCommitish ${{ github.sha }}
+
+      - name: 結果を表示する
+        shell: pwsh
+        run: |
+          $version = '${{ steps.meta.outputs.version }}'
+          if ('${{ inputs.dry_run }}' -eq 'true') {
+            $summary = @(
+              "## v$version をドライランで作成しました",
+              '',
+              'GitHub Releases へは上げていません。成果物はこのワークフローの Artifacts から取得できます。'
+            )
+          } else {
+            $summary = @(
+              "## v$version のドラフトリリースを作成しました",
+              '',
+              "https://github.com/${{ github.repository }}/releases",
+              '',
+              '中身を確認したうえで **Publish release** を押してください。',
+              "公開した時点で ``${{ github.sha }}`` に ``v$version`` タグが打たれます。"
+            )
+          }
+          $summary -join "`n" >> $env:GITHUB_STEP_SUMMARY

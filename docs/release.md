@@ -3,14 +3,58 @@
 INF-TIMESTAMPER (C# 実装) を GitHub Releases に配布するための手順。
 Velopack による自動アップデートを前提とする。
 
-## 前提
+**通常は GitHub Actions の「リリース（ドラフト作成）」ワークフローで行う**（後述）。
+以降の「手動リリース」節は、ワークフローが使えないときのフォールバックと、
+ワークフローが何をしているかの詳細説明として残している。
+
+## GitHub Actions でリリースする
+
+`.github/workflows/release.yml`。手動実行（Actions タブの Run workflow）のみで起動する。
+
+### 手順
+
+1. **`src/InfTimestamper/InfTimestamper.csproj` の `<Version>` / `<AssemblyVersion>` / `<FileVersion>` を上げる**
+   （リリース番号の正本はここ。ワークフローはこの値を読む）
+2. **`docs/release-notes/v{バージョン}.md` を書く**（無いとワークフローが失敗する）
+3. 1・2 をコミットして `main` に push する
+4. Actions タブ → 「リリース（ドラフト作成）」 → Run workflow
+5. 完了したら Releases でドラフトの中身を確認し、**Publish release** を押す
+
+### ワークフローがやること
+
+| 段階 | 内容 |
+| --- | --- |
+| バージョン確定 | csproj の `<Version>` と `Velopack` の PackageReference バージョンを読む。リリースノートの有無と、同名タグが既に無いことを確認する |
+| ビルド | `dotnet build -c Release -warnaserror`（**このリポジトリは警告 0 が不変条件なので、警告が出たらリリースを止める**） |
+| テスト | `dotnet test -c Release` |
+| publish | single-file self-contained publish |
+| パック | csproj と同じバージョンの `vpk` CLI を入れて `vpk pack` |
+| アップロード | `vpk upload github`（`--publish` なしなので**ドラフト**で作られる） |
+
+成果物はワークフローの Artifacts にも 14 日間残るので、ドラフトを作らずに中身だけ
+確認したい場合は `dry_run` を on にして実行する。
+
+### 設計上の判断
+
+- **手動実行のみにしている。** ドラフトリリースは公開するまでタグを作らないので、
+  「タグを push したら走る」形にするとタグの管理が二重になる。公開ボタンを押した時点で
+  ワークフローが走ったコミット（`github.sha`）にタグが打たれる
+- **`vpk` のバージョンは csproj から読む。** CLI とライブラリのバージョンが食い違うと
+  生成物が壊れるため、手で指定させない
+- 認証は `secrets.GITHUB_TOKEN`（`permissions: contents: write`）。PAT の用意は不要
+
+---
+
+## 手動リリース（フォールバック）
+
+### 前提
 
 - Windows 11（x64）
 - .NET SDK 9.0 以降（プロジェクトのターゲットは net8.0 / net8.0-windows）
 - `vpk` CLI（Velopack のリリースツール）。**アプリが参照している Velopack パッケージと同じバージョンを入れること**
 - GitHub の Personal Access Token（リリース作成権限）
 
-## 1. リリース前チェック
+### 1. リリース前チェック
 
 - [ ] `dotnet test` がすべてグリーン
 - [ ] `dotnet build` で警告 0 / エラー 0
@@ -18,7 +62,7 @@ Velopack による自動アップデートを前提とする。
 - [ ] `src/InfTimestamper/InfTimestamper.csproj` のバージョン（後述）を更新
 - [ ] INFINITAS / pop'n の双方で実機の通し確認
 
-## 2. バージョン番号の更新
+### 2. バージョン番号の更新
 
 `src/InfTimestamper/InfTimestamper.csproj` に以下を追加（既になければ）:
 
@@ -32,7 +76,7 @@ Velopack による自動アップデートを前提とする。
 
 リリース時にこの値を更新する。セマンティックバージョニング (Major.Minor.Patch) を採用。
 
-## 3. single-file publish
+### 3. single-file publish
 
 ```powershell
 dotnet publish src/InfTimestamper/InfTimestamper.csproj `
@@ -54,7 +98,7 @@ dotnet publish src/InfTimestamper/InfTimestamper.csproj `
 `EnableCompressionInSingleFile` を csproj で有効にしているので、exe は約 73MB になる
 （無効時は約 165MB）。初回起動時に `%TEMP%` へ展開されるぶん、初回だけ起動が少し遅い。
 
-## 4. Velopack でリリースバンドル化
+### 4. Velopack でリリースバンドル化
 
 `vpk` CLI を未インストールならインストールする。
 **`src/InfTimestamper/InfTimestamper.csproj` の `Velopack` パッケージと同じバージョンを指定する**
@@ -83,7 +127,7 @@ vpk pack `
 `--releaseNotes` の内容は nupkg に埋め込まれ、`vpk upload github` 実行時に
 GitHub Release の本文としても使われる。
 
-成果物は `Releases/` 配下に出る（`.gitignore` 済み）:
+成果物はリポジトリ直下の `Releases/` に出る（`.gitignore` 済み）:
 
 | ファイル | 内容 |
 | --- | --- |
@@ -94,13 +138,13 @@ GitHub Release の本文としても使われる。
 
 `--exclude` の既定が `.*\.pdb` なので pdb はパッケージに入らない。
 
-### コード署名について
+#### コード署名について
 
 署名パラメータを渡していないため、生成物は未署名になる（`No signing parameters provided` の警告が出る）。
 未署名の実行ファイルは Windows SmartScreen で警告が表示され、ユーザは「詳細情報」→「実行」を
 選ぶ必要がある。コード署名証明書を用意する場合は `--signParams` または `--signTemplate` を使う。
 
-## 5. GitHub Releases へ公開
+### 5. GitHub Releases へ公開
 
 `vpk upload github` でアップロードする。`Releases/` 配下の成果物が
 すべて（索引ファイル含む）上がる。索引が無いと自己アップデートが動かないので、
@@ -123,7 +167,7 @@ vpk upload github `
 - タグは `v1.0.0` 形式。`VersionComparer` が `v` プレフィックスを許容するので、
   これでアプリ側のバージョンチェックが動く
 
-## 6. リリース後の動作確認
+## リリース後の動作確認
 
 - [ ] 別 PC で `Setup.exe` を実行 → インストール完了
 - [ ] アプリを起動して動作確認（OBS 接続、ゲーム選択、状態遷移、コピー）
