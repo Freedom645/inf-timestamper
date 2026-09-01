@@ -1,3 +1,4 @@
+using InfTimestamper.Core.Games;
 using InfTimestamper.Core.Recognition;
 using InfTimestamper.Core.Reflux;
 using InfTimestamper.Core.Tests.TestHelpers;

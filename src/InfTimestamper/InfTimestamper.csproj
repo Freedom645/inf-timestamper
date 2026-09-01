@@ -1,6 +1,11 @@
 ﻿<Project Sdk="Microsoft.NET.Sdk">
 
   <ItemGroup>
+    <!-- ViewModel の internal メンバ（StreamRecord など）をテストから検証するため -->
+    <InternalsVisibleTo Include="InfTimestamper.Core.Tests" />
+  </ItemGroup>
+
+  <ItemGroup>
     <ProjectReference Include="..\InfTimestamper.Core\InfTimestamper.Core.csproj" />
   </ItemGroup>
 

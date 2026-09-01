@@ -45,7 +45,7 @@ public class InfinitasSettingsViewModelTests
     public void ToModel_PreservesAllFields()
     {
         var vm = Make("$timestamp");
-        vm.RefluxDirectory = @"D:\games\reflux";
+        vm.WatchDirectory = @"D:\games\reflux";
 
         var model = vm.ToModel();
         Assert.Equal("$timestamp", model.TimestampFormat);
@@ -53,20 +53,20 @@ public class InfinitasSettingsViewModelTests
     }
 
     [Fact]
-    public void BrowseRefluxDirectory_AppliesSelectedFolder()
+    public void BrowseWatchDirectory_AppliesSelectedFolder()
     {
         var dialog = new FakeDialogService { FolderBrowserResult = @"E:\reflux\out" };
         var vm = new InfinitasSettingsViewModel(
             new InfinitasSettings { TimestampFormat = "$timestamp", RefluxDirectory = "old" },
             dialog);
 
-        vm.BrowseRefluxDirectoryCommand.Execute(null);
+        vm.BrowseWatchDirectoryCommand.Execute(null);
 
-        Assert.Equal(@"E:\reflux\out", vm.RefluxDirectory);
+        Assert.Equal(@"E:\reflux\out", vm.WatchDirectory);
     }
 
     [Fact]
-    public void AvailableIdentifiers_MatchesSupportedKeys()
+    public void AvailableIdentifiers_MatchesInfinitasIdentifiers()
     {
         var vm = Make();
         Assert.Contains("timestamp", vm.AvailableIdentifiers);

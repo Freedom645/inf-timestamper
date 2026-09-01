@@ -83,19 +83,19 @@
             <TabItem Header="INFINITAS">
                 <StackPanel Margin="12">
                     <TextBlock Text="タイムスタンプフォーマット" FontWeight="Bold" Margin="0,0,0,4" />
-                    <TextBox x:Name="FormatTextBox"
+                    <TextBox x:Name="InfinitasFormatTextBox"
                              Text="{Binding Infinitas.TimestampFormat, UpdateSourceTrigger=PropertyChanged}"
                              FontFamily="Consolas, Cascadia Mono"
                              Padding="4" Margin="0,0,0,4" />
 
                     <StackPanel Orientation="Horizontal" Margin="0,0,0,8">
                         <TextBlock Text="識別子:" VerticalAlignment="Center" Margin="0,0,4,0" />
-                        <ComboBox x:Name="IdentifierCombo"
+                        <ComboBox x:Name="InfinitasIdentifierCombo"
                                   ItemsSource="{Binding Infinitas.AvailableIdentifiers}"
                                   SelectedItem="{Binding Infinitas.SelectedIdentifier}"
                                   Width="160" />
                         <Button Content="追加" Width="60" Margin="6,0,0,0"
-                                Click="OnAddIdentifierClick" />
+                                Click="OnAddInfinitasIdentifierClick" />
                     </StackPanel>
 
                     <TextBlock Text="プレビュー" FontWeight="Bold" Margin="0,4,0,2" />
@@ -111,12 +111,54 @@
                             <ColumnDefinition Width="Auto" />
                         </Grid.ColumnDefinitions>
                         <TextBox Grid.Column="0"
-                                 Text="{Binding Infinitas.RefluxDirectory, UpdateSourceTrigger=PropertyChanged}"
+                                 Text="{Binding Infinitas.WatchDirectory, UpdateSourceTrigger=PropertyChanged}"
                                  Padding="4" />
                         <Button Grid.Column="1" Content="参照..." Width="80" Margin="6,0,0,0"
-                                Command="{Binding Infinitas.BrowseRefluxDirectoryCommand}" />
+                                Command="{Binding Infinitas.BrowseWatchDirectoryCommand}" />
                     </Grid>
                     <TextBlock Text="Reflux が playstate.txt / latest.json を出力するフォルダを指定します。"
+                               Foreground="Gray" TextWrapping="Wrap" Margin="0,4,0,0" />
+                </StackPanel>
+            </TabItem>
+
+            <!-- pop'n music -->
+            <TabItem Header="pop'n music">
+                <StackPanel Margin="12">
+                    <TextBlock Text="タイムスタンプフォーマット" FontWeight="Bold" Margin="0,0,0,4" />
+                    <TextBox x:Name="PopnFormatTextBox"
+                             Text="{Binding Popn.TimestampFormat, UpdateSourceTrigger=PropertyChanged}"
+                             FontFamily="Consolas, Cascadia Mono"
+                             Padding="4" Margin="0,0,0,4" />
+
+                    <StackPanel Orientation="Horizontal" Margin="0,0,0,8">
+                        <TextBlock Text="識別子:" VerticalAlignment="Center" Margin="0,0,4,0" />
+                        <ComboBox x:Name="PopnIdentifierCombo"
+                                  ItemsSource="{Binding Popn.AvailableIdentifiers}"
+                                  SelectedItem="{Binding Popn.SelectedIdentifier}"
+                                  Width="160" />
+                        <Button Content="追加" Width="60" Margin="6,0,0,0"
+                                Click="OnAddPopnIdentifierClick" />
+                    </StackPanel>
+
+                    <TextBlock Text="プレビュー" FontWeight="Bold" Margin="0,4,0,2" />
+                    <Border BorderBrush="LightGray" BorderThickness="1" Padding="6">
+                        <TextBlock Text="{Binding Popn.Preview}"
+                                   FontFamily="Consolas, Cascadia Mono" />
+                    </Border>
+
+                    <TextBlock Text="popn-lively-tracker 出力ディレクトリ" FontWeight="Bold" Margin="0,12,0,4" />
+                    <Grid>
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="*" />
+                            <ColumnDefinition Width="Auto" />
+                        </Grid.ColumnDefinitions>
+                        <TextBox Grid.Column="0"
+                                 Text="{Binding Popn.WatchDirectory, UpdateSourceTrigger=PropertyChanged}"
+                                 Padding="4" />
+                        <Button Grid.Column="1" Content="参照..." Width="80" Margin="6,0,0,0"
+                                Command="{Binding Popn.BrowseWatchDirectoryCommand}" />
+                    </Grid>
+                    <TextBlock Text="popn-lively-tracker が state.txt / result.json を出力するフォルダを指定します。リザルトは画面表示から数秒遅れて記録されます。"
                                Foreground="Gray" TextWrapping="Wrap" Margin="0,4,0,0" />
                 </StackPanel>
             </TabItem>

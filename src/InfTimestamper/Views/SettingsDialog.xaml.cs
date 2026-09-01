@@ -1,4 +1,5 @@
 using System.Windows;
+using System.Windows.Controls;
 using InfTimestamper.ViewModels.Settings;
 
 namespace InfTimestamper.Views;
@@ -30,14 +31,25 @@ public partial class SettingsDialog : Window
         }
     }
 
-    private void OnAddIdentifierClick(object sender, RoutedEventArgs e)
+    private void OnAddInfinitasIdentifierClick(object sender, RoutedEventArgs e)
     {
         if (DataContext is not SettingsDialogViewModel vm) return;
-        var pos = FormatTextBox.SelectionStart;
-        vm.Infinitas.InsertIdentifierAtCursor(pos);
+        InsertIdentifier(vm.Infinitas, InfinitasFormatTextBox);
+    }
+
+    private void OnAddPopnIdentifierClick(object sender, RoutedEventArgs e)
+    {
+        if (DataContext is not SettingsDialogViewModel vm) return;
+        InsertIdentifier(vm.Popn, PopnFormatTextBox);
+    }
+
+    private static void InsertIdentifier(GameFormatSettingsViewModel vm, TextBox formatTextBox)
+    {
+        var pos = formatTextBox.SelectionStart;
+        vm.InsertIdentifierAtCursor(pos);
         // 挿入後にキャレットを進める（"$xxx" 分）
-        var inserted = "$" + vm.Infinitas.SelectedIdentifier;
-        FormatTextBox.Focus();
-        FormatTextBox.CaretIndex = Math.Min(pos + inserted.Length, FormatTextBox.Text.Length);
+        var inserted = "$" + vm.SelectedIdentifier;
+        formatTextBox.Focus();
+        formatTextBox.CaretIndex = Math.Min(pos + inserted.Length, formatTextBox.Text.Length);
     }
 }

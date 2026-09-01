@@ -2,9 +2,12 @@ using System.IO;
 using System.Net.Http;
 using System.Windows;
 using InfTimestamper.Core.Coordination;
+using InfTimestamper.Core.Games;
+using InfTimestamper.Core.Models;
 using InfTimestamper.Core.Obs;
 using InfTimestamper.Core.Persistence;
 using InfTimestamper.Core.Recognition;
+using InfTimestamper.Core.Popn;
 using InfTimestamper.Core.Reflux;
 using InfTimestamper.Core.Settings;
 using InfTimestamper.Core.States;
@@ -134,12 +137,20 @@ public partial class App : Application
                     maxFiles: 500,
                     logger: sp.GetRequiredService<ILogger<DebugFrameStore>>()));
 
-                // ゲームのプレイ検知は Reflux のファイル監視で行う（OBS は配信開始/終了検知に限定）
+                // ゲームのプレイ検知は外部ツールの出力ファイル監視で行う（OBS は配信開始/終了検知に限定）
                 services.AddSingleton<RefluxPlayWatcher>(sp => new RefluxPlayWatcher(
                     sp.GetRequiredService<ILogger<RefluxPlayWatcher>>()));
+                services.AddSingleton<PopnPlayWatcher>(sp => new PopnPlayWatcher(
+                    sp.GetRequiredService<ILogger<PopnPlayWatcher>>()));
+                services.AddSingleton<IReadOnlyDictionary<GameId, IPlayWatcher>>(sp =>
+                    new Dictionary<GameId, IPlayWatcher>
+                    {
+                        [GameId.Infinitas] = sp.GetRequiredService<RefluxPlayWatcher>(),
+                        [GameId.Popn] = sp.GetRequiredService<PopnPlayWatcher>(),
+                    });
                 services.AddSingleton<RecordingCoordinator>(sp => new RecordingCoordinator(
                     sp.GetRequiredService<AppStateMachine>(),
-                    sp.GetRequiredService<RefluxPlayWatcher>(),
+                    sp.GetRequiredService<IReadOnlyDictionary<GameId, IPlayWatcher>>(),
                     sp.GetRequiredService<IUiDispatcher>(),
                     streamConnectionFactory: () => new ObsWebSocketConnection(
                         sp.GetRequiredService<ILogger<ObsWebSocketConnection>>()),

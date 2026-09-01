@@ -1,4 +1,6 @@
 using InfTimestamper.Core.Coordination;
+using InfTimestamper.Core.Games;
+using InfTimestamper.Core.Models;
 using InfTimestamper.Core.Obs;
 using InfTimestamper.Core.Recognition;
 using InfTimestamper.Core.Reflux;
@@ -28,7 +30,7 @@ public class RecordingCoordinatorTests
 
         var coordinator = new RecordingCoordinator(
             state,
-            watcher,
+            new Dictionary<GameId, IPlayWatcher> { [GameId.Infinitas] = watcher },
             dispatcher,
             streamConnectionFactory: () => conn,
             managerFactory: c => new ObsConnectionManager(c, NullLogger<ObsConnectionManager>.Instance, new TestDelayProvider(), TimeSpan.FromMilliseconds(50)));
@@ -36,7 +38,8 @@ public class RecordingCoordinatorTests
         coordinator.Configure(new RecordingCoordinatorOptions
         {
             StreamObs = DefaultObs,
-            RefluxDirectory = refluxDirectory,
+            Game = GameId.Infinitas,
+            WatchDirectory = refluxDirectory,
         });
         return coordinator;
     }
@@ -126,7 +129,7 @@ public class RecordingCoordinatorTests
 
         var coordinator = new RecordingCoordinator(
             state,
-            watcher,
+            new Dictionary<GameId, IPlayWatcher> { [GameId.Infinitas] = watcher },
             ImmediateUiDispatcher.Instance,
             streamConnectionFactory: () => conn,
             managerFactory: c => new ObsConnectionManager(c, NullLogger<ObsConnectionManager>.Instance, new TestDelayProvider(), TimeSpan.FromMilliseconds(50)));

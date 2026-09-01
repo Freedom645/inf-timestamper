@@ -1,3 +1,5 @@
+using InfTimestamper.Core.Games;
+
 namespace InfTimestamper.Core.Recognition;
 
 public sealed record FrameRecognition(
@@ -7,16 +9,19 @@ public sealed record FrameRecognition(
     IReadOnlyDictionary<string, string> Fields,
     PlaySide DetectedSide = PlaySide.Unknown);
 
+/// <summary>
+/// dormant な画像認識層が使う識別子キー。実体は <see cref="FieldKeys"/>（正本）への別名。
+/// </summary>
 public static class RecognitionFieldKeys
 {
-    public const string Title = "title";
-    public const string DiffShort = "diff_s";
-    public const string DiffLong = "diff_l";
-    public const string Level = "level";
-    public const string MissCount = "miss_count";
-    public const string ExScore = "ex_score";
-    public const string DjLevel = "dj_level";
-    public const string Lamp = "lamp";
+    public const string Title = FieldKeys.Title;
+    public const string DiffShort = FieldKeys.DiffShort;
+    public const string DiffLong = FieldKeys.DiffLong;
+    public const string Level = FieldKeys.Level;
+    public const string MissCount = FieldKeys.MissCount;
+    public const string ExScore = FieldKeys.ExScore;
+    public const string DjLevel = FieldKeys.DjLevel;
+    public const string Lamp = FieldKeys.Lamp;
 }
 
 public static class RecognitionRoiKeys

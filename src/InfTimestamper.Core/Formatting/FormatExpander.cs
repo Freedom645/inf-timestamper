@@ -1,23 +1,12 @@
 using System.Text.RegularExpressions;
+using InfTimestamper.Core.Games;
 
 namespace InfTimestamper.Core.Formatting;
 
 public static class FormatExpander
 {
-    public const string TimestampKey = "timestamp";
-
-    public static readonly IReadOnlyList<string> SupportedKeys = new[]
-    {
-        TimestampKey,
-        "title",
-        "diff_l",
-        "diff_s",
-        "level",
-        "miss_count",
-        "ex_score",
-        "dj_level",
-        "lamp",
-    };
+    /// <summary>相対時刻の識別子。ゲームに依らず表示時に合成される。</summary>
+    public const string TimestampKey = FieldKeys.Timestamp;
 
     private static readonly Regex Pattern = new(@"\$([a-z_][a-z0-9_]*)", RegexOptions.Compiled);
 

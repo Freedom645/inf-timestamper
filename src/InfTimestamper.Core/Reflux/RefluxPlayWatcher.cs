@@ -1,6 +1,6 @@
 using System.Text;
 using System.Text.Json;
-using InfTimestamper.Core.Recognition;
+using InfTimestamper.Core.Games;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Logging.Abstractions;
 
@@ -15,7 +15,7 @@ namespace InfTimestamper.Core.Reflux;
 /// <c>off/menu → play</c> でプレイ開始、<c>play → 非play</c> でリザルトとして扱う。
 /// プレイ開始時は <c>title.txt</c> / <c>level.txt</c> を、リザルト時は <c>latest.json</c> を読む。
 /// </summary>
-public sealed class RefluxPlayWatcher : IAsyncDisposable
+public sealed class RefluxPlayWatcher : IPlayWatcher
 {
     public const string PlayStateFileName = "playstate.txt";
     public const string TitleFileName = "title.txt";
@@ -141,9 +141,9 @@ public sealed class RefluxPlayWatcher : IAsyncDisposable
 
                     var fields = new Dictionary<string, string>();
                     if (!string.IsNullOrWhiteSpace(title) && !title.Equals("unknown", StringComparison.OrdinalIgnoreCase))
-                        fields[RecognitionFieldKeys.Title] = title;
+                        fields[FieldKeys.Title] = title;
                     if (int.TryParse(levelText.Trim(), out var level) && level >= 0)
-                        fields[RecognitionFieldKeys.Level] = level.ToString();
+                        fields[FieldKeys.Level] = level.ToString();
 
                     _logger.LogDebug("Reflux: プレイ開始を検知 (title={Title}, level={Level})", title, levelText);
                     PlayStarted?.Invoke(this, new PlayStartedEventArgs(DateTimeOffset.Now, fields));

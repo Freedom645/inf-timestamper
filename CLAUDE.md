@@ -4,7 +4,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## リポジトリの状態
 
-実装は一通り完了している。MVP に必要な機能（状態機械・OBS 接続・ゲーム検知・フォーマット展開・永続化・設定画面・ログ・自己アップデート）はコード側が揃い、`dotnet build` 警告 0 / `dotnet test` 全緑。残っているのは主にユーザ実環境での検証（Velopack バンドル作成、GitHub Releases アップロード、別 PC での通しテスト、実機での配信〜プレイ〜リザルトの通し確認）。
+実装は一通り完了している。MVP に必要な機能（状態機械・OBS 接続・ゲーム検知・フォーマット展開・永続化・設定画面・ログ・自己アップデート）に加え、2 ゲーム目（pop'n music）まで通っている。`dotnet build` 警告 0 / `dotnet test` 全緑。残っているのは主にユーザ実環境での検証（Velopack バンドル作成、GitHub Releases アップロード、別 PC での通しテスト、実機での配信〜プレイ〜リザルトの通し確認）。
 
 進捗と「次にやること」の正本は `docs/実装計画.md`（フェーズ別の DoD とセッション引き継ぎメモ）。**作業を始める前にその「現在のフェーズ」節を読むこと。**
 
@@ -24,9 +24,9 @@ dotnet publish src/InfTimestamper/InfTimestamper.csproj -c Release -r win-x64 --
 
 **INF-TIMESTAMPER** — Windows スタンドアロンアプリ。OBS を使った音楽ゲーム配信に対し、YouTube アーカイブ向けのタイムスタンプ（チャプター文字列）を自動生成する。
 
-対応ゲームは **コナステ版 beatmaniaIIDX INFINITAS** のみ（MVP スコープ）。将来のゲーム追加に備えた拡張余地は `game` フィールド等に確保しているが、現状は INFINITAS 専用設計。
+対応ゲームは **コナステ版 beatmaniaIIDX INFINITAS**（`INFINITAS`）と **pop'n music**（`POPN`）の 2 つ。**1 配信 = 1 ゲーム**で、記録対象はメインウィンドウのゲーム選択コンボボックスで決める（`初期状態` でのみ変更可能）。
 
-次の拡張として **pop'n music 対応**（`popn-lively-tracker` の出力ファイル監視）を予定している。2 つ目のゲームを通す時点で「ゲーム抽象化」を抽出する方針（詳細と設計論点は `docs/実装計画.md` Phase 9）。
+ゲーム抽象化は Phase 9 で `Core/Games/` に抽出済み。**ゲームを増やすときに触るのは 4 箇所**：`Models/GameId`（enum + シリアライズ表記）／`Games/GameCatalog`（表示名・識別子リスト・プレビューデータ・監視ツール名）／新しい `IPlayWatcher` 実装（+ 対応する FieldMapper）／設定ダイアログのタブと `AppSettings` のゲーム別セクション。
 
 ### 前段アプリとの関係
 
@@ -71,7 +71,11 @@ OBS 接続が一時切断されても `記録中` 状態は維持し、自動再
 
 OBS WebSocket は **配信開始/終了の検知**（= タイムスタンプの基準時刻となる `記録中` への遷移）にのみ使う。ゲームのプレイ検知は Reflux 側で行うため、OBS のゲーム画面取得（`GetSourceScreenshot`）・2 台 PC 構成は廃止した。接続管理（再接続バックオフ等）は `Obs/` に残る。
 
-### ゲーム検知の方針（Reflux ファイル監視）
+### ゲーム検知の方針（外部ツールの出力ファイル監視）
+
+どちらのゲームも「外部ツールが出力する 1 行の状態ファイル + JSON のリザルトファイル」を `FileSystemWatcher` で監視する構造なので、`Core/Games/IPlayWatcher`（`PlayStarted` / `PlayResultDetected`）に抽象化してある。`RecordingCoordinator` は `IReadOnlyDictionary<GameId, IPlayWatcher>` を受け取り、`Options.Game` で動かすウォッチャーを選ぶ。
+
+#### INFINITAS（Reflux ファイル監視）
 
 INFINITAS のプレイ開始とプレイデータは、**Reflux が出力するファイル群のファイル監視**で取得する（`Core/Reflux/`）。当初は OBS スクリーンショットの画像認識 + OCR で取得する設計だったが、OCR の精度向上が困難なため Reflux 方式へ切り替えた。前段 Python 実装（`reflux_file_watcher.py`）の移植。
 
@@ -82,9 +86,24 @@ INFINITAS のプレイ開始とプレイデータは、**Reflux が出力する�
 - 監視失敗・読込失敗はダイアログを出さず、配信開始/終了の記録には影響させない（ログのみ）。
 - **画像認識は dormant**：旧実装（`Recognition/` 一式、`Resources/INFINITAS/hashes.json` / `rois.json` / `songs.json` / `reference_images/`、OpenCvSharp・Tesseract・ImageHash 依存）は未配線で残置。将来の代替手段として再利用可能。
 
+#### pop'n music（popn-lively-tracker ファイル監視）
+
+`PopnPlayWatcher` が `state.txt` と `result.json` の**両方**を監視する（`Core/Popn/`）。入力仕様は `popn-lively-tracker` の `docs/file-output.md`（互換契約）。
+
+**INFINITAS と構造が違う一点**：`result.json` は譜面の特定にレコード表の更新を待つため、**リザルト画面の表示から数秒（既定タイムアウト 20 秒）遅れて書かれる**。`state.txt` のエッジ（`プレイ中` 離脱）でリザルトを読むと、**直前のプレイの成績を拾ってしまう**。そのため：
+
+- `プレイ中` 突入で `PlayStarted` を発火し、「リザルト待ち」に入る。この時点では曲情報が無いので `fields` は空
+- `result.json` **自身の書き換え**を検知した時点で `PlayResultDetected` を発火する
+- `result.json` の `time` がプレイ開始より前（1 秒の猶予つき）なら、前回プレイのものとして棄却する
+- リザルト待ちでない状態での `result.json` の変化は無視する（起動直後に残っているファイルを拾わない）
+
+マッピングは `PopnFieldMapper` に集約。**`record` セクションと `previous_best` / `new_record` / `previous_medal` / `new_medal` は自己ベスト側の値でこのプレイの成績ではないため、意図的に取り込んでいない**（`rank` / `medal` / `score` がこのプレイの値）。譜面が特定できなかったプレイ（`music` が `null`）は曲情報だけを欠損扱いにし、成績側は実測値として記録する。
+
 ### フォーマット識別子システム
 
 クリップボードコピー時の文字列はユーザがフォーマット文字列で定義する。`$timestamp` `$title` `$diff_s` などの識別子が実データに置換される（識別子一覧は `docs/要件.md` 参照）。
+
+識別子は**ハイブリッド方針**（Phase 9 で決定）。ゲーム間で意味が変わらない `$timestamp` / `$title` / `$level` / `$diff_l` / `$diff_s` は共通で流用し、成績系はゲームごとに新設する（INFINITAS: `$dj_level` / `$lamp` / `$ex_score` / `$miss_count`、pop'n: `$rank` / `$medal` / `$score` / `$bad`）。キーの正本は `Games/FieldKeys`、どの識別子がどのゲームで有効かは `Games/GameCatalog.Identifiers` が持つ。タイムスタンプフォーマットもゲームごとに別々に保持する（`AppSettings.Infinitas` / `AppSettings.Popn`）。
 
 重要な制約:
 - メインウィンドウの「タイムスタンプリスト」表示は、設定ウィンドウでのフォーマット変更を**リアクティブに反映**する（実コピー文字列と画面表示が常に一致）。WPF の `INotifyPropertyChanged` / `DataContext` でバインドする想定。
@@ -140,7 +159,9 @@ inf-timestamper/
 | --- | --- |
 | `Coordination/` | `RecordingCoordinator` — 状態機械・Reflux 監視・永続化を束ねる中核 |
 | `States/` | `AppStateMachine` — 4 状態のメイン状態機械 |
-| `Reflux/` | ゲーム検知。`RefluxPlayWatcher` / `RefluxLatestJson` / `RefluxFieldMapper` |
+| `Games/` | ゲーム抽象化。`FieldKeys`（識別子キーの正本）/ `GameCatalog`（ゲーム別メタデータ）/ `IPlayWatcher` / `PlayEvents` |
+| `Reflux/` | INFINITAS のゲーム検知。`RefluxPlayWatcher` / `RefluxLatestJson` / `RefluxFieldMapper` |
+| `Popn/` | pop'n music のゲーム検知。`PopnPlayWatcher` / `PopnResultJson` / `PopnFieldMapper` |
 | `Obs/` | OBS WebSocket 接続と再接続バックオフ。配信開始/終了の検知のみ |
 | `Persistence/` | `JsonRecordStore` — バックアップ JSON のアトミック保存と異常終了復旧 |
 | `Formatting/` | `FormatExpander` — `$identifier` の展開 |

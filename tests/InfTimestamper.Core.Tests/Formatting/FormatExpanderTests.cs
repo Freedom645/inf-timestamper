@@ -1,4 +1,6 @@
 using InfTimestamper.Core.Formatting;
+using InfTimestamper.Core.Games;
+using InfTimestamper.Core.Models;
 
 namespace InfTimestamper.Core.Tests.Formatting;
 
@@ -57,9 +59,9 @@ public class FormatExpanderTests
     }
 
     [Fact]
-    public void SupportedKeys_ContainsAllIdentifiersFromRequirements()
+    public void InfinitasIdentifiers_ContainsAllIdentifiersFromRequirements()
     {
-        var keys = FormatExpander.SupportedKeys;
+        var keys = GameCatalog.Identifiers(GameId.Infinitas);
         Assert.Contains("timestamp", keys);
         Assert.Contains("title", keys);
         Assert.Contains("diff_l", keys);

@@ -1,4 +1,6 @@
 using InfTimestamper.Core.Coordination;
+using InfTimestamper.Core.Games;
+using InfTimestamper.Core.Models;
 using InfTimestamper.Core.Obs;
 using InfTimestamper.Core.Reflux;
 using InfTimestamper.Core.States;
@@ -17,7 +19,7 @@ public class StreamDetectionTests
         var conn = new FakeObsConnection();
         var coord = new RecordingCoordinator(
             state,
-            watcher,
+            new Dictionary<GameId, IPlayWatcher> { [GameId.Infinitas] = watcher },
             ImmediateUiDispatcher.Instance,
             streamConnectionFactory: () => conn,
             managerFactory: c => new ObsConnectionManager(c, NullLogger<ObsConnectionManager>.Instance, new TestDelayProvider(), TimeSpan.FromMilliseconds(50)));

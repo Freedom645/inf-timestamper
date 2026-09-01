@@ -1,4 +1,5 @@
 using InfTimestamper.Core.Coordination;
+using InfTimestamper.Core.Games;
 using InfTimestamper.Core.Models;
 using InfTimestamper.Core.Obs;
 using InfTimestamper.Core.Persistence;
@@ -383,7 +384,7 @@ public class MainWindowViewModelTests
         var fakeConn = new FakeObsConnection();
         var coord = new RecordingCoordinator(
             state,
-            watcher,
+            new Dictionary<GameId, IPlayWatcher> { [GameId.Infinitas] = watcher },
             ImmediateUiDispatcher.Instance,
             streamConnectionFactory: () => fakeConn,
             managerFactory: c => new ObsConnectionManager(c, Microsoft.Extensions.Logging.Abstractions.NullLogger<ObsConnectionManager>.Instance, new TestDelayProvider(), TimeSpan.FromMilliseconds(50)));

@@ -11,6 +11,7 @@ public sealed class GeneralSettingsViewModel : ObservableBase
     private string _backupDirectory = string.Empty;
     private bool _confirmOnReset;
     private bool _confirmOnExit;
+    private string _selectedGame = string.Empty;
 
     public GeneralSettingsViewModel(GeneralSettings model)
         : this(model, null) { }
@@ -22,6 +23,8 @@ public sealed class GeneralSettingsViewModel : ObservableBase
         _backupDirectory = model.BackupDirectory ?? string.Empty;
         _confirmOnReset = model.ConfirmOnReset;
         _confirmOnExit = model.ConfirmOnExit;
+        // ゲーム選択はメインウィンドウ側の操作なので、設定ダイアログでは触らずそのまま持ち回る
+        _selectedGame = model.SelectedGame ?? string.Empty;
         _dialog = dialog;
 
         BrowseBackupDirectoryCommand = new RelayCommand(ExecuteBrowse, () => _dialog is not null);
@@ -59,6 +62,7 @@ public sealed class GeneralSettingsViewModel : ObservableBase
         BackupDirectory = _backupDirectory,
         ConfirmOnReset = _confirmOnReset,
         ConfirmOnExit = _confirmOnExit,
+        SelectedGame = _selectedGame,
     };
 
     private void ExecuteBrowse()

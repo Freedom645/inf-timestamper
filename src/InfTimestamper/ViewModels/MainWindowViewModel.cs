@@ -6,11 +6,11 @@ using System.Reflection;
 using System.Text;
 using InfTimestamper.Core.Coordination;
 using InfTimestamper.Core.Formatting;
+using InfTimestamper.Core.Games;
 using InfTimestamper.Core.Models;
 using InfTimestamper.Core.Obs;
 using InfTimestamper.Core.Persistence;
 using InfTimestamper.Core.Persistence.Json;
-using InfTimestamper.Core.Recognition;
 using InfTimestamper.Core.Settings;
 using InfTimestamper.Core.States;
 using InfTimestamper.Core.Updates;
@@ -44,6 +44,7 @@ public sealed class MainWindowViewModel : ObservableBase
     private ObsConnectionManagerState _obsStatus = ObsConnectionManagerState.Idle;
     private int _obsRetryAttempt;
     private RecordingCoordinator? _coordinator;
+    private GameId _selectedGame = GameId.Infinitas;
 
     public MainWindowViewModel(
         AppStateMachine stateMachine,
@@ -97,9 +98,9 @@ public sealed class MainWindowViewModel : ObservableBase
         _settingsPath = settingsPath;
         _releaseChecker = releaseChecker;
         _updateService = updateService;
-        _format = string.IsNullOrEmpty(_settings.Infinitas?.TimestampFormat)
-            ? DefaultFormat
-            : _settings.Infinitas!.TimestampFormat;
+        _selectedGame = _settings.ResolveSelectedGame();
+        _record.Game = _selectedGame;
+        _format = _settings.TimestampFormatFor(_selectedGame);
         _logger = logger ?? NullLogger<MainWindowViewModel>.Instance;
 
         _stateMachine.StateChanged += OnStateMachineChanged;
@@ -130,7 +131,40 @@ public sealed class MainWindowViewModel : ObservableBase
 
     public AppState State => _stateMachine.State;
 
-    public string GameName => "INFINITAS";
+    /// <summary>ゲーム選択コンボの選択肢。</summary>
+    public IReadOnlyList<GameChoice> AvailableGames { get; } =
+        GameCatalog.AllGames.Select(g => new GameChoice(g, GameCatalog.DisplayName(g))).ToList();
+
+    /// <summary>
+    /// 記録対象のゲーム。1 配信 = 1 ゲーム（JSON の <c>game</c>）なので、
+    /// 記録を始めたあとは変更できない（<see cref="IsGameSelectable"/>）。
+    /// </summary>
+    public GameId SelectedGame
+    {
+        get => _selectedGame;
+        set
+        {
+            if (_selectedGame == value) return;
+            if (!IsGameSelectable)
+            {
+                // 記録中に切り替わると record.game と検知内容が食い違うため拒否し、表示を戻す
+                RaisePropertyChanged(nameof(SelectedGame));
+                return;
+            }
+
+            _selectedGame = value;
+            _record.Game = value;
+            RaisePropertyChanged(nameof(SelectedGame));
+
+            // 識別子セットがゲームごとに違うため、フォーマットもゲーム別のものへ切り替える
+            Format = _settings.TimestampFormatFor(value);
+            ApplySettingsToCoordinator();
+            PersistSettings();
+        }
+    }
+
+    /// <summary>ゲーム選択が可能か。初期状態でのみ変更できる。</summary>
+    public bool IsGameSelectable => State == AppState.Initial;
 
     public string StateLabel
     {
@@ -272,7 +306,8 @@ public sealed class MainWindowViewModel : ObservableBase
         _coordinator.Configure(new RecordingCoordinatorOptions
         {
             StreamObs = streamObs,
-            RefluxDirectory = _settings.Infinitas.RefluxDirectory ?? string.Empty,
+            Game = _selectedGame,
+            WatchDirectory = _settings.WatchDirectoryFor(_selectedGame),
         });
     }
 
@@ -522,7 +557,7 @@ public sealed class MainWindowViewModel : ObservableBase
         TryStateOp(() =>
         {
             _stateMachine.Reset();
-            _record = new StreamRecord();
+            _record = new StreamRecord { Game = _selectedGame };
             Timestamps.Clear();
             RaisePropertyChanged(nameof(StreamStartedAt));
             RaisePropertyChanged(nameof(StreamStartedAtText));
@@ -599,27 +634,30 @@ public sealed class MainWindowViewModel : ObservableBase
 
         _settings = updated;
 
-        // フォーマット文字列の即時反映
-        var newFormat = string.IsNullOrEmpty(updated.Infinitas?.TimestampFormat)
-            ? DefaultFormat
-            : updated.Infinitas!.TimestampFormat;
-        Format = newFormat;
+        // 選択中ゲームのフォーマット文字列を即時反映
+        Format = _settings.TimestampFormatFor(_selectedGame);
 
-        // OBS 接続情報やソース名が変わった可能性があるので Coordinator にも反映
+        // OBS 接続情報や監視ディレクトリが変わった可能性があるので Coordinator にも反映
         ApplySettingsToCoordinator();
 
-        // 永続化
-        if (_settingsStore is not null && !string.IsNullOrEmpty(_settingsPath))
+        PersistSettings();
+    }
+
+    private void PersistSettings()
+    {
+        if (_settingsStore is null || string.IsNullOrEmpty(_settingsPath)) return;
+
+        _settings.General ??= new GeneralSettings { BackupDirectory = AppSettings.DefaultBackupDirectory() };
+        _settings.General.SelectedGame = _selectedGame.ToSerializedString();
+
+        try
         {
-            try
-            {
-                _settingsStore.SaveAtomic(_settings, _settingsPath);
-            }
-            catch (Exception ex)
-            {
-                _logger.LogError(ex, "設定の保存に失敗しました。");
-                _dialog.ShowError("保存エラー", "設定の保存に失敗しました: " + ex.Message);
-            }
+            _settingsStore.SaveAtomic(_settings, _settingsPath);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "設定の保存に失敗しました。");
+            _dialog.ShowError("保存エラー", "設定の保存に失敗しました: " + ex.Message);
         }
     }
 
@@ -648,6 +686,16 @@ public sealed class MainWindowViewModel : ObservableBase
             _stateMachine.OpenFile();
 
         _record = record;
+
+        // ファイルのゲームに合わせる（読込後は記録終了状態なので選択コンボは触れない）
+        if (_selectedGame != record.Game)
+        {
+            _selectedGame = record.Game;
+            RaisePropertyChanged(nameof(SelectedGame));
+            Format = _settings.TimestampFormatFor(_selectedGame);
+            ApplySettingsToCoordinator();
+        }
+
         Timestamps.Clear();
         foreach (var entry in record.Timestamps.OrderBy(e => e.PlayStartedAt))
             Timestamps.Add(new TimestampViewModel(entry, record.Stream.StartedAt, _format));
@@ -692,6 +740,7 @@ public sealed class MainWindowViewModel : ObservableBase
         RaisePropertyChanged(nameof(PrimaryButtonText));
         RaisePropertyChanged(nameof(PrimaryCommand));
         RaisePropertyChanged(nameof(CanReset));
+        RaisePropertyChanged(nameof(IsGameSelectable));
 
         StartCommand.RaiseCanExecuteChanged();
         ForceStartCommand.RaiseCanExecuteChanged();
@@ -733,3 +782,6 @@ public sealed class MainWindowViewModel : ObservableBase
         Timestamps.Insert(index, vm);
     }
 }
+
+/// <summary>ゲーム選択コンボの 1 項目（enum を表示名付きで見せるための入れ物）。</summary>
+public sealed record GameChoice(GameId Id, string DisplayName);

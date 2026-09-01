@@ -1,3 +1,4 @@
+using InfTimestamper.Core.Games;
 using InfTimestamper.Core.Recognition;
 
 namespace InfTimestamper.Core.Tests.Recognition;

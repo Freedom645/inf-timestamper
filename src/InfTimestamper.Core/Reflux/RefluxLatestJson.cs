@@ -20,11 +20,16 @@ public sealed class RefluxLatestJson
     [JsonPropertyName("diff")]
     public string? Diff { get; set; }
 
-    /// <summary>SP/DP 区分（"SP"/"DP" 文字列、または 1/2 等の数値表現を許容）。</summary>
+    /// <summary>
+    /// **プレイヤーサイド**（実出力は <c>"P1"</c> / <c>"P2"</c>）。SP/DP 区分ではない。
+    /// SP/DP は <see cref="Diff"/> の接頭辞（<c>"SPN"</c> 等）から取る。
+    /// </summary>
     [JsonPropertyName("playtype")]
     public string? PlayType { get; set; }
 
-    /// <summary>SP/DP 区分の代替表現（環境により playtype でなく style に入る場合の保険）。</summary>
+    /// <summary>
+    /// **プレイオプション**（実出力は <c>"MIRROR"</c> / <c>"OFF"</c> 等）。SP/DP 区分ではない。
+    /// </summary>
     [JsonPropertyName("style")]
     public string? Style { get; set; }
 

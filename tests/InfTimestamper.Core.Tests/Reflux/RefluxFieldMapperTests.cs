@@ -1,4 +1,6 @@
+using System.Text.Json;
 using InfTimestamper.Core.Reflux;
+using InfTimestamper.Core.Tests.TestHelpers;
 
 namespace InfTimestamper.Core.Tests.Reflux;
 
@@ -110,5 +112,53 @@ public class RefluxFieldMapperTests
     {
         var fields = RefluxFieldMapper.Map(new RefluxLatestJson { Grade = "ZZ" });
         Assert.False(fields.ContainsKey("dj_level"));
+    }
+
+    [Fact]
+    public void Map_PlayTypeIsPlayerSide_DoesNotLeakIntoDiffShort()
+    {
+        // 実出力の playtype は "P1"/"P2"（プレイヤーサイド）で SP/DP ではない。
+        // SP/DP は diff の接頭辞から取る。
+        var fields = RefluxFieldMapper.Map(new RefluxLatestJson
+        {
+            Diff = "SPN",
+            PlayType = "P2",
+            Style = "MIRROR",
+        });
+
+        Assert.Equal("SPN", fields["diff_s"]);
+        Assert.Equal("NORMAL", fields["diff_l"]);
+    }
+
+    [Fact]
+    public void Map_DiffPrefixWinsOverPlayType()
+    {
+        var fields = RefluxFieldMapper.Map(new RefluxLatestJson { Diff = "DPA", PlayType = "SP" });
+        Assert.Equal("DPA", fields["diff_s"]);
+    }
+
+    /// <summary>
+    /// 実機 Reflux の出力サンプル（docs/sample/reflux/latest.json）を通し、
+    /// 全識別子が期待どおり展開されることを確認する。
+    /// </summary>
+    [Fact]
+    public void Map_RealSampleFile_ExpandsAllIdentifiers()
+    {
+        var path = TestPaths.RepositoryFile("docs", "sample", "reflux", "latest.json");
+        Assert.True(File.Exists(path), $"サンプルが見つかりません: {path}");
+
+        var json = JsonSerializer.Deserialize<RefluxLatestJson>(File.ReadAllText(path));
+        Assert.NotNull(json);
+
+        var fields = RefluxFieldMapper.Map(json!);
+
+        Assert.Equal("ACTØ", fields["title"]);
+        Assert.Equal("6", fields["level"]);
+        Assert.Equal("NORMAL", fields["diff_l"]);
+        Assert.Equal("SPN", fields["diff_s"]);
+        Assert.Equal("D", fields["dj_level"]);
+        Assert.Equal("FAILED", fields["lamp"]);
+        Assert.Equal("431", fields["ex_score"]);
+        Assert.Equal("9", fields["miss_count"]); // bad=2 + poor=7
     }
 }

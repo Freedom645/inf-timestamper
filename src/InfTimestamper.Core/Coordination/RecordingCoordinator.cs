@@ -1,6 +1,6 @@
+using InfTimestamper.Core.Games;
+using InfTimestamper.Core.Models;
 using InfTimestamper.Core.Obs;
-using InfTimestamper.Core.Recognition;
-using InfTimestamper.Core.Reflux;
 using InfTimestamper.Core.States;
 using InfTimestamper.Core.Threading;
 using Microsoft.Extensions.Logging;
@@ -11,12 +11,13 @@ namespace InfTimestamper.Core.Coordination;
 public sealed class RecordingCoordinator : IAsyncDisposable
 {
     private readonly AppStateMachine _stateMachine;
-    private readonly RefluxPlayWatcher _watcher;
+    private readonly IReadOnlyDictionary<GameId, IPlayWatcher> _watchers;
     private readonly IUiDispatcher _dispatcher;
     private readonly Func<IObsConnection> _streamConnectionFactory;
     private readonly Func<IObsConnection, ObsConnectionManager> _managerFactory;
     private readonly ILogger<RecordingCoordinator> _logger;
 
+    private IPlayWatcher? _activeWatcher;
     private IObsConnection? _streamConnection;
     private ObsConnectionManager? _streamManager;
     private CancellationTokenSource? _cts;
@@ -27,22 +28,28 @@ public sealed class RecordingCoordinator : IAsyncDisposable
 
     public RecordingCoordinator(
         AppStateMachine stateMachine,
-        RefluxPlayWatcher watcher,
+        IReadOnlyDictionary<GameId, IPlayWatcher> watchers,
         IUiDispatcher dispatcher,
         Func<IObsConnection> streamConnectionFactory,
         Func<IObsConnection, ObsConnectionManager> managerFactory,
         ILogger<RecordingCoordinator>? logger = null)
     {
         _stateMachine = stateMachine ?? throw new ArgumentNullException(nameof(stateMachine));
-        _watcher = watcher ?? throw new ArgumentNullException(nameof(watcher));
+        _watchers = watchers ?? throw new ArgumentNullException(nameof(watchers));
         _dispatcher = dispatcher ?? throw new ArgumentNullException(nameof(dispatcher));
         _streamConnectionFactory = streamConnectionFactory ?? throw new ArgumentNullException(nameof(streamConnectionFactory));
         _managerFactory = managerFactory ?? throw new ArgumentNullException(nameof(managerFactory));
         _logger = logger ?? NullLogger<RecordingCoordinator>.Instance;
 
         _stateMachine.StateChanged += OnStateChanged;
-        _watcher.PlayStarted += OnPlayStarted;
-        _watcher.PlayResultDetected += OnPlayResultDetected;
+
+        // 監視は「記録中」の間だけ動くが、購読は生存期間を通して張っておく
+        // （停止中のウォッチャーは何も発火しないため、動作中のものだけが通知を上げる）
+        foreach (var watcher in _watchers.Values)
+        {
+            watcher.PlayStarted += OnPlayStarted;
+            watcher.PlayResultDetected += OnPlayResultDetected;
+        }
     }
 
     public RecordingCoordinatorOptions Options => _options;
@@ -78,10 +85,10 @@ public sealed class RecordingCoordinator : IAsyncDisposable
             EnsureConnectionStarted();
         }
 
-        // ゲームのプレイ検知（Reflux ファイル監視）が必要な状態（Recording）
+        // ゲームのプレイ検知（外部ツールの出力ファイル監視）が必要な状態（Recording）
         if (newState == AppState.Recording)
         {
-            EnsureRefluxWatcherStarted();
+            EnsurePlayWatcherStarted();
         }
     }
 
@@ -129,25 +136,38 @@ public sealed class RecordingCoordinator : IAsyncDisposable
         });
     }
 
-    private void EnsureRefluxWatcherStarted()
+    private void EnsurePlayWatcherStarted()
     {
-        if (_watcher.IsRunning) return;
+        if (_activeWatcher is not null) return;
 
-        if (string.IsNullOrWhiteSpace(_options.RefluxDirectory))
+        var game = _options.Game;
+        if (!_watchers.TryGetValue(game, out var watcher))
         {
-            _logger.LogWarning("Reflux 出力ディレクトリが未指定のため、ファイル監視を開始しません。");
+            _logger.LogWarning("{Game} のプレイ監視機構が登録されていないため、ファイル監視を開始しません。",
+                GameCatalog.DisplayName(game));
+            return;
+        }
+
+        var directory = _options.WatchDirectory;
+        if (string.IsNullOrWhiteSpace(directory))
+        {
+            _logger.LogWarning("{Tool} の出力ディレクトリが未指定のため、ファイル監視を開始しません。",
+                GameCatalog.WatcherToolName(game));
             return;
         }
 
         try
         {
-            _watcher.Start(_options.RefluxDirectory);
-            _logger.LogInformation("Reflux ファイル監視を開始しました: {Directory}", _options.RefluxDirectory);
+            watcher.Start(directory);
+            _activeWatcher = watcher;
+            _logger.LogInformation("{Tool} のファイル監視を開始しました: {Directory}",
+                GameCatalog.WatcherToolName(game), directory);
         }
         catch (Exception ex)
         {
             // 監視開始失敗は記録自体には影響しない（要件: ダイアログを出さずログのみ）
-            _logger.LogWarning(ex, "Reflux ファイル監視の開始に失敗しました: {Directory}", _options.RefluxDirectory);
+            _logger.LogWarning(ex, "{Tool} のファイル監視の開始に失敗しました: {Directory}",
+                GameCatalog.WatcherToolName(game), directory);
         }
     }
 
@@ -155,7 +175,11 @@ public sealed class RecordingCoordinator : IAsyncDisposable
     {
         try { _cts?.Cancel(); } catch { /* ignore */ }
 
-        try { _watcher.StopAsync().GetAwaiter().GetResult(); } catch { /* swallow */ }
+        if (_activeWatcher is not null)
+        {
+            try { _activeWatcher.StopAsync().GetAwaiter().GetResult(); } catch { /* swallow */ }
+            _activeWatcher = null;
+        }
 
         if (_streamManager is not null)
         {
@@ -193,8 +217,11 @@ public sealed class RecordingCoordinator : IAsyncDisposable
         _disposed = true;
 
         _stateMachine.StateChanged -= OnStateChanged;
-        _watcher.PlayStarted -= OnPlayStarted;
-        _watcher.PlayResultDetected -= OnPlayResultDetected;
+        foreach (var watcher in _watchers.Values)
+        {
+            watcher.PlayStarted -= OnPlayStarted;
+            watcher.PlayResultDetected -= OnPlayResultDetected;
+        }
         StopAll();
         return ValueTask.CompletedTask;
     }
@@ -203,7 +230,12 @@ public sealed class RecordingCoordinator : IAsyncDisposable
 public sealed class RecordingCoordinatorOptions
 {
     public ObsConnectionOptions? StreamObs { get; set; }
-    public string RefluxDirectory { get; set; } = string.Empty;
+
+    /// <summary>記録対象のゲーム。どの <c>IPlayWatcher</c> を動かすかを決める。</summary>
+    public GameId Game { get; set; } = GameId.Infinitas;
+
+    /// <summary>ゲーム検知に使う外部ツールの出力ディレクトリ（INFINITAS: Reflux / pop'n: popn-lively-tracker）。</summary>
+    public string WatchDirectory { get; set; } = string.Empty;
 }
 
 public sealed class RecordingObsStatusChangedEventArgs : EventArgs

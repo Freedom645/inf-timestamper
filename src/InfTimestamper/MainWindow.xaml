@@ -57,11 +57,16 @@
             <!-- 状態表示エリア -->
             <Border Grid.Row="1" BorderBrush="LightGray" BorderThickness="1" Padding="8" Margin="0,0,0,8">
                 <StackPanel Orientation="Horizontal">
-                    <TextBlock Text="ゲーム:" FontWeight="Bold" />
-                    <TextBlock Text="{Binding GameName}" Margin="4,0,16,0"
-                               behaviors:HintTextBehavior.Text="現在アプリに設定されているゲーム種別" />
-                    <TextBlock Text="状態:" FontWeight="Bold" />
-                    <TextBlock Text="{Binding StateLabel}" Margin="4,0,0,0"
+                    <TextBlock Text="ゲーム:" FontWeight="Bold" VerticalAlignment="Center" />
+                    <ComboBox ItemsSource="{Binding AvailableGames}"
+                              DisplayMemberPath="DisplayName"
+                              SelectedValuePath="Id"
+                              SelectedValue="{Binding SelectedGame}"
+                              IsEnabled="{Binding IsGameSelectable}"
+                              Width="200" Margin="4,0,16,0"
+                              behaviors:HintTextBehavior.Text="記録対象のゲーム。記録を開始すると変更できません" />
+                    <TextBlock Text="状態:" FontWeight="Bold" VerticalAlignment="Center" />
+                    <TextBlock Text="{Binding StateLabel}" Margin="4,0,0,0" VerticalAlignment="Center"
                                behaviors:HintTextBehavior.Text="アプリの状態。OBS 再接続中は試行回数が表示されます" />
                 </StackPanel>
             </Border>

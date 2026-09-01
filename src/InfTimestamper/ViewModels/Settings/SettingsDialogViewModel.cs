@@ -26,6 +26,10 @@ public sealed class SettingsDialogViewModel : ObservableBase
             settings.Infinitas ?? new InfinitasSettings { TimestampFormat = AppSettings.DefaultTimestampFormat },
             dialog);
 
+        Popn = new PopnSettingsViewModel(
+            settings.Popn ?? new PopnSettings { TimestampFormat = AppSettings.DefaultTimestampFormat },
+            dialog);
+
         ConfirmCommand = new RelayCommand(Confirm);
         CancelCommand = new RelayCommand(Cancel);
     }
@@ -33,6 +37,7 @@ public sealed class SettingsDialogViewModel : ObservableBase
     public GeneralSettingsViewModel General { get; }
     public ObsSettingsViewModel Obs { get; }
     public InfinitasSettingsViewModel Infinitas { get; }
+    public PopnSettingsViewModel Popn { get; }
 
     public AppSettings? Result { get; private set; }
     public bool? DialogResult { get; private set; }
@@ -50,6 +55,7 @@ public sealed class SettingsDialogViewModel : ObservableBase
             General = General.ToModel(),
             Obs = Obs.ToModel(),
             Infinitas = Infinitas.ToModel(),
+            Popn = Popn.ToModel(),
         };
         DialogResult = true;
         RequestClose?.Invoke();

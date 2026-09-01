@@ -1,3 +1,4 @@
+using InfTimestamper.Core.Games;
 using InfTimestamper.Core.Obs;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Logging.Abstractions;
@@ -152,28 +153,4 @@ public sealed class RecognitionStateChangedEventArgs : EventArgs
 
     public RecognizedState OldState { get; }
     public RecognizedState NewState { get; }
-}
-
-public sealed class PlayStartedEventArgs : EventArgs
-{
-    public PlayStartedEventArgs(DateTimeOffset capturedAt, IReadOnlyDictionary<string, string> fields)
-    {
-        CapturedAt = capturedAt;
-        Fields = fields;
-    }
-
-    public DateTimeOffset CapturedAt { get; }
-    public IReadOnlyDictionary<string, string> Fields { get; }
-}
-
-public sealed class PlayResultEventArgs : EventArgs
-{
-    public PlayResultEventArgs(DateTimeOffset capturedAt, IReadOnlyDictionary<string, string> fields)
-    {
-        CapturedAt = capturedAt;
-        Fields = fields;
-    }
-
-    public DateTimeOffset CapturedAt { get; }
-    public IReadOnlyDictionary<string, string> Fields { get; }
 }

@@ -1,0 +1,100 @@
+using InfTimestamper.Core.Models;
+
+namespace InfTimestamper.Core.Games;
+
+/// <summary>
+/// ゲームごとに異なる「表示名・有効な識別子・プレビュー用ダミーデータ・既定フォーマット」を集約する。
+/// ゲームを増やすときに触る箇所をここ 1 つに閉じるのが狙い（Phase 9 で INFINITAS 専用設計から抽出）。
+/// </summary>
+public static class GameCatalog
+{
+    /// <summary>UI のゲーム選択に並べる順序。</summary>
+    public static IReadOnlyList<GameId> AllGames { get; } = new[]
+    {
+        GameId.Infinitas,
+        GameId.Popn,
+    };
+
+    private static readonly IReadOnlyList<string> InfinitasIdentifiers = new[]
+    {
+        FieldKeys.Timestamp,
+        FieldKeys.Title,
+        FieldKeys.DiffLong,
+        FieldKeys.DiffShort,
+        FieldKeys.Level,
+        FieldKeys.MissCount,
+        FieldKeys.ExScore,
+        FieldKeys.DjLevel,
+        FieldKeys.Lamp,
+    };
+
+    private static readonly IReadOnlyList<string> PopnIdentifiers = new[]
+    {
+        FieldKeys.Timestamp,
+        FieldKeys.Title,
+        FieldKeys.DiffLong,
+        FieldKeys.DiffShort,
+        FieldKeys.Level,
+        FieldKeys.Rank,
+        FieldKeys.Medal,
+        FieldKeys.Score,
+        FieldKeys.Bad,
+    };
+
+    private static readonly IReadOnlyDictionary<string, string> InfinitasPreview =
+        new Dictionary<string, string>
+        {
+            [FieldKeys.Timestamp] = "00:01:23",
+            [FieldKeys.Title] = "Sample Song",
+            [FieldKeys.DiffLong] = "ANOTHER",
+            [FieldKeys.DiffShort] = "SPA",
+            [FieldKeys.Level] = "11",
+            [FieldKeys.MissCount] = "3",
+            [FieldKeys.ExScore] = "1234",
+            [FieldKeys.DjLevel] = "AAA",
+            [FieldKeys.Lamp] = "FC",
+        };
+
+    private static readonly IReadOnlyDictionary<string, string> PopnPreview =
+        new Dictionary<string, string>
+        {
+            [FieldKeys.Timestamp] = "00:01:23",
+            [FieldKeys.Title] = "Sample Song",
+            [FieldKeys.DiffLong] = "HYPER",
+            [FieldKeys.DiffShort] = "H",
+            [FieldKeys.Level] = "38",
+            [FieldKeys.Rank] = "AA",
+            [FieldKeys.Medal] = "銀星",
+            [FieldKeys.Score] = "93578",
+            [FieldKeys.Bad] = "2",
+        };
+
+    /// <summary>ゲーム選択 UI や状態表示に出す名称。</summary>
+    public static string DisplayName(GameId game) => game switch
+    {
+        GameId.Infinitas => "beatmania IIDX INFINITAS",
+        GameId.Popn => "pop'n music",
+        _ => game.ToSerializedString(),
+    };
+
+    /// <summary>そのゲームで展開できる識別子（<c>$</c> 抜き）。設定画面のセレクトボックスの中身。</summary>
+    public static IReadOnlyList<string> Identifiers(GameId game) => game switch
+    {
+        GameId.Popn => PopnIdentifiers,
+        _ => InfinitasIdentifiers,
+    };
+
+    /// <summary>設定画面のプレビュー用ダミーデータ（要件：ハードコードで表示する）。</summary>
+    public static IReadOnlyDictionary<string, string> PreviewFields(GameId game) => game switch
+    {
+        GameId.Popn => PopnPreview,
+        _ => InfinitasPreview,
+    };
+
+    /// <summary>そのゲームで検知したフィールドを監視するツール名（設定画面の説明文などに使う）。</summary>
+    public static string WatcherToolName(GameId game) => game switch
+    {
+        GameId.Popn => "popn-lively-tracker",
+        _ => "Reflux",
+    };
+}
