@@ -1,6 +1,8 @@
 using System.Collections.ObjectModel;
 using System.Collections.Specialized;
+using System.ComponentModel;
 using System.Diagnostics;
+using System.Globalization;
 using System.IO;
 using System.Reflection;
 using System.Text;
@@ -35,6 +37,7 @@ public sealed class MainWindowViewModel : ObservableBase
     private readonly string? _settingsPath;
     private readonly IGitHubReleaseChecker? _releaseChecker;
     private readonly IUpdateService? _updateService;
+    private readonly IFileRecycler? _fileRecycler;
     private readonly ILogger<MainWindowViewModel> _logger;
 
     private AppSettings _settings = AppSettings.CreateDefault();
@@ -97,7 +100,8 @@ public sealed class MainWindowViewModel : ObservableBase
         string? settingsPath,
         IGitHubReleaseChecker? releaseChecker,
         IUpdateService? updateService,
-        ILogger<MainWindowViewModel>? logger = null)
+        ILogger<MainWindowViewModel>? logger = null,
+        IFileRecycler? fileRecycler = null)
     {
         _stateMachine = stateMachine ?? throw new ArgumentNullException(nameof(stateMachine));
         _clipboard = clipboard ?? throw new ArgumentNullException(nameof(clipboard));
@@ -108,6 +112,7 @@ public sealed class MainWindowViewModel : ObservableBase
         _settingsPath = settingsPath;
         _releaseChecker = releaseChecker;
         _updateService = updateService;
+        _fileRecycler = fileRecycler;
         _selectedGame = _settings.ResolveSelectedGame();
         _record.Game = _selectedGame;
         _format = _settings.TimestampFormatFor(_selectedGame);
@@ -302,6 +307,8 @@ public sealed class MainWindowViewModel : ObservableBase
 
     public void SetStreamStartedAt(DateTimeOffset startedAt)
     {
+        // 記録ファイルは秒精度なので、メモリ上の値も丸めて読み直しとズレないようにする
+        startedAt = startedAt.TruncateToSecond();
         _record.Stream.StartedAt = startedAt;
         RaisePropertyChanged(nameof(StreamStartedAt));
         RaisePropertyChanged(nameof(StreamStartedAtText));
@@ -315,6 +322,17 @@ public sealed class MainWindowViewModel : ObservableBase
 
     public void NotifySelectionChanged()
         => EditSelectedTimestampsCommand.RaiseCanExecuteChanged();
+
+    /// <summary>
+    /// 行の選択状態が変わったら「選択項目の日時を編集」の可否を引き直す。
+    /// <see cref="RelayCommand"/> は <c>CommandManager</c> を使わないので、明示的に通知しないと
+    /// チェックボックスを操作してもメニューが有効化されない。
+    /// </summary>
+    private void OnRowPropertyChanged(object? sender, PropertyChangedEventArgs e)
+    {
+        if (e.PropertyName == nameof(TimestampViewModel.IsSelected))
+            NotifySelectionChanged();
+    }
 
     public void BindCoordinator(RecordingCoordinator coordinator)
     {
@@ -357,13 +375,10 @@ public sealed class MainWindowViewModel : ObservableBase
         var entry = new TimestampEntry
         {
             Id = Ulid.NewUlid(),
-            PlayStartedAt = e.CapturedAt,
+            PlayStartedAt = e.CapturedAt.TruncateToSecond(),
         };
         foreach (var (key, value) in e.Fields)
-        {
-            if (!string.IsNullOrEmpty(value))
-                entry.SetField(key, value);
-        }
+            SetEntryField(entry, key, value);
         AddTimestamp(entry);
     }
 
@@ -374,13 +389,29 @@ public sealed class MainWindowViewModel : ObservableBase
         if (latestEntry is null) return;
 
         foreach (var (key, value) in e.Fields)
-        {
-            if (!string.IsNullOrEmpty(value))
-                latestEntry.SetField(key, value);
-        }
+            SetEntryField(latestEntry, key, value);
+
         var vm = Timestamps.FirstOrDefault(t => ReferenceEquals(t.Entry, latestEntry));
         vm?.NotifyEntryUpdated();
         MarkDirtyAndSaveBackup();
+    }
+
+    /// <summary>
+    /// 検知結果を 1 フィールド書き込む。プレイ監視は値を文字列で渡してくるので、
+    /// 数値型の識別子（要件「数値型フィールドは数値のまま保存」）はここで数値へ寄せる。
+    /// </summary>
+    private static void SetEntryField(TimestampEntry entry, string key, string value)
+    {
+        if (string.IsNullOrEmpty(value)) return;
+
+        if (FieldKeys.IsNumeric(key)
+            && int.TryParse(value, NumberStyles.Integer, CultureInfo.InvariantCulture, out var number))
+        {
+            entry.SetField(key, number);
+            return;
+        }
+
+        entry.SetField(key, value);
     }
 
     private void OnObsStatusChanged(object? sender, RecordingObsStatusChangedEventArgs e)
@@ -531,38 +562,73 @@ public sealed class MainWindowViewModel : ObservableBase
         }
     }
 
+    /// <summary>
+    /// 起動時の異常終了復旧。`stream.endedAt == null` のファイルを新しい順に提示し、
+    /// 読み込む／無視する／ゴミ箱へ送る をユーザに選ばせる（要件「異常終了からの復旧」）。
+    /// </summary>
     public void CheckUnfinishedRecords()
     {
         var dir = _settings.General?.BackupDirectory;
         if (string.IsNullOrEmpty(dir) || !Directory.Exists(dir))
             return;
 
-        UnfinishedRecord? unfinished = null;
+        List<UnfinishedRecord> unfinished;
         try
         {
-            unfinished = _recordStore.FindUnfinished(dir).FirstOrDefault();
+            // 列挙途中の I/O 失敗を拾いたいので、この場でリスト化する
+            unfinished = _recordStore.FindUnfinished(dir).ToList();
         }
         catch (Exception ex)
         {
+            // アクセス権がない場合などは復旧チェックをスキップして起動を続ける
             _logger.LogWarning(ex, "未完了ファイルのスキャンに失敗しました。");
             return;
         }
-        if (unfinished is null) return;
 
-        var shouldLoad = _dialog.Confirm(
-            "前回の記録が完了していません",
-            $"前回終了時に未完了の記録が見つかりました。\n\n{unfinished.FilePath}\n\n読み込みますか？\n（「いいえ」を選んだ場合、次回起動時にも検出されます）");
+        foreach (var candidate in unfinished)
+        {
+            var choice = _dialog.ConfirmUnfinishedRecord(candidate);
 
-        if (!shouldLoad) return;
+            if (choice == UnfinishedRecordChoice.Delete)
+            {
+                DeleteUnfinishedRecord(candidate);
+                continue;
+            }
+
+            // 無視する場合は次回起動時にも再度提示される
+            if (choice == UnfinishedRecordChoice.Ignore) continue;
+
+            try
+            {
+                LoadRecord(candidate.Record, candidate.FilePath);
+                return; // 読み込むのは 1 件だけ
+            }
+            catch (Exception ex)
+            {
+                _logger.LogWarning(ex, "未完了ファイルの読込に失敗しました。");
+                _dialog.ShowError("読込エラー", ex.Message);
+                return;
+            }
+        }
+    }
+
+    private void DeleteUnfinishedRecord(UnfinishedRecord candidate)
+    {
+        if (_fileRecycler is null)
+        {
+            _logger.LogWarning("ゴミ箱への削除機構が利用できないため、{Path} を削除しませんでした。", candidate.FilePath);
+            return;
+        }
 
         try
         {
-            LoadRecord(unfinished.Record, unfinished.FilePath);
+            _fileRecycler.SendToRecycleBin(candidate.FilePath);
+            _logger.LogInformation("未完了ファイルをゴミ箱へ送りました: {Path}", candidate.FilePath);
         }
         catch (Exception ex)
         {
-            _logger.LogWarning(ex, "未完了ファイルの読込に失敗しました。");
-            _dialog.ShowError("読込エラー", ex.Message);
+            _logger.LogWarning(ex, "未完了ファイルの削除に失敗しました: {Path}", candidate.FilePath);
+            _dialog.ShowError("削除エラー", "ファイルの削除に失敗しました: " + ex.Message);
         }
     }
 
@@ -640,7 +706,7 @@ public sealed class MainWindowViewModel : ObservableBase
 
         for (int i = 0; i < selected.Count; i++)
         {
-            selected[i].Entry.PlayStartedAt = result[i];
+            selected[i].Entry.PlayStartedAt = result[i].TruncateToSecond();
             selected[i].NotifyEntryUpdated();
         }
         ReorderTimestamps();
@@ -826,6 +892,21 @@ public sealed class MainWindowViewModel : ObservableBase
 
     private void OnTimestampsChanged(object? sender, NotifyCollectionChangedEventArgs e)
     {
+        if (e.OldItems is not null)
+        {
+            foreach (TimestampViewModel removed in e.OldItems)
+                removed.PropertyChanged -= OnRowPropertyChanged;
+        }
+        if (e.NewItems is not null)
+        {
+            foreach (TimestampViewModel added in e.NewItems)
+            {
+                // 並べ替え（Clear → 再追加）で同じインスタンスが戻ってくるので、二重購読を避ける
+                added.PropertyChanged -= OnRowPropertyChanged;
+                added.PropertyChanged += OnRowPropertyChanged;
+            }
+        }
+
         SyncDisplayRows(e);
         RaisePropertyChanged(nameof(TimestampCount));
         CopyCommand.RaiseCanExecuteChanged();
@@ -859,7 +940,7 @@ public sealed class MainWindowViewModel : ObservableBase
         }
         else if (oldState == AppState.Recording && newState == AppState.RecordingEnded)
         {
-            _record.Stream.EndedAt = DateTimeOffset.Now;
+            _record.Stream.EndedAt = DateTimeOffset.Now.TruncateToSecond();
             MarkDirtyAndSaveBackup();
         }
     }

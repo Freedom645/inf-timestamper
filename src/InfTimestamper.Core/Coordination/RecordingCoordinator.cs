@@ -63,7 +63,34 @@ public sealed class RecordingCoordinator : IAsyncDisposable
 
     public void Configure(RecordingCoordinatorOptions options)
     {
+        var previous = _options;
         _options = options ?? throw new ArgumentNullException(nameof(options));
+
+        // 設定ダイアログで接続先や監視先を直した場合、動作中のものを張り直す。
+        // 「停止 → 開始」をユーザに強いないための追従。
+        if (_streamManager is not null && !SameObsTarget(previous.StreamObs, _options.StreamObs))
+        {
+            _logger.LogInformation("OBS 接続情報が変更されたため、接続を張り直します。");
+            StopConnection();
+            EnsureConnectionStarted();
+        }
+
+        if (_activeWatcher is not null
+            && (previous.Game != _options.Game
+                || !string.Equals(previous.WatchDirectory, _options.WatchDirectory, StringComparison.OrdinalIgnoreCase)))
+        {
+            _logger.LogInformation("プレイ監視の設定が変更されたため、ファイル監視を張り直します。");
+            StopWatcher();
+            EnsurePlayWatcherStarted();
+        }
+    }
+
+    private static bool SameObsTarget(ObsConnectionOptions? a, ObsConnectionOptions? b)
+    {
+        if (a is null || b is null) return ReferenceEquals(a, b);
+        return string.Equals(a.Host, b.Host, StringComparison.OrdinalIgnoreCase)
+               && a.Port == b.Port
+               && string.Equals(a.Password, b.Password, StringComparison.Ordinal);
     }
 
     private void OnStateChanged(object? sender, StateChangedEventArgs e)
@@ -173,13 +200,20 @@ public sealed class RecordingCoordinator : IAsyncDisposable
 
     private void StopAll()
     {
-        try { _cts?.Cancel(); } catch { /* ignore */ }
+        StopWatcher();
+        StopConnection();
+    }
 
-        if (_activeWatcher is not null)
-        {
-            try { _activeWatcher.StopAsync().GetAwaiter().GetResult(); } catch { /* swallow */ }
-            _activeWatcher = null;
-        }
+    private void StopWatcher()
+    {
+        if (_activeWatcher is null) return;
+        try { _activeWatcher.StopAsync().GetAwaiter().GetResult(); } catch { /* swallow */ }
+        _activeWatcher = null;
+    }
+
+    private void StopConnection()
+    {
+        try { _cts?.Cancel(); } catch { /* ignore */ }
 
         if (_streamManager is not null)
         {
@@ -203,6 +237,56 @@ public sealed class RecordingCoordinator : IAsyncDisposable
     {
         _dispatcher.Invoke(() =>
             ObsStatusChanged?.Invoke(this, new RecordingObsStatusChangedEventArgs(e.State, e.RetryAttempt)));
+
+        // OBS の StreamStateChanged は「変化」しか通知しないため、接続した時点の実状態は
+        // 自分で問い合わせないと分からない（配信中にアプリを起動した／再接続中に配信が終わった）
+        if (e.State == ObsConnectionManagerState.Connected)
+            _ = SyncStreamStateAsync(_streamConnection, _cts?.Token ?? CancellationToken.None);
+    }
+
+    /// <summary>接続直後に OBS の実際の配信状態を問い合わせ、アプリの状態と食い違っていれば合わせる。</summary>
+    private async Task SyncStreamStateAsync(IObsConnection? connection, CancellationToken cancellationToken)
+    {
+        if (connection is null) return;
+
+        bool isStreaming;
+        try
+        {
+            isStreaming = await connection.IsStreamActiveAsync(cancellationToken).ConfigureAwait(false);
+        }
+        catch (OperationCanceledException)
+        {
+            return;
+        }
+        catch (Exception ex)
+        {
+            // 取れなくてもイベント経由の検知は生きているので、記録は妨げない
+            _logger.LogWarning(ex, "OBS の配信状態の取得に失敗しました。");
+            return;
+        }
+
+        if (_disposed || cancellationToken.IsCancellationRequested) return;
+
+        _dispatcher.Invoke(() =>
+        {
+            try
+            {
+                if (isStreaming && _stateMachine.State == AppState.WaitingForStream)
+                {
+                    _logger.LogInformation("OBS 接続時に配信中を検知。記録中に遷移します。");
+                    _stateMachine.DetectStreamStart();
+                }
+                else if (!isStreaming && _stateMachine.State == AppState.Recording)
+                {
+                    _logger.LogInformation("OBS 接続時に配信が終了していることを検知。記録終了に遷移します。");
+                    _stateMachine.DetectStreamEnd();
+                }
+            }
+            catch (InvalidStateTransitionException ex)
+            {
+                _logger.LogDebug(ex, "配信状態の同期と AppStateMachine の状態が一致しないため遷移をスキップ。");
+            }
+        });
     }
 
     private void OnPlayStarted(object? sender, PlayStartedEventArgs e)

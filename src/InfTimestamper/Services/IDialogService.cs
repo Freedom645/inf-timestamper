@@ -1,3 +1,4 @@
+using InfTimestamper.Core.Persistence;
 using InfTimestamper.Core.Settings;
 using InfTimestamper.Core.Updates;
 
@@ -20,6 +21,9 @@ public interface IDialogService
     void ShowInfo(string title, string message);
 
     bool Confirm(string title, string message);
+
+    /// <summary>異常終了復旧の 3 択（読み込む / 無視する / 削除する）を尋ねる。</summary>
+    UnfinishedRecordChoice ConfirmUnfinishedRecord(UnfinishedRecord record);
 
     Task<bool> ShowUpdateProgressAsync(IUpdateService updateService, CancellationToken cancellationToken);
 }

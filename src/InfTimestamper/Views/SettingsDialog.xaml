@@ -4,6 +4,7 @@
         xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
         xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
         xmlns:vm="clr-namespace:InfTimestamper.ViewModels.Settings"
+        xmlns:conv="clr-namespace:InfTimestamper.Converters"
         mc:Ignorable="d"
         d:DataContext="{d:DesignInstance Type=vm:SettingsDialogViewModel}"
         Title="設定"
@@ -12,6 +13,9 @@
         Height="520" MinHeight="460"
         WindowStartupLocation="CenterOwner"
         ShowInTaskbar="False">
+    <Window.Resources>
+        <conv:BoolToBrushConverter x:Key="ValidityToBrush" />
+    </Window.Resources>
     <Grid Margin="12">
         <Grid.RowDefinitions>
             <RowDefinition Height="*" />
@@ -34,6 +38,8 @@
                         </Grid.ColumnDefinitions>
                         <TextBox Grid.Column="0"
                                  Text="{Binding General.BackupDirectory, UpdateSourceTrigger=PropertyChanged}"
+                                 Background="{Binding General.IsBackupDirectoryValid, Converter={StaticResource ValidityToBrush}}"
+                                 ToolTip="書込できるフォルダを指定してください（存在しない場合は保存時に作成します）"
                                  Padding="4" />
                         <Button Grid.Column="1" Content="参照..." Width="80" Margin="6,0,0,0"
                                 Command="{Binding General.BrowseBackupDirectoryCommand}" />
@@ -82,7 +88,10 @@
                         </Grid.RowDefinitions>
                         <TextBlock Grid.Row="0" Grid.Column="0" Text="ホスト" VerticalAlignment="Center" />
                         <TextBox  Grid.Row="0" Grid.Column="1"
-                                  Text="{Binding Obs.Host, UpdateSourceTrigger=PropertyChanged}" Padding="4" Margin="0,2" />
+                                  Text="{Binding Obs.Host, UpdateSourceTrigger=PropertyChanged}"
+                                  Background="{Binding Obs.IsHostValid, Converter={StaticResource ValidityToBrush}}"
+                                  ToolTip="IPv4 アドレス（例: 192.168.1.10）または localhost"
+                                  Padding="4" Margin="0,2" />
                         <CheckBox Grid.Row="0" Grid.Column="2" Content="ローカルホスト"
                                   IsChecked="{Binding Obs.IsLocalhost}" VerticalAlignment="Center" Margin="8,0,0,0" />
 

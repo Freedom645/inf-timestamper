@@ -28,4 +28,13 @@ public sealed class StreamStartRowViewModel : ObservableBase, ITimestampRow
     }
 
     public string DisplayText => $"{FormatExpander.FormatTimestamp(TimeSpan.Zero)} {_label}";
+
+    /// <summary>プレイ記録ではないので選択も日時編集もできない。</summary>
+    public bool IsSelectable => false;
+
+    public bool IsSelected
+    {
+        get => false;
+        set { /* 選択不可。ListBoxItem からの書込みも無視する */ }
+    }
 }

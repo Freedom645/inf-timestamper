@@ -1,5 +1,6 @@
 using InfTimestamper.Core.Persistence;
 using InfTimestamper.Core.States;
+using InfTimestamper.Core.Tests.TestHelpers;
 using InfTimestamper.ViewModels;
 
 namespace InfTimestamper.Core.Tests.ViewModels;
@@ -15,7 +16,10 @@ public class MainWindowSecondaryButtonTests
             new AppStateMachine(),
             new FakeClipboardService(),
             dialog ?? new FakeDialogService(),
-            new JsonRecordStore());
+            new JsonRecordStore(),
+            TestSettingsFactory.CreateDefault(),
+            null,
+            null);
 
     [Fact]
     public void InitialState_ShowsResetAndIsDisabled()

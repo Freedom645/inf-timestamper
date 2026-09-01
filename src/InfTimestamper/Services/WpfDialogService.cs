@@ -1,5 +1,6 @@
 using System.Windows;
 using InfTimestamper.Core.Obs;
+using InfTimestamper.Core.Persistence;
 using InfTimestamper.Core.Settings;
 using InfTimestamper.Core.Updates;
 using InfTimestamper.ViewModels;
@@ -85,6 +86,13 @@ public sealed class WpfDialogService : IDialogService
     public bool Confirm(string title, string message)
         => MessageBox.Show(_ownerProvider(), message, title, MessageBoxButton.YesNo, MessageBoxImage.Question)
            == MessageBoxResult.Yes;
+
+    public UnfinishedRecordChoice ConfirmUnfinishedRecord(UnfinishedRecord record)
+    {
+        var dialog = new UnfinishedRecordDialog(record) { Owner = _ownerProvider() };
+        dialog.ShowDialog();
+        return dialog.Choice;
+    }
 
     public async Task<bool> ShowUpdateProgressAsync(IUpdateService updateService, CancellationToken cancellationToken)
     {

@@ -54,4 +54,18 @@ public static class FieldKeys
 
     /// <summary>BAD 数。pop'n はコンボが切れるのが BAD のみなので、INFINITAS のミスカウントとは意味が違う。</summary>
     public const string Bad = "bad";
+
+    // ---- 型情報 ----
+
+    /// <summary>
+    /// 値を数値として保存する識別子（要件「数値型フィールドは数値のまま保存し、フォーマット展開時に文字列化する」）。
+    /// ここに無いキーは文字列として保存する。
+    /// </summary>
+    private static readonly HashSet<string> Numeric = new(StringComparer.Ordinal)
+    {
+        Level, MissCount, ExScore, Score, Bad,
+    };
+
+    /// <summary>そのキーの値を JSON に数値で書くか。</summary>
+    public static bool IsNumeric(string key) => key is not null && Numeric.Contains(key);
 }

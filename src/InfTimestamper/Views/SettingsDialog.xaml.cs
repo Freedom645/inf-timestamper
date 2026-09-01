@@ -1,5 +1,6 @@
 using System.Windows;
 using System.Windows.Controls;
+using InfTimestamper.Behaviors;
 using InfTimestamper.ViewModels.Settings;
 
 namespace InfTimestamper.Views;
@@ -14,6 +15,10 @@ public partial class SettingsDialog : Window
     public SettingsDialog(SettingsDialogViewModel viewModel) : this()
     {
         DataContext = viewModel;
+
+        // "$" の直後で識別子候補を出す（要件「"$"の右隣にカーソルがある場合にサジェストされる」）
+        _ = new IdentifierSuggestion(InfinitasFormatTextBox, viewModel.Infinitas.AvailableIdentifiers);
+        _ = new IdentifierSuggestion(PopnFormatTextBox, viewModel.Popn.AvailableIdentifiers);
 
         // PasswordBox は SecureString のため Binding 非対応。VM から流し込み、
         // 確定前に VM に戻す

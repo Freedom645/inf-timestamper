@@ -8,4 +8,13 @@ namespace InfTimestamper.ViewModels;
 public interface ITimestampRow
 {
     string DisplayText { get; }
+
+    /// <summary>
+    /// 選択されているか。チェックボックスと <c>ListBoxItem.IsSelected</c> の双方から書かれるので、
+    /// Shift+クリック / Ctrl+クリックの範囲選択もそのままここに入る。
+    /// </summary>
+    bool IsSelected { get; set; }
+
+    /// <summary>選択・日時編集の対象になれるか。配信開始行は対象外。</summary>
+    bool IsSelectable { get; }
 }

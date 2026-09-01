@@ -6,6 +6,7 @@ using InfTimestamper.Core.Games;
 using InfTimestamper.Core.Models;
 using InfTimestamper.Core.Obs;
 using InfTimestamper.Core.Persistence;
+using InfTimestamper.Core.Persistence.Json;
 using InfTimestamper.Core.Popn;
 using InfTimestamper.Core.Reflux;
 using InfTimestamper.Core.Settings;
@@ -73,7 +74,10 @@ public partial class App : Application
             {
                 var settingsPath = SettingsStore.DefaultSettingsPath();
                 services.AddSingleton<AppStateMachine>();
-                services.AddSingleton<JsonRecordStore>();
+                services.AddSingleton<JsonRecordStore>(_ => new JsonRecordStore(
+                    JsonOptionsFactory.CreateRecordOptions(),
+                    // 記録ファイルの app.version は実行アセンブリのバージョンを載せる
+                    typeof(App).Assembly.GetName().Version?.ToString(3) ?? AppInfo.DefaultVersion));
                 services.AddSingleton<SettingsStore>();
                 services.AddSingleton<AppSettings>(sp =>
                 {
@@ -81,6 +85,7 @@ public partial class App : Application
                     return store.Load(settingsPath);
                 });
                 services.AddSingleton<IClipboardService, WpfClipboardService>();
+                services.AddSingleton<IFileRecycler, WindowsFileRecycler>();
 
                 // GitHub Releases バージョンチェック
                 services.AddSingleton<HttpClient>(_ =>
@@ -136,7 +141,8 @@ public partial class App : Application
                     settingsPath,
                     sp.GetRequiredService<IGitHubReleaseChecker>(),
                     sp.GetRequiredService<IUpdateService>(),
-                    sp.GetService<ILogger<MainWindowViewModel>>()));
+                    sp.GetService<ILogger<MainWindowViewModel>>(),
+                    sp.GetRequiredService<IFileRecycler>()));
                 services.AddSingleton<MainWindow>(sp => new MainWindow(sp.GetRequiredService<MainWindowViewModel>()));
             })
             .Build();

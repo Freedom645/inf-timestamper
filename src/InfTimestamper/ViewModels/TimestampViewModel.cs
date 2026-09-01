@@ -21,6 +21,8 @@ public sealed class TimestampViewModel : ObservableBase, ITimestampRow
 
     public DateTimeOffset PlayStartedAt => _entry.PlayStartedAt;
 
+    public bool IsSelectable => true;
+
     public bool IsSelected
     {
         get => _isSelected;

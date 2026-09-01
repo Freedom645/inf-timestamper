@@ -1,3 +1,4 @@
+using System.IO;
 using InfTimestamper.Core.Settings;
 using InfTimestamper.Services;
 
@@ -45,7 +46,53 @@ public sealed class GeneralSettingsViewModel : ObservableBase
     public string BackupDirectory
     {
         get => _backupDirectory;
-        set => SetField(ref _backupDirectory, value ?? string.Empty);
+        set
+        {
+            if (!SetField(ref _backupDirectory, value ?? string.Empty)) return;
+            RaisePropertyChanged(nameof(IsBackupDirectoryValid));
+        }
+    }
+
+    /// <summary>
+    /// 保存先として使えるか（要件「不正なパスや書込権限なしの場合は赤背景表示」）。
+    /// 未作成のフォルダも許容するので、存在しない場合は親フォルダに書けるかで判定する。
+    /// </summary>
+    public bool IsBackupDirectoryValid => ValidateDirectory(_backupDirectory);
+
+    private static bool ValidateDirectory(string path)
+    {
+        if (string.IsNullOrWhiteSpace(path)) return false;
+
+        string full;
+        try
+        {
+            full = Path.GetFullPath(path);
+        }
+        catch
+        {
+            // パス文字として成立していない
+            return false;
+        }
+
+        if (Directory.Exists(full)) return CanWriteInto(full);
+
+        var parent = Path.GetDirectoryName(full);
+        return !string.IsNullOrEmpty(parent) && Directory.Exists(parent) && CanWriteInto(parent);
+    }
+
+    private static bool CanWriteInto(string directory)
+    {
+        // ACL の解釈は環境差が大きいので、実際に書けるかを小さなファイルで試す
+        var probe = Path.Combine(directory, ".inf-timestamper-write-test");
+        try
+        {
+            using (File.Create(probe, 1, FileOptions.DeleteOnClose)) { }
+            return true;
+        }
+        catch
+        {
+            return false;
+        }
     }
 
     public bool ConfirmOnReset

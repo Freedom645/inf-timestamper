@@ -1,3 +1,4 @@
+using System.Text;
 using System.Text.Json;
 using InfTimestamper.Core.Models;
 using InfTimestamper.Core.Persistence.Json;
@@ -6,15 +7,25 @@ namespace InfTimestamper.Core.Persistence;
 
 public sealed class JsonRecordStore
 {
+    /// <summary>BOM なし UTF-8（要件「文字コードは UTF-8（BOM なし）」）。</summary>
+    private static readonly UTF8Encoding Utf8NoBom = new(encoderShouldEmitUTF8Identifier: false);
+
     private readonly JsonSerializerOptions _options;
+    private readonly string _appVersion;
 
     public JsonRecordStore() : this(JsonOptionsFactory.CreateRecordOptions())
     {
     }
 
-    public JsonRecordStore(JsonSerializerOptions options)
+    public JsonRecordStore(JsonSerializerOptions options) : this(options, AppInfo.DefaultVersion)
+    {
+    }
+
+    /// <param name="appVersion">書出す <c>app.version</c>。実行アセンブリのバージョンを渡す。</param>
+    public JsonRecordStore(JsonSerializerOptions options, string appVersion)
     {
         _options = options;
+        _appVersion = string.IsNullOrWhiteSpace(appVersion) ? AppInfo.DefaultVersion : appVersion;
     }
 
     public static string GenerateFileName(GameId game, DateTimeOffset startedAt)
@@ -49,6 +60,8 @@ public sealed class JsonRecordStore
     public void SaveAtomic(StreamRecord record, string path)
     {
         record.UpdatedAt = DateTimeOffset.Now;
+        record.App.Name = AppInfo.DefaultName;
+        record.App.Version = _appVersion;
 
         var directory = Path.GetDirectoryName(path);
         if (!string.IsNullOrEmpty(directory))
@@ -57,10 +70,12 @@ public sealed class JsonRecordStore
         var tmpPath = path + ".tmp";
         var bakPath = path + ".bak";
 
+        var bytes = Utf8NoBom.GetBytes(SerializeWithLineFeed(record));
+
         // 1. tmp に書き込み → fsync
         using (var fs = new FileStream(tmpPath, FileMode.Create, FileAccess.Write, FileShare.None))
         {
-            JsonSerializer.Serialize(fs, record, _options);
+            fs.Write(bytes, 0, bytes.Length);
             fs.Flush(flushToDisk: true);
         }
 
@@ -96,6 +111,14 @@ public sealed class JsonRecordStore
             throw;
         }
     }
+
+    /// <summary>
+    /// 改行を LF に揃えてシリアライズする（要件「改行は LF」）。
+    /// <c>Utf8JsonWriter</c> のインデント改行は実行環境の改行コードになるため、書出し前に正規化する。
+    /// 文字列値の中の改行は <c>\r\n</c> にエスケープされるので、生の CRLF はインデント由来しかない。
+    /// </summary>
+    private string SerializeWithLineFeed(StreamRecord record)
+        => JsonSerializer.Serialize(record, _options).Replace("\r\n", "\n");
 
     public IEnumerable<UnfinishedRecord> FindUnfinished(string directory)
     {

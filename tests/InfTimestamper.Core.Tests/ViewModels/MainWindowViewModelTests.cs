@@ -390,7 +390,9 @@ public class MainWindowViewModelTests
             streamConnectionFactory: () => fakeConn,
             managerFactory: c => new ObsConnectionManager(c, Microsoft.Extensions.Logging.Abstractions.NullLogger<ObsConnectionManager>.Instance, new TestDelayProvider(), TimeSpan.FromMilliseconds(50)));
 
-        var vm = new MainWindowViewModel(state, new FakeClipboardService(), new FakeDialogService(), new JsonRecordStore());
+        var vm = new MainWindowViewModel(
+            state, new FakeClipboardService(), new FakeDialogService(), new JsonRecordStore(),
+            TestSettingsFactory.CreateDefault(), null, null);
         vm.BindCoordinator(coord);
         return (vm, state, watcher, coord);
     }

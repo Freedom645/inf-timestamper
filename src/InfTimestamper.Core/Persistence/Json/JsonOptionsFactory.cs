@@ -19,6 +19,7 @@ public static class JsonOptionsFactory
             AllowTrailingCommas = false,
         };
         options.Converters.Add(new UlidJsonConverter());
+        options.Converters.Add(new DateTimeOffsetJsonConverter());
         options.Converters.Add(new GameIdJsonConverter());
         return options;
     }

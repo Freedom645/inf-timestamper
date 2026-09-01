@@ -1,0 +1,53 @@
+<Window x:Class="InfTimestamper.Views.UnfinishedRecordDialog"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        Title="前回の記録が完了していません"
+        Icon="/Assets/icon.ico"
+        SizeToContent="Height"
+        Width="520" MinWidth="440"
+        ResizeMode="NoResize"
+        WindowStartupLocation="CenterOwner"
+        ShowInTaskbar="False">
+    <Grid Margin="16">
+        <Grid.RowDefinitions>
+            <RowDefinition Height="Auto" />
+            <RowDefinition Height="Auto" />
+            <RowDefinition Height="Auto" />
+        </Grid.RowDefinitions>
+
+        <TextBlock Grid.Row="0"
+                   Text="前回正常に終了されていない記録ファイルがあります。読み込みますか？"
+                   TextWrapping="Wrap" Margin="0,0,0,12" />
+
+        <Border Grid.Row="1" BorderBrush="LightGray" BorderThickness="1" Padding="10" Margin="0,0,0,16">
+            <Grid>
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="Auto" />
+                    <ColumnDefinition Width="*" />
+                </Grid.ColumnDefinitions>
+                <Grid.RowDefinitions>
+                    <RowDefinition Height="Auto" />
+                    <RowDefinition Height="Auto" />
+                    <RowDefinition Height="Auto" />
+                </Grid.RowDefinitions>
+
+                <TextBlock Grid.Row="0" Grid.Column="0" Text="ファイル名" FontWeight="Bold" Margin="0,0,12,4" />
+                <TextBlock Grid.Row="0" Grid.Column="1" x:Name="FileNameText" TextWrapping="Wrap" Margin="0,0,0,4" />
+
+                <TextBlock Grid.Row="1" Grid.Column="0" Text="最終更新日時" FontWeight="Bold" Margin="0,0,12,4" />
+                <TextBlock Grid.Row="1" Grid.Column="1" x:Name="LastModifiedText" Margin="0,0,0,4" />
+
+                <TextBlock Grid.Row="2" Grid.Column="0" Text="タイムスタンプ件数" FontWeight="Bold" Margin="0,0,12,0" />
+                <TextBlock Grid.Row="2" Grid.Column="1" x:Name="TimestampCountText" />
+            </Grid>
+        </Border>
+
+        <StackPanel Grid.Row="2" Orientation="Horizontal" HorizontalAlignment="Right">
+            <Button Content="はい（読み込む）" Width="140" Height="30" Margin="0,0,8,0"
+                    IsDefault="True" Click="OnLoadClick" />
+            <Button Content="いいえ（無視する）" Width="140" Height="30" Margin="0,0,8,0"
+                    IsCancel="True" Click="OnIgnoreClick" />
+            <Button Content="削除する" Width="100" Height="30" Click="OnDeleteClick" />
+        </StackPanel>
+    </Grid>
+</Window>
