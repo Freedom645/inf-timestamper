@@ -133,7 +133,9 @@ Velopack 未インストール環境（開発実行・ZIP 解凍配置）では 
 
 ```
 inf-timestamper/
-├── README.md                       利用者向けの説明
+├── README.md                       利用者向けの説明（ロゴ・状態遷移図つき）
+├── LICENSE                         MIT
+├── images/                         README 用のロゴ画像
 ├── InfTimestamper.sln              3 プロジェクト
 ├── docs/
 │   ├── 要件.md                     仕様の正本
@@ -142,7 +144,8 @@ inf-timestamper/
 │   └── sample/                     外部ツールの実出力サンプル（reflux / popn-tracker）
 ├── src/
 │   ├── InfTimestamper/             WPF 本体。Views / ViewModels / Services / Converters / Behaviors、
-│   │                               App.xaml.cs（DI 組立）、Program.cs（独自 Main + Velopack）
+│   │                               App.xaml.cs（DI 組立）、Program.cs（独自 Main + Velopack）、
+│   │                               Assets/icon.ico（exe と全 Window のアイコン）
 │   └── InfTimestamper.Core/        UI 非依存のドメイン層（下記）
 └── tests/
     └── InfTimestamper.Core.Tests/  xUnit。ViewModel のテストもここに置く

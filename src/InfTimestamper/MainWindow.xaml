@@ -9,6 +9,7 @@
         mc:Ignorable="d"
         d:DataContext="{d:DesignInstance Type=vm:MainWindowViewModel}"
         Title="INF-TIMESTAMPER"
+        Icon="/Assets/icon.ico"
         Width="640" MinWidth="540"
         Height="600" MinHeight="480">
     <DockPanel LastChildFill="True">

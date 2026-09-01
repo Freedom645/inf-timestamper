@@ -7,6 +7,7 @@
         mc:Ignorable="d"
         d:DataContext="{d:DesignInstance Type=vm:SettingsDialogViewModel}"
         Title="設定"
+        Icon="/Assets/icon.ico"
         Width="600" MinWidth="520"
         Height="520" MinHeight="460"
         WindowStartupLocation="CenterOwner"

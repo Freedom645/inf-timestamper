@@ -8,6 +8,7 @@
         mc:Ignorable="d"
         d:DataContext="{d:DesignInstance Type=vm:DateTimeEditDialogViewModel}"
         Title="日時編集"
+        Icon="/Assets/icon.ico"
         Width="380" Height="220"
         WindowStartupLocation="CenterOwner"
         ResizeMode="NoResize"

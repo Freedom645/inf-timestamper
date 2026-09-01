@@ -1,4 +1,17 @@
-# INF-TIMESTAMPER
+<div align="center">
+  <img src="./images/INF-TIMESTAMPER.png" alt="アプリアイコン" width="100">
+</div>
+
+<h1 align="center">INF-TIMESTAMPER</h1>
+<p align="center">- 音楽ゲーム配信のタイムスタンプ自動記録ツール -</p>
+
+<div align="center">
+
+[![Release](https://img.shields.io/github/v/release/Freedom645/inf-timestamper)](https://github.com/Freedom645/inf-timestamper/releases/latest)
+[![Downloads](https://img.shields.io/github/downloads/Freedom645/inf-timestamper/total)](https://github.com/Freedom645/inf-timestamper/releases)
+[![License](https://img.shields.io/github/license/Freedom645/inf-timestamper)](https://github.com/Freedom645/inf-timestamper/blob/main/LICENSE)
+
+</div>
 
 音楽ゲーム配信の YouTube アーカイブ向けに、**チャプター用タイムスタンプを自動生成する Windows アプリ**です。
 
@@ -81,6 +94,42 @@ OBS に繋がらない場合や、外部ツールを使わない場合でも、�
 
 時刻がずれた場合は、配信開始時間やタイムスタンプを右クリック →「日時を編集...」から 1 秒 / 10 秒 / 1 分単位で補正できます。
 
+## 状態と操作
+
+アプリは 4 つの状態を持ち、**記録操作ボタン 1 つが状態に応じて役割を変えます**。今どの状態にいるかはメインウィンドウの「状態」に表示されます。
+
+```mermaid
+stateDiagram-v2
+    direction LR
+
+    [*] --> 初期状態
+
+    初期状態 --> 配信開始待ち : 「開始」
+    配信開始待ち --> 記録中 : OBS の配信開始 / 「強制開始」
+    記録中 --> 記録終了 : OBS の配信終了 / 「記録停止」
+    記録終了 --> 記録中 : 「記録再開」
+    記録終了 --> 初期状態 : 「リセット」
+    初期状態 --> 記録終了 : 過去の記録を開く
+
+    state 記録中 {
+        direction LR
+        [*] --> 選曲中
+        選曲中 --> プレイ中 : プレイ開始を検知
+        プレイ中 --> 選曲中 : リザルトを検知
+    }
+```
+
+| 状態 | 記録操作ボタン | 何が起きているか |
+| --- | --- | --- |
+| 初期状態 | 開始 | 何も記録していない。ゲーム選択を変更できるのはこの状態だけ |
+| 配信開始待ち | 強制開始 | OBS に接続し、配信が始まるのを待っている |
+| 記録中 | 記録停止 | プレイを検知してタイムスタンプを追加していく |
+| 記録終了 | 記録再開 | 記録を締めた状態。コピー・保存・「リセット」ができる |
+
+**`記録中` に入った時刻がタイムスタンプの基準**（`00:00:00`）になります。その中で、プレイ開始を検知するたびに新しいタイムスタンプが 1 行増え、リザルトを検知するとその行に成績が書き足されます。
+
+OBS が一時的に切断されても `記録中` のままで、自動的に再接続します（状態表示に試行回数が出ます）。`記録終了` へ移るのは「記録停止」を押したときと、配信が実際に終了していたことが分かったときだけです。
+
 ## タイムスタンプの書式
 
 書式は設定画面で自由に組み立てられます。`$` から始まる識別子が実際の値に置き換わります。検知できなかった項目は空文字列になります。
@@ -154,3 +203,7 @@ dotnet run --project src/InfTimestamper -- --log-level=Debug
 本アプリは Python 実装（v0.6.1 まで公開）を C# / .NET 8 / WPF で全面的に書き直したものです。Python 版は `v0.6.1` タグに保存されています。**v0.x で作成したデータは v1.0 では読み込めません。**
 
 当初は OBS のスクリーンショットに対する画像認識と OCR でプレイ内容を取得していましたが、装飾フォントに対する OCR の精度が上げられず、外部ツールのファイル監視方式へ切り替えました。画像認識まわりの実装は使われなくなったため削除しています（履歴は `v1.0.0` 以前のコミットに残っています）。
+
+## ライセンス
+
+[MIT License](LICENSE)
