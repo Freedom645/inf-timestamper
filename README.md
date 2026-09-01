@@ -1,0 +1,146 @@
+# INF-TIMESTAMPER
+
+音楽ゲーム配信の YouTube アーカイブ向けに、**チャプター用タイムスタンプを自動生成する Windows アプリ**です。
+
+配信中にプレイした楽曲を自動で記録し、YouTube の概要欄にそのまま貼れる形式でクリップボードへコピーできます。
+
+```
+00:00:15 GIGA RAID [SPH 10] (AAA, FC)
+00:02:41 Breakin' Rules [SPA 11] (AA, EX-HARD)
+00:05:03 ACTØ [SPN 6] (D, FAILED)
+```
+
+## 対応ゲーム
+
+| ゲーム | プレイ検知に使う外部ツール |
+| --- | --- |
+| コナステ版 beatmania IIDX INFINITAS | [Reflux](https://github.com/olji/Reflux) |
+| pop'n music | [popn-lively-tracker](https://github.com/Freedom645/popn-lively-tracker) |
+
+**1 配信 = 1 ゲーム**です。記録対象はメインウィンドウのゲーム選択で切り替えます（記録開始前のみ変更可能）。
+
+## 仕組み
+
+- **配信の開始・終了**は OBS WebSocket から受け取ります。「記録中」へ遷移した時刻がタイムスタンプの基準（`00:00:00`）になります
+- **プレイの開始・リザルト**は、上記の外部ツールが書き出すファイルを監視して取得します。画面キャプチャや OCR は使いません
+- 記録は 1 配信 1 ファイルの JSON として自動バックアップされます（書き込み中にクラッシュしても壊れないアトミック保存）
+
+OBS に繋がらない場合や、外部ツールを使わない場合でも、「強制開始」で手動記録に切り替えられます。
+
+## 動作環境
+
+- Windows 10 バージョン 2004（May 2020 Update）以降 / Windows 11、x64
+- OBS Studio 28 以降（WebSocket サーバーが標準搭載されたバージョン）
+- .NET ランタイムのインストールは不要です（self-contained な単一 exe）
+
+## インストール
+
+[Releases](https://github.com/Freedom645/inf-timestamper/releases) から `Setup.exe` をダウンロードして実行してください。
+
+以降のバージョンアップは、起動時の自動チェックからアプリ内で更新できます（設定でオフにできます）。
+
+## 使い方
+
+### 1. 事前準備
+
+**OBS 側**
+「ツール」→「WebSocket サーバー設定」でサーバーを有効にし、ポートとパスワードを控えます。
+
+**ゲーム側**
+プレイ検知に使う外部ツールを起動し、その出力先フォルダを控えます。
+
+- INFINITAS: Reflux が `playstate.txt` / `title.txt` / `level.txt` / `latest.json` を出力するフォルダ
+- pop'n music: popn-lively-tracker の `state.txt` / `result.json` を出力するフォルダ
+
+### 2. 設定
+
+「ファイル」→「設定...」から、
+
+- **配信ソフト連携タブ**: OBS のホスト・ポート・パスワードを入力し、「接続テスト」で疎通を確認します
+- **INFINITAS タブ / pop'n music タブ**: 外部ツールの出力フォルダを指定し、タイムスタンプの書式を決めます
+
+### 3. 記録
+
+1. メインウィンドウでゲームを選択します
+2. 「開始」を押すと `配信開始待ち` になります
+3. OBS で配信を開始すると自動で `記録中` へ移ります（OBS を使わない場合は「強制開始」）
+4. プレイするたびにタイムスタンプが増えていきます
+5. 配信を終了すると `記録終了` になります
+6. 「コピー」でリスト全体をクリップボードへコピーし、YouTube の概要欄に貼り付けます
+
+時刻がずれた場合は、配信開始時間やタイムスタンプを右クリック →「日時を編集...」から 1 秒 / 10 秒 / 1 分単位で補正できます。
+
+## タイムスタンプの書式
+
+書式は設定画面で自由に組み立てられます。`$` から始まる識別子が実際の値に置き換わります。検知できなかった項目は空文字列になります。
+
+**共通**（ゲームが変わっても意味が同じもの）
+
+| 識別子 | 内容 |
+| --- | --- |
+| `$timestamp` | 配信開始からの経過時間（`hh:mm:ss`） |
+| `$title` | 楽曲名 |
+| `$level` | 譜面のレベル |
+| `$diff_l` | 難易度（正式名） |
+| `$diff_s` | 難易度（略式表記） |
+
+**INFINITAS 固有**
+
+| 識別子 | 内容 |
+| --- | --- |
+| `$dj_level` | DJ レベル（AAA〜F） |
+| `$lamp` | クリアランプ（FAILED / A-EASY / EASY / NORMAL / HARD / EX-HARD / FC） |
+| `$ex_score` | EX スコア |
+| `$miss_count` | ミスカウント（BAD + POOR） |
+
+**pop'n music 固有**
+
+| 識別子 | 内容 |
+| --- | --- |
+| `$rank` | クリアランク（S / AAA / AA / A / B / C / D / E） |
+| `$medal` | クリアメダル（青丸〜金星） |
+| `$score` | スコア（0〜100000） |
+| `$bad` | BAD 数 |
+
+成績を表す項目はゲームごとに尺度が違うため、識別子も分けています。書式はゲームごとに別々に保存されます。
+
+## 保存されるデータ
+
+| 対象 | 場所 |
+| --- | --- |
+| 記録のバックアップ | `%APPDATA%\inf-timestamper\backups\`（設定で変更可） |
+| 設定 | `%APPDATA%\inf-timestamper\settings.json` |
+| ログ | exe と同じフォルダの `logs\app_yyyyMMdd.log`（7 日で自動削除） |
+
+記録は配信開始時・プレイ追加時・編集時・配信終了時などに自動保存されます。アプリが異常終了しても、次回起動時に未完了の記録を検出して読み込み直せます。
+
+## 開発
+
+```powershell
+dotnet build InfTimestamper.sln     # 警告 0 を維持する
+dotnet test InfTimestamper.sln      # xUnit
+dotnet run --project src/InfTimestamper -- --log-level=Debug
+```
+
+| ドキュメント | 内容 |
+| --- | --- |
+| [`docs/要件.md`](docs/要件.md) | 仕様の正本（UI・データ仕様・データ取得仕様） |
+| [`docs/実装計画.md`](docs/実装計画.md) | フェーズ別の進捗と設計判断の記録 |
+| [`docs/release.md`](docs/release.md) | publish → vpk pack → GitHub Releases の手順 |
+| [`docs/data-preparation.md`](docs/data-preparation.md) | 認識用データの整備手順 |
+| [`CLAUDE.md`](CLAUDE.md) | コードベースの構造メモ |
+
+### 対応ゲームを増やすには
+
+ゲーム固有の処理は `src/InfTimestamper.Core/Games/` の抽象に寄せてあります。追加時に触るのは次の 4 箇所です。
+
+1. `Models/GameId` — enum とシリアライズ表記
+2. `Games/GameCatalog` — 表示名・使える識別子・プレビュー用データ
+3. `IPlayWatcher` の実装と、リザルト → 識別子の変換を行う FieldMapper
+4. 設定ダイアログのタブと `AppSettings` のゲーム別セクション
+
+## 経緯
+
+本アプリは Python 実装（v0.6.1 まで公開）を C# / .NET 8 / WPF で全面的に書き直したものです。Python 版は `v0.6.1` タグに保存されています。**v0.x で作成したデータは v1.0 では読み込めません。**
+
+当初は OBS のスクリーンショットに対する画像認識と OCR でプレイ内容を取得していましたが、装飾フォントに対する OCR の精度が上げられず、外部ツールのファイル監視方式へ切り替えました。画像認識の実装は将来の代替手段としてコードベースに残してあります（未使用）。

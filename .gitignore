@@ -36,6 +36,9 @@ src/InfTimestamper.Core/Resources/INFINITAS/reference_images/
 # Rider
 *.DotSettings.user
 
+# Velopack のリリースバンドル出力（vpk pack）
+[Rr]eleases/
+
 # NuGet
 *.nupkg
 *.snupkg
