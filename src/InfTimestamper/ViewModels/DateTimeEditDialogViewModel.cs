@@ -8,7 +8,6 @@ public sealed class DateTimeEditDialogViewModel : ObservableBase
 
     private readonly IReadOnlyList<DateTimeOffset> _initialValues;
     private readonly DateTimeOffset _initialMin;
-    private readonly TimeSpan _offset;
 
     private string _editText;
     private bool _isTextValid = true;
@@ -20,8 +19,9 @@ public sealed class DateTimeEditDialogViewModel : ObservableBase
 
         _initialValues = currentValues;
         _initialMin = currentValues.Min();
-        _offset = _initialMin.Offset;
-        _editText = _initialMin.ToOffset(_offset).LocalDateTime.ToString(DateTimeFormat, CultureInfo.InvariantCulture);
+        // 表示も確定もローカル時刻を基準にする。メインウィンドウの表示と揃い、
+        // 記録側のオフセットと実行環境のタイムゾーンが違っても同じ瞬間を指したままになる
+        _editText = _initialMin.LocalDateTime.ToString(DateTimeFormat, CultureInfo.InvariantCulture);
 
         ShiftCommand = new ShiftCommand(ApplyShift);
         ConfirmCommand = new RelayCommand(Confirm, () => IsTextValid);
@@ -82,7 +82,8 @@ public sealed class DateTimeEditDialogViewModel : ObservableBase
     private void Confirm()
     {
         if (!TryParseEditText(out var newMinLocal)) return;
-        var newMin = new DateTimeOffset(newMinLocal, _offset);
+        // Kind が Unspecified の DateTime はローカル時刻として解釈される（夏時間も考慮される）
+        var newMin = new DateTimeOffset(newMinLocal);
 
         if (IsMultiple)
         {

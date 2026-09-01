@@ -4,8 +4,10 @@ namespace InfTimestamper.Core.Tests.ViewModels;
 
 public class DateTimeEditDialogViewModelTests
 {
-    private static readonly DateTimeOffset BaseTime
-        = new(2026, 5, 17, 18, 0, 0, TimeSpan.FromHours(9));
+    // ダイアログはローカル時刻で表示・確定するので、基準値もローカル時刻から組み立てる。
+    // 固定オフセットで書くと実行環境のタイムゾーン次第で期待値が変わってしまう。
+    private static readonly DateTime BaseLocal = new(2026, 5, 17, 18, 0, 0, DateTimeKind.Local);
+    private static readonly DateTimeOffset BaseTime = new(BaseLocal);
 
     [Fact]
     public void SingleValue_InitialDisplaysFormattedText()
@@ -32,7 +34,7 @@ public class DateTimeEditDialogViewModelTests
         Assert.Single(vm.Result!);
         var newValue = vm.Result![0];
         Assert.Equal(new DateTime(2026, 5, 17, 18, 30, 15), newValue.LocalDateTime);
-        Assert.Equal(TimeSpan.FromHours(9), newValue.Offset);
+        Assert.Equal(TimeZoneInfo.Local.GetUtcOffset(newValue.LocalDateTime), newValue.Offset);
     }
 
     [Fact]
@@ -94,6 +96,31 @@ public class DateTimeEditDialogViewModelTests
         Assert.Equal(BaseTime.AddMinutes(1), vm.Result[0]);
         Assert.Equal(BaseTime.AddSeconds(90), vm.Result[1]);
         Assert.Equal(BaseTime.AddMinutes(3), vm.Result[2]);
+    }
+
+    [Fact]
+    public void Confirm_WithForeignOffset_KeepsTheSameInstant()
+    {
+        // 記録側のオフセットと実行環境のタイムゾーンが違っても、
+        // 編集せずに確定しただけで時刻がずれてはいけない
+        var foreign = new DateTimeOffset(2026, 5, 17, 18, 0, 0, TimeSpan.FromHours(-5));
+        var vm = new DateTimeEditDialogViewModel(new[] { foreign });
+
+        vm.ConfirmCommand.Execute(null);
+
+        Assert.NotNull(vm.Result);
+        Assert.Equal(foreign, vm.Result![0]);
+        Assert.Equal(foreign.UtcDateTime, vm.Result[0].UtcDateTime);
+    }
+
+    [Fact]
+    public void EditText_ShowsLocalTimeOfTheValue()
+    {
+        var foreign = new DateTimeOffset(2026, 5, 17, 18, 0, 0, TimeSpan.FromHours(-5));
+        var vm = new DateTimeEditDialogViewModel(new[] { foreign });
+
+        // メインウィンドウの配信開始時間表示（LocalDateTime）と同じ基準
+        Assert.Equal(foreign.LocalDateTime.ToString("yyyy-MM-dd HH:mm:ss"), vm.EditText);
     }
 
     [Fact]
