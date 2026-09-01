@@ -1,0 +1,44 @@
+{
+  "time": "2026-08-30 19:44:17",
+  "state": "プレイ終了",
+  "identified_by": "record-diff",
+  "score": 93578,
+  "score_before_last_judge": 93368,
+  "max_combo": 319,
+  "notes": 475,
+  "full_combo": false,
+  "judge": {
+    "cool": 382,
+    "great": 87,
+    "good": 4,
+    "bad": 2
+  },
+  "chart_notes": 475,
+  "finished": true,
+  "gauge": 1023,
+  "beads": 23,
+  "cleared": true,
+  "rank": 6,
+  "rank_name": "AA",
+  "medal": 7,
+  "medal_name": "銅星",
+  "previous_best": 92926,
+  "new_record": true,
+  "music": {
+    "index": 795,
+    "music_id": 891,
+    "genre": "エモ",
+    "title": "Sorrows",
+    "artist": "Asako Yoshihiro",
+    "sheet": "NORMAL",
+    "level": 29
+  },
+  "record": {
+    "score": 92926,
+    "clear_rank": 6,
+    "rank_name": "AA",
+    "clear_type": 7,
+    "medal": "銅星",
+    "play_count": 6
+  }
+}
