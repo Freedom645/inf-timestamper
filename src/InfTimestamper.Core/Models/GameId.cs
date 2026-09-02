@@ -4,17 +4,20 @@ public enum GameId
 {
     Infinitas,
     Popn,
+    Sdvx,
 }
 
 public static class GameIdExtensions
 {
     public const string InfinitasSerialized = "INFINITAS";
     public const string PopnSerialized = "POPN";
+    public const string SdvxSerialized = "SDVX";
 
     public static string ToSerializedString(this GameId game) => game switch
     {
         GameId.Infinitas => InfinitasSerialized,
         GameId.Popn => PopnSerialized,
+        GameId.Sdvx => SdvxSerialized,
         _ => throw new ArgumentOutOfRangeException(nameof(game), game, "Unknown game id"),
     };
 
@@ -32,6 +35,9 @@ public static class GameIdExtensions
                 return true;
             case PopnSerialized:
                 game = GameId.Popn;
+                return true;
+            case SdvxSerialized:
+                game = GameId.Sdvx;
                 return true;
             default:
                 game = default;

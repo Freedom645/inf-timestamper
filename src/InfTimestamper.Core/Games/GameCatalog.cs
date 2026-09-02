@@ -13,6 +13,7 @@ public static class GameCatalog
     {
         GameId.Infinitas,
         GameId.Popn,
+        GameId.Sdvx,
     };
 
     private static readonly IReadOnlyList<string> InfinitasIdentifiers = new[]
@@ -39,6 +40,20 @@ public static class GameCatalog
         FieldKeys.Medal,
         FieldKeys.Score,
         FieldKeys.Bad,
+    };
+
+    private static readonly IReadOnlyList<string> SdvxIdentifiers = new[]
+    {
+        FieldKeys.Timestamp,
+        FieldKeys.Title,
+        FieldKeys.DiffLong,
+        FieldKeys.DiffShort,
+        FieldKeys.Level,
+        FieldKeys.Grade,
+        FieldKeys.ClearLamp,
+        FieldKeys.Score,
+        FieldKeys.ScoreShort,
+        FieldKeys.ExScore,
     };
 
     private static readonly IReadOnlyDictionary<string, string> InfinitasPreview =
@@ -69,11 +84,27 @@ public static class GameCatalog
             [FieldKeys.Bad] = "2",
         };
 
+    private static readonly IReadOnlyDictionary<string, string> SdvxPreview =
+        new Dictionary<string, string>
+        {
+            [FieldKeys.Timestamp] = "00:01:23",
+            [FieldKeys.Title] = "Sample Song",
+            [FieldKeys.DiffLong] = "EXHAUST",
+            [FieldKeys.DiffShort] = "EXH",
+            [FieldKeys.Level] = "17",
+            [FieldKeys.Grade] = "AA+",
+            [FieldKeys.ClearLamp] = "UC",
+            [FieldKeys.Score] = "9765432",
+            [FieldKeys.ScoreShort] = "9765",
+            [FieldKeys.ExScore] = "3210",
+        };
+
     /// <summary>ゲーム選択 UI や状態表示に出す名称。</summary>
     public static string DisplayName(GameId game) => game switch
     {
         GameId.Infinitas => "beatmania IIDX INFINITAS",
         GameId.Popn => "pop'n music",
+        GameId.Sdvx => "SOUND VOLTEX",
         _ => game.ToSerializedString(),
     };
 
@@ -81,6 +112,7 @@ public static class GameCatalog
     public static IReadOnlyList<string> Identifiers(GameId game) => game switch
     {
         GameId.Popn => PopnIdentifiers,
+        GameId.Sdvx => SdvxIdentifiers,
         _ => InfinitasIdentifiers,
     };
 
@@ -88,13 +120,15 @@ public static class GameCatalog
     public static IReadOnlyDictionary<string, string> PreviewFields(GameId game) => game switch
     {
         GameId.Popn => PopnPreview,
+        GameId.Sdvx => SdvxPreview,
         _ => InfinitasPreview,
     };
 
-    /// <summary>そのゲームで検知したフィールドを監視するツール名（設定画面の説明文などに使う）。</summary>
+    /// <summary>そのゲームのプレイ検知に使う外部ツール名（設定画面の説明文やログに使う）。</summary>
     public static string WatcherToolName(GameId game) => game switch
     {
         GameId.Popn => "popn-lively-tracker",
+        GameId.Sdvx => "SDVX Helper",
         _ => "Reflux",
     };
 }

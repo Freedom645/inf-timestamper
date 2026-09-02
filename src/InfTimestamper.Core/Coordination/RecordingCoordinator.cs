@@ -77,9 +77,9 @@ public sealed class RecordingCoordinator : IAsyncDisposable
 
         if (_activeWatcher is not null
             && (previous.Game != _options.Game
-                || !string.Equals(previous.WatchDirectory, _options.WatchDirectory, StringComparison.OrdinalIgnoreCase)))
+                || !string.Equals(previous.WatchTarget, _options.WatchTarget, StringComparison.OrdinalIgnoreCase)))
         {
-            _logger.LogInformation("プレイ監視の設定が変更されたため、ファイル監視を張り直します。");
+            _logger.LogInformation("プレイ監視の設定が変更されたため、監視を張り直します。");
             StopWatcher();
             EnsurePlayWatcherStarted();
         }
@@ -112,7 +112,7 @@ public sealed class RecordingCoordinator : IAsyncDisposable
             EnsureConnectionStarted();
         }
 
-        // ゲームのプレイ検知（外部ツールの出力ファイル監視）が必要な状態（Recording）
+        // ゲームのプレイ検知（外部ツールの出力の監視）が必要な状態（Recording）
         if (newState == AppState.Recording)
         {
             EnsurePlayWatcherStarted();
@@ -170,31 +170,31 @@ public sealed class RecordingCoordinator : IAsyncDisposable
         var game = _options.Game;
         if (!_watchers.TryGetValue(game, out var watcher))
         {
-            _logger.LogWarning("{Game} のプレイ監視機構が登録されていないため、ファイル監視を開始しません。",
+            _logger.LogWarning("{Game} のプレイ監視機構が登録されていないため、監視を開始しません。",
                 GameCatalog.DisplayName(game));
             return;
         }
 
-        var directory = _options.WatchDirectory;
-        if (string.IsNullOrWhiteSpace(directory))
+        var target = _options.WatchTarget;
+        if (string.IsNullOrWhiteSpace(target))
         {
-            _logger.LogWarning("{Tool} の出力ディレクトリが未指定のため、ファイル監視を開始しません。",
+            _logger.LogWarning("{Tool} の監視対象が未指定のため、監視を開始しません。",
                 GameCatalog.WatcherToolName(game));
             return;
         }
 
         try
         {
-            watcher.Start(directory);
+            watcher.Start(target);
             _activeWatcher = watcher;
-            _logger.LogInformation("{Tool} のファイル監視を開始しました: {Directory}",
-                GameCatalog.WatcherToolName(game), directory);
+            _logger.LogInformation("{Tool} のプレイ監視を開始しました: {Target}",
+                GameCatalog.WatcherToolName(game), target);
         }
         catch (Exception ex)
         {
             // 監視開始失敗は記録自体には影響しない（要件: ダイアログを出さずログのみ）
-            _logger.LogWarning(ex, "{Tool} のファイル監視の開始に失敗しました: {Directory}",
-                GameCatalog.WatcherToolName(game), directory);
+            _logger.LogWarning(ex, "{Tool} のプレイ監視の開始に失敗しました: {Target}",
+                GameCatalog.WatcherToolName(game), target);
         }
     }
 
@@ -318,8 +318,11 @@ public sealed class RecordingCoordinatorOptions
     /// <summary>記録対象のゲーム。どの <c>IPlayWatcher</c> を動かすかを決める。</summary>
     public GameId Game { get; set; } = GameId.Infinitas;
 
-    /// <summary>ゲーム検知に使う外部ツールの出力ディレクトリ（INFINITAS: Reflux / pop'n: popn-lively-tracker）。</summary>
-    public string WatchDirectory { get; set; } = string.Empty;
+    /// <summary>
+    /// ゲーム検知の監視対象。INFINITAS（Reflux）と pop'n music（popn-lively-tracker）は
+    /// 出力ディレクトリのパス、SOUND VOLTEX（SDVX Helper）は <c>ws://host:port</c> の接続先。
+    /// </summary>
+    public string WatchTarget { get; set; } = string.Empty;
 }
 
 public sealed class RecordingObsStatusChangedEventArgs : EventArgs

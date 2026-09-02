@@ -30,6 +30,9 @@ public sealed class SettingsDialogViewModel : ObservableBase
             settings.Popn ?? new PopnSettings { TimestampFormat = AppSettings.DefaultTimestampFormat },
             dialog);
 
+        Sdvx = new SdvxSettingsViewModel(
+            settings.Sdvx ?? new SdvxSettings { TimestampFormat = AppSettings.DefaultTimestampFormat });
+
         ConfirmCommand = new RelayCommand(Confirm);
         CancelCommand = new RelayCommand(Cancel);
     }
@@ -38,6 +41,7 @@ public sealed class SettingsDialogViewModel : ObservableBase
     public ObsSettingsViewModel Obs { get; }
     public InfinitasSettingsViewModel Infinitas { get; }
     public PopnSettingsViewModel Popn { get; }
+    public SdvxSettingsViewModel Sdvx { get; }
 
     public AppSettings? Result { get; private set; }
     public bool? DialogResult { get; private set; }
@@ -56,6 +60,7 @@ public sealed class SettingsDialogViewModel : ObservableBase
             Obs = Obs.ToModel(),
             Infinitas = Infinitas.ToModel(),
             Popn = Popn.ToModel(),
+            Sdvx = Sdvx.ToModel(),
         };
         DialogResult = true;
         RequestClose?.Invoke();

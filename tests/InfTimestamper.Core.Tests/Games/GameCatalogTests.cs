@@ -29,14 +29,46 @@ public class GameCatalogTests
         // pop'n 固有に新設したもの
         Assert.Contains(FieldKeys.Rank, keys);
         Assert.Contains(FieldKeys.Medal, keys);
-        Assert.Contains(FieldKeys.Score, keys);
         Assert.Contains(FieldKeys.Bad, keys);
+
+        // 複数ゲームで流用する成績系
+        Assert.Contains(FieldKeys.Score, keys);
 
         // INFINITAS 固有の識別子は含まない
         Assert.DoesNotContain(FieldKeys.DjLevel, keys);
         Assert.DoesNotContain(FieldKeys.Lamp, keys);
         Assert.DoesNotContain(FieldKeys.ExScore, keys);
         Assert.DoesNotContain(FieldKeys.MissCount, keys);
+    }
+
+    [Fact]
+    public void SdvxIdentifiers_MatchTheHybridDecision()
+    {
+        var keys = GameCatalog.Identifiers(GameId.Sdvx);
+
+        // 共通で流用するもの
+        Assert.Contains(FieldKeys.Timestamp, keys);
+        Assert.Contains(FieldKeys.Title, keys);
+        Assert.Contains(FieldKeys.Level, keys);
+        Assert.Contains(FieldKeys.DiffLong, keys);
+        Assert.Contains(FieldKeys.DiffShort, keys);
+
+        // 複数ゲームで流用する成績系
+        Assert.Contains(FieldKeys.Score, keys);
+        Assert.Contains(FieldKeys.ExScore, keys);
+
+        // SDVX 固有に新設したもの
+        Assert.Contains(FieldKeys.Grade, keys);
+        Assert.Contains(FieldKeys.ClearLamp, keys);
+        Assert.Contains(FieldKeys.ScoreShort, keys);
+
+        // 他ゲーム固有の識別子は含まない
+        Assert.DoesNotContain(FieldKeys.DjLevel, keys);
+        Assert.DoesNotContain(FieldKeys.Lamp, keys);
+        Assert.DoesNotContain(FieldKeys.MissCount, keys);
+        Assert.DoesNotContain(FieldKeys.Rank, keys);
+        Assert.DoesNotContain(FieldKeys.Medal, keys);
+        Assert.DoesNotContain(FieldKeys.Bad, keys);
     }
 
     [Fact]
@@ -53,6 +85,7 @@ public class GameCatalogTests
     [Theory]
     [InlineData(GameId.Infinitas)]
     [InlineData(GameId.Popn)]
+    [InlineData(GameId.Sdvx)]
     public void PreviewFields_CoverEveryIdentifier(GameId game)
     {
         var preview = GameCatalog.PreviewFields(game);
@@ -63,6 +96,7 @@ public class GameCatalogTests
     [Theory]
     [InlineData(GameId.Infinitas)]
     [InlineData(GameId.Popn)]
+    [InlineData(GameId.Sdvx)]
     public void PreviewFields_ExpandEveryIdentifierToNonEmpty(GameId game)
     {
         foreach (var key in GameCatalog.Identifiers(game))
@@ -75,6 +109,7 @@ public class GameCatalogTests
     [Theory]
     [InlineData(GameId.Infinitas)]
     [InlineData(GameId.Popn)]
+    [InlineData(GameId.Sdvx)]
     public void DisplayNameAndToolName_AreNotEmpty(GameId game)
     {
         Assert.False(string.IsNullOrWhiteSpace(GameCatalog.DisplayName(game)));

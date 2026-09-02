@@ -9,6 +9,12 @@ public sealed class AppSettings
     public const string DefaultTimestampFormat = "$timestamp $title [$diff_s $level]";
     public const string DefaultObsHost = "127.0.0.1";
     public const int DefaultObsPort = 4455;
+
+    /// <summary>SDVX Helper のデータ配信 WebSocket は localhost にしか bind しないため、ホストは固定。</summary>
+    public const string SdvxHelperHost = "127.0.0.1";
+
+    /// <summary>SDVX Helper の <c>websocket_data_port</c> の既定値。</summary>
+    public const int DefaultSdvxHelperPort = 8767;
     public const string DefaultStreamStartRowLabel = "配信開始";
 
     [JsonPropertyOrder(0)]
@@ -25,6 +31,9 @@ public sealed class AppSettings
 
     [JsonPropertyOrder(4)]
     public PopnSettings Popn { get; set; } = new();
+
+    [JsonPropertyOrder(5)]
+    public SdvxSettings Sdvx { get; set; } = new();
 
     public static AppSettings CreateDefault() => new()
     {
@@ -48,6 +57,11 @@ public sealed class AppSettings
             TimestampFormat = DefaultTimestampFormat,
             TrackerDirectory = string.Empty,
         },
+        Sdvx = new SdvxSettings
+        {
+            TimestampFormat = DefaultTimestampFormat,
+            HelperPort = DefaultSdvxHelperPort,
+        },
     };
 
     /// <summary>ゲームごとのタイムスタンプフォーマット。未設定なら既定フォーマット。</summary>
@@ -56,17 +70,26 @@ public sealed class AppSettings
         var format = game switch
         {
             GameId.Popn => Popn?.TimestampFormat,
+            GameId.Sdvx => Sdvx?.TimestampFormat,
             _ => Infinitas?.TimestampFormat,
         };
         return string.IsNullOrEmpty(format) ? DefaultTimestampFormat : format;
     }
 
-    /// <summary>ゲーム検知に使う外部ツールの出力ディレクトリ。未設定なら空文字列（検知しない）。</summary>
-    public string WatchDirectoryFor(GameId game) => (game switch
+    /// <summary>
+    /// ゲーム検知の監視対象。INFINITAS / pop'n music は外部ツールの出力ディレクトリ、
+    /// SOUND VOLTEX は SDVX Helper のデータ配信 WebSocket の接続先。
+    /// 未設定なら空文字列（検知しない）。
+    /// </summary>
+    public string WatchTargetFor(GameId game) => (game switch
     {
         GameId.Popn => Popn?.TrackerDirectory,
+        GameId.Sdvx => Sdvx is null ? null : SdvxHelperEndpoint(Sdvx.HelperPort),
         _ => Infinitas?.RefluxDirectory,
     }) ?? string.Empty;
+
+    /// <summary>SDVX Helper のデータ配信 WebSocket の接続先。</summary>
+    public static string SdvxHelperEndpoint(int port) => $"ws://{SdvxHelperHost}:{port}";
 
     /// <summary>永続化された選択ゲームを解釈する。未知の値・欠損時は INFINITAS。</summary>
     public GameId ResolveSelectedGame()
@@ -147,4 +170,17 @@ public sealed class PopnSettings
     /// <summary>popn-lively-tracker の出力ディレクトリ（state.txt / result.json を含む）。</summary>
     [JsonPropertyOrder(1)]
     public string TrackerDirectory { get; set; } = string.Empty;
+}
+
+public sealed class SdvxSettings
+{
+    [JsonPropertyOrder(0)]
+    public string TimestampFormat { get; set; } = AppSettings.DefaultTimestampFormat;
+
+    /// <summary>
+    /// SDVX Helper のデータ配信 WebSocket のポート（SDVX Helper 側の <c>websocket_data_port</c>）。
+    /// SDVX Helper は localhost にしか bind しないため、ホストは設定させない。
+    /// </summary>
+    [JsonPropertyOrder(1)]
+    public int HelperPort { get; set; } = AppSettings.DefaultSdvxHelperPort;
 }

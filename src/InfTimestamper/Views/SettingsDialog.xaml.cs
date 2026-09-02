@@ -19,6 +19,7 @@ public partial class SettingsDialog : Window
         // "$" の直後で識別子候補を出す（要件「"$"の右隣にカーソルがある場合にサジェストされる」）
         _ = new IdentifierSuggestion(InfinitasFormatTextBox, viewModel.Infinitas.AvailableIdentifiers);
         _ = new IdentifierSuggestion(PopnFormatTextBox, viewModel.Popn.AvailableIdentifiers);
+        _ = new IdentifierSuggestion(SdvxFormatTextBox, viewModel.Sdvx.AvailableIdentifiers);
 
         // PasswordBox は SecureString のため Binding 非対応。VM から流し込み、
         // 確定前に VM に戻す
@@ -46,6 +47,12 @@ public partial class SettingsDialog : Window
     {
         if (DataContext is not SettingsDialogViewModel vm) return;
         InsertIdentifier(vm.Popn, PopnFormatTextBox);
+    }
+
+    private void OnAddSdvxIdentifierClick(object sender, RoutedEventArgs e)
+    {
+        if (DataContext is not SettingsDialogViewModel vm) return;
+        InsertIdentifier(vm.Sdvx, SdvxFormatTextBox);
     }
 
     private static void InsertIdentifier(GameFormatSettingsViewModel vm, TextBox formatTextBox)

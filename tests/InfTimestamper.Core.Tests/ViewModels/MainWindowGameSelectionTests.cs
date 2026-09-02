@@ -106,19 +106,19 @@ public class MainWindowGameSelectionTests
     }
 
     [Fact]
-    public void ChangingGame_SwitchesFormatAndWatchDirectory()
+    public void ChangingGame_SwitchesFormatAndWatchTarget()
     {
         using var dir = new TempDirectory();
         var f = Build(dir, SettingsWithBothGames());
 
         Assert.Equal("$timestamp $title [$diff_s $level]", f.Vm.Format);
-        Assert.Equal(@"C:\reflux", f.Coordinator.Options.WatchDirectory);
+        Assert.Equal(@"C:\reflux", f.Coordinator.Options.WatchTarget);
 
         f.Vm.SelectedGame = GameId.Popn;
 
         Assert.Equal("$timestamp $title ($rank, $medal)", f.Vm.Format);
         Assert.Equal(GameId.Popn, f.Coordinator.Options.Game);
-        Assert.Equal(@"C:\popn", f.Coordinator.Options.WatchDirectory);
+        Assert.Equal(@"C:\popn", f.Coordinator.Options.WatchTarget);
     }
 
     [Fact]

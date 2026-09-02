@@ -4,7 +4,7 @@ using InfTimestamper.Services;
 
 namespace InfTimestamper.ViewModels.Settings;
 
-public sealed class InfinitasSettingsViewModel : GameFormatSettingsViewModel
+public sealed class InfinitasSettingsViewModel : DirectoryWatchSettingsViewModel
 {
     public const string BrowseDialogTitle = "Reflux 出力ディレクトリの選択";
 

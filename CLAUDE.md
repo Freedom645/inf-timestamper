@@ -4,7 +4,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## リポジトリの状態
 
-実装は一通り完了している。MVP に必要な機能（状態機械・OBS 接続・ゲーム検知・フォーマット展開・永続化・設定画面・ログ・自己アップデート）に加え、2 ゲーム目（pop'n music）まで通っている。`dotnet build` 警告 0 / `dotnet test` 全緑。残っているのは主にユーザ実環境での検証（Velopack バンドル作成、GitHub Releases アップロード、別 PC での通しテスト、実機での配信〜プレイ〜リザルトの通し確認）。
+実装は一通り完了している。MVP に必要な機能（状態機械・OBS 接続・ゲーム検知・フォーマット展開・永続化・設定画面・ログ・自己アップデート）に加え、3 ゲーム目（SOUND VOLTEX）まで通っている。`dotnet build` 警告 0 / `dotnet test` 全緑。残っているのは主にユーザ実環境での検証（SDVX の実機検証、Velopack バンドル作成、GitHub Releases アップロード、別 PC での通しテスト、実機での配信〜プレイ〜リザルトの通し確認）。
 
 進捗と「次にやること」の正本は `docs/実装計画.md`（フェーズ別の DoD とセッション引き継ぎメモ）。**作業を始める前にその「現在のフェーズ」節を読むこと。**
 
@@ -23,9 +23,11 @@ dotnet publish src/InfTimestamper/InfTimestamper.csproj -c Release -r win-x64 --
 
 **INF-TIMESTAMPER** — Windows スタンドアロンアプリ。OBS を使った音楽ゲーム配信に対し、YouTube アーカイブ向けのタイムスタンプ（チャプター文字列）を自動生成する。
 
-対応ゲームは **コナステ版 beatmaniaIIDX INFINITAS**（`INFINITAS`）と **pop'n music**（`POPN`）の 2 つ。**1 配信 = 1 ゲーム**で、記録対象はメインウィンドウのゲーム選択コンボボックスで決める（`初期状態` でのみ変更可能）。
+対応ゲームは **コナステ版 beatmaniaIIDX INFINITAS**（`INFINITAS`）、**pop'n music**（`POPN`）、**SOUND VOLTEX**（`SDVX`）の 3 つ。**1 配信 = 1 ゲーム**で、記録対象はメインウィンドウのゲーム選択コンボボックスで決める（`初期状態` でのみ変更可能）。
 
 ゲーム抽象化は Phase 9 で `Core/Games/` に抽出済み。**ゲームを増やすときに触るのは 4 箇所**：`Models/GameId`（enum + シリアライズ表記）／`Games/GameCatalog`（表示名・識別子リスト・プレビューデータ・監視ツール名）／新しい `IPlayWatcher` 実装（+ 対応する FieldMapper）／設定ダイアログのタブと `AppSettings` のゲーム別セクション。
+
+`IPlayWatcher.Start(string source)` の `source` は実装ごとの監視対象で、ファイル監視系は出力ディレクトリのパス、SDVX は `ws://host:port`。`AppSettings.WatchTargetFor(GameId)` がゲームごとにこれを組み立てる。
 
 ### 前段アプリとの関係
 
@@ -69,9 +71,9 @@ OBS 接続が一時切断されても `記録中` 状態は維持し、自動再
 
 OBS WebSocket は **配信開始/終了の検知**（= タイムスタンプの基準時刻となる `記録中` への遷移）にのみ使う。ゲームのプレイ検知は Reflux 側で行うため、OBS のゲーム画面取得（`GetSourceScreenshot`）・2 台 PC 構成は廃止した。接続管理（再接続バックオフ等）は `Obs/` に残る。
 
-### ゲーム検知の方針（外部ツールの出力ファイル監視）
+### ゲーム検知の方針（外部ツールの出力を読む）
 
-どちらのゲームも「外部ツールが出力する 1 行の状態ファイル + JSON のリザルトファイル」を `FileSystemWatcher` で監視する構造なので、`Core/Games/IPlayWatcher`（`PlayStarted` / `PlayResultDetected`）に抽象化してある。`RecordingCoordinator` は `IReadOnlyDictionary<GameId, IPlayWatcher>` を受け取り、`Options.Game` で動かすウォッチャーを選ぶ。
+INFINITAS と pop'n music は「外部ツールが出力する 1 行の状態ファイル + JSON のリザルトファイル」を `FileSystemWatcher` で監視する。SDVX だけは SDVX Helper のデータ配信 WebSocket を購読する（下記）。取得方式が違っても `Core/Games/IPlayWatcher`（`PlayStarted` / `PlayResultDetected`）で抽象化してあり、`RecordingCoordinator` は `IReadOnlyDictionary<GameId, IPlayWatcher>` を受け取って `Options.Game` で動かすウォッチャーを選ぶ。
 
 #### INFINITAS（Reflux ファイル監視）
 
@@ -95,11 +97,22 @@ INFINITAS のプレイ開始とプレイデータは、**Reflux が出力する�
 
 マッピングは `PopnFieldMapper` に集約。**`record` セクションと `previous_best` / `new_record` / `previous_medal` / `new_medal` は自己ベスト側の値でこのプレイの成績ではないため、意図的に取り込んでいない**（`rank` / `medal` / `score` がこのプレイの値）。譜面が特定できなかったプレイ（`music` が `null`）は曲情報だけを欠損扱いにし、成績側は実測値として記録する。
 
+#### SOUND VOLTEX（SDVX Helper の WebSocket 購読）
+
+**ここだけファイル監視ではない。** SDVX Helper は v1.0 系まで `out/history_cursong.xml` を出力していたが、v2 系（v.2.0.0 以降）でファイル出力を廃止し、OBS ブラウザソース向けの WebSocket 配信（既定 `ws://127.0.0.1:8767`）へ移行した。`SdvxHelperPlayWatcher` はこの配信サーバへ `ClientWebSocket` で接続し、切断時は OBS 接続と同じ `BackoffSchedule` で再接続する（`Core/Sdvx/`）。
+
+**INFINITAS / pop'n と構造が違う二点**：
+
+- **プレイ開始の判別が payload 依存**。`nowplaying` は「選曲画面でカーソルが動いたとき」と「曲決定画面を読めたとき」の 2 箇所から飛ぶ。前者は `images` にジャケットしか入らず、後者はタイトル / レベル / BPM / エフェクター / イラストレーターの切り出し画像も入る。**この差だけが曲決定（＝プレイ開始）の手がかり**なので、判定は `SdvxFieldMapper.IsSongDecided` に閉じてある。SDVX Helper 側の `_broadcast_nowplaying` の呼び出し元が変わると壊れる箇所
+- **リザルトは `today_results`（本日分の全リザルト）で飛んでくる**。`items` の `timestamp` 最大のエントリを採り、プレイ開始より前（2 秒の猶予つき）なら前のプレイのものとして棄却する。リザルト待ちでない状態の `today_results` は無視する（接続直後に本日分のキャッシュがまとめて飛んでくる）
+
+メッセージは base64 の切り出し画像を含んで大きいため、DTO へは起こさず `JsonDocument` のまま必要なフィールドだけ読む。マッピングは `SdvxFieldMapper` に集約。**`pre_score` / `pre_ex` / `is_*_updated` / `max_exscore` は自己ベスト・理論値でこのプレイの成績ではないため取り込んでいない。**
+
 ### フォーマット識別子システム
 
 クリップボードコピー時の文字列はユーザがフォーマット文字列で定義する。`$timestamp` `$title` `$diff_s` などの識別子が実データに置換される（識別子一覧は `docs/要件.md` 参照）。
 
-識別子は**ハイブリッド方針**（Phase 9 で決定）。ゲーム間で意味が変わらない `$timestamp` / `$title` / `$level` / `$diff_l` / `$diff_s` は共通で流用し、成績系はゲームごとに新設する（INFINITAS: `$dj_level` / `$lamp` / `$ex_score` / `$miss_count`、pop'n: `$rank` / `$medal` / `$score` / `$bad`）。キーの正本は `Games/FieldKeys`、どの識別子がどのゲームで有効かは `Games/GameCatalog.Identifiers` が持つ。タイムスタンプフォーマットもゲームごとに別々に保持する（`AppSettings.Infinitas` / `AppSettings.Popn`）。
+識別子は**ハイブリッド方針**（Phase 9 で決定）。ゲーム間で意味が変わらない `$timestamp` / `$title` / `$level` / `$diff_l` / `$diff_s` は共通で流用し、体系そのものが違う成績系はゲームごとに新設する（INFINITAS: `$dj_level` / `$lamp` / `$miss_count`、pop'n: `$rank` / `$medal` / `$bad`、SDVX: `$grade` / `$clear_lamp` / `$score_short`）。「そのプレイの得点」という意味が変わらない `$score`（pop'n / SDVX）と `$ex_score`（INFINITAS / SDVX）は複数ゲームで流用する。キーの正本は `Games/FieldKeys`、どの識別子がどのゲームで有効かは `Games/GameCatalog.Identifiers` が持つ。タイムスタンプフォーマットもゲームごとに別々に保持する（`AppSettings.Infinitas` / `AppSettings.Popn` / `AppSettings.Sdvx`）。
 
 重要な制約:
 - メインウィンドウの「タイムスタンプリスト」表示は、設定ウィンドウでのフォーマット変更を**リアクティブに反映**する（実コピー文字列と画面表示が常に一致）。WPF の `INotifyPropertyChanged` / `DataContext` でバインドする想定。
@@ -160,6 +173,7 @@ inf-timestamper/
 | `Games/` | ゲーム抽象化。`FieldKeys`（識別子キーの正本）/ `GameCatalog`（ゲーム別メタデータ）/ `IPlayWatcher` / `PlayEvents` |
 | `Reflux/` | INFINITAS のゲーム検知。`RefluxPlayWatcher` / `RefluxLatestJson` / `RefluxFieldMapper` |
 | `Popn/` | pop'n music のゲーム検知。`PopnPlayWatcher` / `PopnResultJson` / `PopnFieldMapper` |
+| `Sdvx/` | SOUND VOLTEX のゲーム検知。`SdvxHelperPlayWatcher`（WebSocket 購読）/ `SdvxFieldMapper` |
 | `Obs/` | OBS WebSocket 接続と再接続バックオフ。配信開始/終了の検知のみ |
 | `Persistence/` | `JsonRecordStore` — バックアップ JSON のアトミック保存と異常終了復旧 |
 | `Formatting/` | `FormatExpander` — `$identifier` の展開 |
@@ -168,4 +182,4 @@ inf-timestamper/
 | `Updates/` | GitHub Releases 照会とバージョン比較 |
 | `Threading/` | `IUiDispatcher`（UI スレッドへのマーシャリング抽象） |
 
-同梱リソースは持たない。プレイ検知は外部ツールの出力を読むだけなので、publish 出力は exe 単体になる。
+同梱リソースは持たない。プレイ検知は外部ツールの出力を読むだけなので、publish 出力は exe 単体になる。SDVX の WebSocket 購読も BCL の `System.Net.WebSockets.ClientWebSocket` で済ませており、追加パッケージは無い。

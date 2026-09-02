@@ -190,6 +190,46 @@
                                Foreground="Gray" TextWrapping="Wrap" Margin="0,4,0,0" />
                 </StackPanel>
             </TabItem>
+
+            <!-- SOUND VOLTEX -->
+            <TabItem Header="SOUND VOLTEX">
+                <StackPanel Margin="12">
+                    <TextBlock Text="タイムスタンプフォーマット" FontWeight="Bold" Margin="0,0,0,4" />
+                    <TextBox x:Name="SdvxFormatTextBox"
+                             Text="{Binding Sdvx.TimestampFormat, UpdateSourceTrigger=PropertyChanged}"
+                             FontFamily="Consolas, Cascadia Mono"
+                             Padding="4" Margin="0,0,0,4" />
+
+                    <StackPanel Orientation="Horizontal" Margin="0,0,0,8">
+                        <TextBlock Text="識別子:" VerticalAlignment="Center" Margin="0,0,4,0" />
+                        <ComboBox x:Name="SdvxIdentifierCombo"
+                                  ItemsSource="{Binding Sdvx.AvailableIdentifiers}"
+                                  SelectedItem="{Binding Sdvx.SelectedIdentifier}"
+                                  Width="160" />
+                        <Button Content="追加" Width="60" Margin="6,0,0,0"
+                                Click="OnAddSdvxIdentifierClick" />
+                    </StackPanel>
+
+                    <TextBlock Text="プレビュー" FontWeight="Bold" Margin="0,4,0,2" />
+                    <Border BorderBrush="LightGray" BorderThickness="1" Padding="6">
+                        <TextBlock Text="{Binding Sdvx.Preview}"
+                                   FontFamily="Consolas, Cascadia Mono" />
+                    </Border>
+
+                    <TextBlock Text="SDVX Helper のデータ配信ポート" FontWeight="Bold" Margin="0,12,0,4" />
+                    <TextBox Width="100" HorizontalAlignment="Left"
+                             Text="{Binding Sdvx.HelperPort, UpdateSourceTrigger=PropertyChanged}"
+                             Background="{Binding Sdvx.IsHelperPortValid, Converter={StaticResource ValidityToBrush}}"
+                             ToolTip="SDVX Helper の設定にある「WebSocketデータ配信ポート」と同じ値を指定してください"
+                             Padding="4" />
+                    <StackPanel Orientation="Horizontal" Margin="0,4,0,0">
+                        <TextBlock Text="接続先: " Foreground="Gray" />
+                        <TextBlock Text="{Binding Sdvx.WatchTarget}" Foreground="Gray" />
+                    </StackPanel>
+                    <TextBlock Text="SDVX Helper が同じ PC で動いている必要があります。曲決定時にプレイ開始を記録し、リザルトが SDVX Helper に登録された時点で成績を埋めます。"
+                               Foreground="Gray" TextWrapping="Wrap" Margin="0,4,0,0" />
+                </StackPanel>
+            </TabItem>
         </TabControl>
 
         <StackPanel Grid.Row="1" Orientation="Horizontal" HorizontalAlignment="Right" Margin="0,12,0,0">

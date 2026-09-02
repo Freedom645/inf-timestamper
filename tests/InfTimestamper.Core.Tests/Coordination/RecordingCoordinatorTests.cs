@@ -38,7 +38,7 @@ public class RecordingCoordinatorTests
         {
             StreamObs = DefaultObs,
             Game = GameId.Infinitas,
-            WatchDirectory = refluxDirectory,
+            WatchTarget = refluxDirectory,
         });
         return coordinator;
     }

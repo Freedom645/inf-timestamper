@@ -7,6 +7,7 @@ public class GameIdTests
     [Theory]
     [InlineData(GameId.Infinitas, "INFINITAS")]
     [InlineData(GameId.Popn, "POPN")]
+    [InlineData(GameId.Sdvx, "SDVX")]
     public void ToSerializedString_ReturnsExpectedValue(GameId game, string expected)
     {
         Assert.Equal(expected, game.ToSerializedString());
@@ -15,6 +16,7 @@ public class GameIdTests
     [Theory]
     [InlineData("INFINITAS", GameId.Infinitas)]
     [InlineData("POPN", GameId.Popn)]
+    [InlineData("SDVX", GameId.Sdvx)]
     public void ParseSerialized_RoundTripsKnownValue(string raw, GameId expected)
     {
         Assert.Equal(expected, GameIdExtensions.ParseSerialized(raw));

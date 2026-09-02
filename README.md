@@ -29,6 +29,7 @@
 | --- | --- |
 | コナステ版 beatmania IIDX INFINITAS | [Reflux](https://github.com/olji/Reflux) |
 | pop'n music | 別途トラッカーが必要（下記） |
+| SOUND VOLTEX | [SDVX Helper](https://github.com/dj-kata/sdvx_helper) v2 系 |
 
 **1 配信 = 1 ゲーム**です。記録対象はメインウィンドウのゲーム選択で切り替えます（記録開始前のみ変更可能）。
 
@@ -42,6 +43,14 @@ pop'n のプレイ検知には、次の 2 ファイルを出力する外部ト�
 | `result.json` | プレイリザルト。`music`（`title` / `sheet` / `level`）、`rank_name`、`medal_name`、`score`、`judge.bad`、検知時刻 `time` を含む |
 
 `result.json` はリザルト画面の表示から数秒遅れて書かれても構いません。本アプリは `state.txt` が `プレイ中` に変わった時刻をプレイ開始として記録し、その後 `result.json` が書き換わった時点で成績を紐づけます。書き出しは一時ファイル経由の置き換え（アトミック）を想定しています。
+
+### SOUND VOLTEX について
+
+SDVX だけはファイル監視ではなく、**SDVX Helper のデータ配信 WebSocket**（既定 `ws://127.0.0.1:8767`）を購読します。SDVX Helper は v2 系でファイル出力をやめて WebSocket 配信へ移行したためです。**v1 系（`out/history_cursong.xml` を出力する版）には対応していません。**
+
+- SDVX Helper 側で「WebSocketデータ配信ポート」を確認し、本アプリの SOUND VOLTEX タブに同じ値を入れてください
+- 配信サーバは localhost にしか待ち受けないため、SDVX Helper と本アプリは同じ PC で動かす必要があります
+- 曲を決定した時刻をプレイ開始として記録し、SDVX Helper がリザルトを登録した時点で成績を紐づけます
 
 ## 仕組み
 
@@ -82,7 +91,7 @@ OBS に繋がらない場合や、外部ツールを使わない場合でも、�
 
 ```mermaid
 flowchart TD
-    TRK["トラッカー<br/>起動する（Reflux / pop'n トラッカー）"]
+    TRK["トラッカー<br/>起動する（Reflux / pop'n トラッカー / SDVX Helper）"]
     APP1["INF-TIMESTAMPER<br/>起動して記録するゲームを選択"]
     APP2["INF-TIMESTAMPER<br/>「開始」をクリック"]
     OBS1["OBS Studio<br/>配信を開始"]
@@ -119,6 +128,7 @@ OBS を使わない場合は、「開始」のあとに続けて「強制開始�
 
 - INFINITAS: Reflux が `playstate.txt` / `title.txt` / `level.txt` / `latest.json` を出力するフォルダ
 - pop'n music: トラッカーが `state.txt` / `result.json` を出力するフォルダ
+- SOUND VOLTEX: SDVX Helper の「WebSocketデータ配信ポート」（既定 8767）
 
 ### 2. 設定
 
@@ -126,6 +136,7 @@ OBS を使わない場合は、「開始」のあとに続けて「強制開始�
 
 - **配信ソフト連携タブ**: OBS のホスト・ポート・パスワードを入力し、「接続テスト」で疎通を確認します
 - **INFINITAS タブ / pop'n music タブ**: 外部ツールの出力フォルダを指定し、タイムスタンプの書式を決めます
+- **SOUND VOLTEX タブ**: SDVX Helper のデータ配信ポートを指定し、タイムスタンプの書式を決めます
 
 ### 3. 記録
 
@@ -187,7 +198,22 @@ OBS が一時的に切断されても `記録中` のままで、自動的に再
 | `$score` | スコア（0〜100000） |
 | `$bad` | BAD 数 |
 
-成績を表す項目はゲームごとに尺度が違うため、識別子も分けています。書式はゲームごとに別々に保存されます。
+**SOUND VOLTEX 固有**
+
+| 識別子 | 内容 |
+| --- | --- |
+| `$grade` | グレード（S / AAA+ / AAA / AA+ / AA / A+ / A / B / C / D） |
+| `$clear_lamp` | クリアランプ（PLAYED / COMP / EXC-COMP / MAXXIVE / UC / PUC） |
+| `$score_short` | スコアの千点表記（`$score` ÷ 1000） |
+
+**複数ゲームで使えるもの**
+
+| 識別子 | 内容 |
+| --- | --- |
+| `$score` | スコア（pop'n: 0〜100000 / SDVX: 0〜10,000,000） |
+| `$ex_score` | EX スコア（INFINITAS / SDVX） |
+
+クリアランプやランクのように体系そのものが違う項目は、ゲームごとに識別子を分けています。書式はゲームごとに別々に保存されます。
 
 ## 保存されるデータ
 
@@ -220,7 +246,7 @@ dotnet run --project src/InfTimestamper -- --log-level=Debug
 
 1. `Models/GameId` — enum とシリアライズ表記
 2. `Games/GameCatalog` — 表示名・使える識別子・プレビュー用データ
-3. `IPlayWatcher` の実装と、リザルト → 識別子の変換を行う FieldMapper
+3. `IPlayWatcher` の実装と、リザルト → 識別子の変換を行う FieldMapper（ファイル監視でも WebSocket でも構いません）
 4. 設定ダイアログのタブと `AppSettings` のゲーム別セクション
 
 ## 経緯

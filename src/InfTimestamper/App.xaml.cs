@@ -8,6 +8,7 @@ using InfTimestamper.Core.Obs;
 using InfTimestamper.Core.Persistence;
 using InfTimestamper.Core.Persistence.Json;
 using InfTimestamper.Core.Popn;
+using InfTimestamper.Core.Sdvx;
 using InfTimestamper.Core.Reflux;
 using InfTimestamper.Core.Settings;
 using InfTimestamper.Core.States;
@@ -109,16 +110,20 @@ public partial class App : Application
 
                 services.AddSingleton<IUiDispatcher, WpfDispatcher>();
 
-                // ゲームのプレイ検知は外部ツールの出力ファイル監視で行う（OBS は配信開始/終了検知に限定）
+                // ゲームのプレイ検知は外部ツールの出力を読んで行う（OBS は配信開始/終了検知に限定）。
+                // INFINITAS / pop'n music はファイル監視、SOUND VOLTEX は SDVX Helper の WebSocket 購読
                 services.AddSingleton<RefluxPlayWatcher>(sp => new RefluxPlayWatcher(
                     sp.GetRequiredService<ILogger<RefluxPlayWatcher>>()));
                 services.AddSingleton<PopnPlayWatcher>(sp => new PopnPlayWatcher(
                     sp.GetRequiredService<ILogger<PopnPlayWatcher>>()));
+                services.AddSingleton<SdvxHelperPlayWatcher>(sp => new SdvxHelperPlayWatcher(
+                    sp.GetRequiredService<ILogger<SdvxHelperPlayWatcher>>()));
                 services.AddSingleton<IReadOnlyDictionary<GameId, IPlayWatcher>>(sp =>
                     new Dictionary<GameId, IPlayWatcher>
                     {
                         [GameId.Infinitas] = sp.GetRequiredService<RefluxPlayWatcher>(),
                         [GameId.Popn] = sp.GetRequiredService<PopnPlayWatcher>(),
+                        [GameId.Sdvx] = sp.GetRequiredService<SdvxHelperPlayWatcher>(),
                     });
                 services.AddSingleton<RecordingCoordinator>(sp => new RecordingCoordinator(
                     sp.GetRequiredService<AppStateMachine>(),

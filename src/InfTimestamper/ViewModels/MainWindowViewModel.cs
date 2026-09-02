@@ -366,7 +366,7 @@ public sealed class MainWindowViewModel : ObservableBase
         {
             StreamObs = streamObs,
             Game = _selectedGame,
-            WatchDirectory = _settings.WatchDirectoryFor(_selectedGame),
+            WatchTarget = _settings.WatchTargetFor(_selectedGame),
         });
     }
 

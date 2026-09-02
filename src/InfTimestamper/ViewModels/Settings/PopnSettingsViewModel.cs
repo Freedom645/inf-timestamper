@@ -4,7 +4,7 @@ using InfTimestamper.Services;
 
 namespace InfTimestamper.ViewModels.Settings;
 
-public sealed class PopnSettingsViewModel : GameFormatSettingsViewModel
+public sealed class PopnSettingsViewModel : DirectoryWatchSettingsViewModel
 {
     public const string BrowseDialogTitle = "popn-lively-tracker 出力ディレクトリの選択";
 
