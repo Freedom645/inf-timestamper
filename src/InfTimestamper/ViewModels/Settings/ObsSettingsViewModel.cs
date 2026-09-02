@@ -1,5 +1,3 @@
-using System.Net;
-using System.Net.Sockets;
 using InfTimestamper.Core.Obs;
 using InfTimestamper.Core.Settings;
 using InfTimestamper.Services;
@@ -63,25 +61,11 @@ public sealed class ObsSettingsViewModel : ObservableBase
     /// ホスト欄が IPv4 アドレス（または <c>localhost</c>）になっているか。
     /// 要件「ホストテキストフィールド：IPアドレスv4形式又はチェックボックスでローカルホスト」。
     /// </summary>
-    public bool IsHostValid
-    {
-        get
-        {
-            if (string.IsNullOrWhiteSpace(_host)) return false;
-            if (string.Equals(_host, "localhost", StringComparison.OrdinalIgnoreCase)) return true;
-            if (!IPAddress.TryParse(_host, out var address)) return false;
-            if (address.AddressFamily != AddressFamily.InterNetwork) return false;
-
-            // TryParse は "192.168.1" のような省略記法も通してしまうので、
-            // 正規化した文字列と一致するかで 4 オクテット表記に限定する
-            return string.Equals(address.ToString(), _host, StringComparison.Ordinal);
-        }
-    }
+    public bool IsHostValid => HostValidation.IsIPv4OrLocalhost(_host);
 
     public bool IsLocalhost
     {
-        get => string.Equals(_host, "127.0.0.1", StringComparison.Ordinal)
-               || string.Equals(_host, "localhost", StringComparison.OrdinalIgnoreCase);
+        get => HostValidation.IsLocalhost(_host);
         set
         {
             if (value) Host = "127.0.0.1";

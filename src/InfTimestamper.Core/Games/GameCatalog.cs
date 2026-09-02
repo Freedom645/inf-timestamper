@@ -56,6 +56,13 @@ public static class GameCatalog
         FieldKeys.ExScore,
     };
 
+    private static readonly IReadOnlyList<IdentifierChoice> InfinitasChoices = ToChoices(InfinitasIdentifiers);
+    private static readonly IReadOnlyList<IdentifierChoice> PopnChoices = ToChoices(PopnIdentifiers);
+    private static readonly IReadOnlyList<IdentifierChoice> SdvxChoices = ToChoices(SdvxIdentifiers);
+
+    private static IReadOnlyList<IdentifierChoice> ToChoices(IReadOnlyList<string> keys)
+        => keys.Select(key => new IdentifierChoice(key)).ToArray();
+
     private static readonly IReadOnlyDictionary<string, string> InfinitasPreview =
         new Dictionary<string, string>
         {
@@ -122,6 +129,17 @@ public static class GameCatalog
         GameId.Popn => PopnPreview,
         GameId.Sdvx => SdvxPreview,
         _ => InfinitasPreview,
+    };
+
+    /// <summary>
+    /// 設定画面の識別子セレクトボックス / サジェストに出す項目。
+    /// キーだけでは意味が伝わらないので、論理名を添えた <see cref="IdentifierChoice"/> で返す。
+    /// </summary>
+    public static IReadOnlyList<IdentifierChoice> IdentifierChoices(GameId game) => game switch
+    {
+        GameId.Popn => PopnChoices,
+        GameId.Sdvx => SdvxChoices,
+        _ => InfinitasChoices,
     };
 
     /// <summary>そのゲームのプレイ検知に使う外部ツール名（設定画面の説明文やログに使う）。</summary>

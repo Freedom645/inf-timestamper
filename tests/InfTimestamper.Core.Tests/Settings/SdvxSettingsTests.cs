@@ -15,6 +15,7 @@ public class SdvxSettingsTests
 
         var settings = AppSettings.CreateDefault();
         settings.Sdvx.TimestampFormat = "$timestamp $title [$diff_s $level] $score $clear_lamp";
+        settings.Sdvx.HelperHost = "192.168.1.20";
         settings.Sdvx.HelperPort = 9100;
         settings.General.SelectedGame = GameIdExtensions.SdvxSerialized;
 
@@ -22,6 +23,7 @@ public class SdvxSettingsTests
         var loaded = store.Load(path);
 
         Assert.Equal("$timestamp $title [$diff_s $level] $score $clear_lamp", loaded.Sdvx.TimestampFormat);
+        Assert.Equal("192.168.1.20", loaded.Sdvx.HelperHost);
         Assert.Equal(9100, loaded.Sdvx.HelperPort);
         Assert.Equal(GameId.Sdvx, loaded.ResolveSelectedGame());
     }
@@ -45,6 +47,7 @@ public class SdvxSettingsTests
         var loaded = new SettingsStore().Load(path);
 
         Assert.NotNull(loaded.Sdvx);
+        Assert.Equal(AppSettings.DefaultSdvxHelperHost, loaded.Sdvx.HelperHost);
         Assert.Equal(AppSettings.DefaultSdvxHelperPort, loaded.Sdvx.HelperPort);
         Assert.Equal(AppSettings.DefaultTimestampFormat, loaded.TimestampFormatFor(GameId.Sdvx));
     }
@@ -59,6 +62,16 @@ public class SdvxSettingsTests
 
         settings.Sdvx.HelperPort = 9100;
         Assert.Equal("ws://127.0.0.1:9100", settings.WatchTargetFor(GameId.Sdvx));
+
+        settings.Sdvx.HelperHost = "192.168.1.20";
+        Assert.Equal("ws://192.168.1.20:9100", settings.WatchTargetFor(GameId.Sdvx));
+    }
+
+    [Fact]
+    public void SdvxHelperEndpoint_EmptyHost_FallsBackToTheDefault()
+    {
+        Assert.Equal("ws://127.0.0.1:8767", AppSettings.SdvxHelperEndpoint(null, 8767));
+        Assert.Equal("ws://127.0.0.1:8767", AppSettings.SdvxHelperEndpoint("  ", 8767));
     }
 
     [Fact]

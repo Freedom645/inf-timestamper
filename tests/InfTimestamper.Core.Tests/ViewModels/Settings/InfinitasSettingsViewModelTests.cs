@@ -69,14 +69,14 @@ public class InfinitasSettingsViewModelTests
     public void AvailableIdentifiers_MatchesInfinitasIdentifiers()
     {
         var vm = Make();
-        Assert.Contains("timestamp", vm.AvailableIdentifiers);
-        Assert.Contains("title", vm.AvailableIdentifiers);
-        Assert.Contains("diff_l", vm.AvailableIdentifiers);
-        Assert.Contains("diff_s", vm.AvailableIdentifiers);
-        Assert.Contains("level", vm.AvailableIdentifiers);
-        Assert.Contains("miss_count", vm.AvailableIdentifiers);
-        Assert.Contains("ex_score", vm.AvailableIdentifiers);
-        Assert.Contains("dj_level", vm.AvailableIdentifiers);
-        Assert.Contains("lamp", vm.AvailableIdentifiers);
+        Assert.Contains(vm.AvailableIdentifiers, c => c.Key == "timestamp");
+        Assert.Contains(vm.AvailableIdentifiers, c => c.Key == "title");
+        Assert.Contains(vm.AvailableIdentifiers, c => c.Key == "diff_l");
+        Assert.Contains(vm.AvailableIdentifiers, c => c.Key == "diff_s");
+        Assert.Contains(vm.AvailableIdentifiers, c => c.Key == "level");
+        Assert.Contains(vm.AvailableIdentifiers, c => c.Key == "miss_count");
+        Assert.Contains(vm.AvailableIdentifiers, c => c.Key == "ex_score");
+        Assert.Contains(vm.AvailableIdentifiers, c => c.Key == "dj_level");
+        Assert.Contains(vm.AvailableIdentifiers, c => c.Key == "lamp");
     }
 }

@@ -5,8 +5,9 @@ namespace InfTimestamper.Core.Tests.ViewModels.Settings;
 
 public class SdvxSettingsViewModelTests
 {
-    private static SdvxSettingsViewModel Make(string format = "$timestamp $title", int port = 8767)
-        => new(new SdvxSettings { TimestampFormat = format, HelperPort = port });
+    private static SdvxSettingsViewModel Make(
+        string format = "$timestamp $title", int port = 8767, string host = "127.0.0.1")
+        => new(new SdvxSettings { TimestampFormat = format, HelperHost = host, HelperPort = port });
 
     [Fact]
     public void Preview_UpdatesReactivelyWithFormat()
@@ -48,9 +49,56 @@ public class SdvxSettingsViewModelTests
     }
 
     [Fact]
-    public void MissingPort_FallsBackToTheDefault()
+    public void WatchTarget_FollowsTheHost()
     {
-        var vm = new SdvxSettingsViewModel(new SdvxSettings { TimestampFormat = "$title", HelperPort = 0 });
+        var vm = Make();
+
+        var changes = new List<string?>();
+        vm.PropertyChanged += (_, e) => changes.Add(e.PropertyName);
+
+        vm.HelperHost = "192.168.1.20";
+
+        Assert.Equal("ws://192.168.1.20:8767", vm.WatchTarget);
+        Assert.Contains(nameof(SdvxSettingsViewModel.WatchTarget), changes);
+    }
+
+    [Theory]
+    [InlineData("127.0.0.1", true)]
+    [InlineData("localhost", true)]
+    [InlineData("192.168.1.20", true)]
+    [InlineData("192.168.1", false)]
+    [InlineData("", false)]
+    [InlineData("::1", false)]
+    public void IsHelperHostValid_AcceptsIPv4OrLocalhost(string host, bool expected)
+    {
+        var vm = Make();
+        vm.HelperHost = host;
+        Assert.Equal(expected, vm.IsHelperHostValid);
+    }
+
+    [Fact]
+    public void IsLocalhost_ResetsTheHostToTheDefault()
+    {
+        var vm = Make(host: "192.168.1.20");
+        Assert.False(vm.IsLocalhost);
+
+        vm.IsLocalhost = true;
+
+        Assert.Equal(AppSettings.DefaultSdvxHelperHost, vm.HelperHost);
+        Assert.True(vm.IsLocalhost);
+    }
+
+    [Fact]
+    public void MissingHostAndPort_FallBackToTheDefaults()
+    {
+        var vm = new SdvxSettingsViewModel(new SdvxSettings
+        {
+            TimestampFormat = "$title",
+            HelperHost = string.Empty,
+            HelperPort = 0,
+        });
+
+        Assert.Equal(AppSettings.DefaultSdvxHelperHost, vm.HelperHost);
         Assert.Equal(AppSettings.DefaultSdvxHelperPort, vm.HelperPort);
     }
 
@@ -60,8 +108,11 @@ public class SdvxSettingsViewModelTests
         var vm = Make("$timestamp");
         vm.HelperPort = 9100;
 
+        vm.HelperHost = "192.168.1.20";
+
         var model = vm.ToModel();
         Assert.Equal("$timestamp", model.TimestampFormat);
+        Assert.Equal("192.168.1.20", model.HelperHost);
         Assert.Equal(9100, model.HelperPort);
     }
 
@@ -69,15 +120,15 @@ public class SdvxSettingsViewModelTests
     public void AvailableIdentifiers_MatchesSdvxIdentifiers()
     {
         var vm = Make();
-        Assert.Contains("timestamp", vm.AvailableIdentifiers);
-        Assert.Contains("title", vm.AvailableIdentifiers);
-        Assert.Contains("diff_l", vm.AvailableIdentifiers);
-        Assert.Contains("diff_s", vm.AvailableIdentifiers);
-        Assert.Contains("level", vm.AvailableIdentifiers);
-        Assert.Contains("grade", vm.AvailableIdentifiers);
-        Assert.Contains("clear_lamp", vm.AvailableIdentifiers);
-        Assert.Contains("score", vm.AvailableIdentifiers);
-        Assert.Contains("score_short", vm.AvailableIdentifiers);
-        Assert.Contains("ex_score", vm.AvailableIdentifiers);
+        Assert.Contains(vm.AvailableIdentifiers, c => c.Key == "timestamp");
+        Assert.Contains(vm.AvailableIdentifiers, c => c.Key == "title");
+        Assert.Contains(vm.AvailableIdentifiers, c => c.Key == "diff_l");
+        Assert.Contains(vm.AvailableIdentifiers, c => c.Key == "diff_s");
+        Assert.Contains(vm.AvailableIdentifiers, c => c.Key == "level");
+        Assert.Contains(vm.AvailableIdentifiers, c => c.Key == "grade");
+        Assert.Contains(vm.AvailableIdentifiers, c => c.Key == "clear_lamp");
+        Assert.Contains(vm.AvailableIdentifiers, c => c.Key == "score");
+        Assert.Contains(vm.AvailableIdentifiers, c => c.Key == "score_short");
+        Assert.Contains(vm.AvailableIdentifiers, c => c.Key == "ex_score");
     }
 }

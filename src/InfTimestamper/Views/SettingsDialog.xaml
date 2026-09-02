@@ -120,8 +120,10 @@
                         <TextBlock Text="識別子:" VerticalAlignment="Center" Margin="0,0,4,0" />
                         <ComboBox x:Name="InfinitasIdentifierCombo"
                                   ItemsSource="{Binding Infinitas.AvailableIdentifiers}"
-                                  SelectedItem="{Binding Infinitas.SelectedIdentifier}"
-                                  Width="160" />
+                                  DisplayMemberPath="Display"
+                                  SelectedValuePath="Key"
+                                  SelectedValue="{Binding Infinitas.SelectedIdentifier}"
+                                  Width="260" />
                         <Button Content="追加" Width="60" Margin="6,0,0,0"
                                 Click="OnAddInfinitasIdentifierClick" />
                     </StackPanel>
@@ -162,8 +164,10 @@
                         <TextBlock Text="識別子:" VerticalAlignment="Center" Margin="0,0,4,0" />
                         <ComboBox x:Name="PopnIdentifierCombo"
                                   ItemsSource="{Binding Popn.AvailableIdentifiers}"
-                                  SelectedItem="{Binding Popn.SelectedIdentifier}"
-                                  Width="160" />
+                                  DisplayMemberPath="Display"
+                                  SelectedValuePath="Key"
+                                  SelectedValue="{Binding Popn.SelectedIdentifier}"
+                                  Width="260" />
                         <Button Content="追加" Width="60" Margin="6,0,0,0"
                                 Click="OnAddPopnIdentifierClick" />
                     </StackPanel>
@@ -204,8 +208,10 @@
                         <TextBlock Text="識別子:" VerticalAlignment="Center" Margin="0,0,4,0" />
                         <ComboBox x:Name="SdvxIdentifierCombo"
                                   ItemsSource="{Binding Sdvx.AvailableIdentifiers}"
-                                  SelectedItem="{Binding Sdvx.SelectedIdentifier}"
-                                  Width="160" />
+                                  DisplayMemberPath="Display"
+                                  SelectedValuePath="Key"
+                                  SelectedValue="{Binding Sdvx.SelectedIdentifier}"
+                                  Width="260" />
                         <Button Content="追加" Width="60" Margin="6,0,0,0"
                                 Click="OnAddSdvxIdentifierClick" />
                     </StackPanel>
@@ -216,17 +222,33 @@
                                    FontFamily="Consolas, Cascadia Mono" />
                     </Border>
 
-                    <TextBlock Text="SDVX Helper のデータ配信ポート" FontWeight="Bold" Margin="0,12,0,4" />
-                    <TextBox Width="100" HorizontalAlignment="Left"
-                             Text="{Binding Sdvx.HelperPort, UpdateSourceTrigger=PropertyChanged}"
-                             Background="{Binding Sdvx.IsHelperPortValid, Converter={StaticResource ValidityToBrush}}"
-                             ToolTip="SDVX Helper の設定にある「WebSocketデータ配信ポート」と同じ値を指定してください"
-                             Padding="4" />
+                    <TextBlock Text="SDVX Helper の接続先" FontWeight="Bold" Margin="0,12,0,4" />
+                    <Grid>
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="*" />
+                            <ColumnDefinition Width="Auto" />
+                            <ColumnDefinition Width="Auto" />
+                        </Grid.ColumnDefinitions>
+                        <TextBox Grid.Column="0"
+                                 Text="{Binding Sdvx.HelperHost, UpdateSourceTrigger=PropertyChanged}"
+                                 Background="{Binding Sdvx.IsHelperHostValid, Converter={StaticResource ValidityToBrush}}"
+                                 ToolTip="IPv4 アドレスまたは localhost"
+                                 Padding="4" />
+                        <TextBlock Grid.Column="1" Text=":" VerticalAlignment="Center" Margin="4,0" />
+                        <TextBox Grid.Column="2" Width="80"
+                                 Text="{Binding Sdvx.HelperPort, UpdateSourceTrigger=PropertyChanged}"
+                                 Background="{Binding Sdvx.IsHelperPortValid, Converter={StaticResource ValidityToBrush}}"
+                                 ToolTip="SDVX Helper の設定にある「WebSocketデータ配信ポート」と同じ値を指定してください"
+                                 Padding="4" />
+                    </Grid>
+                    <CheckBox Content="ローカルホスト（127.0.0.1）"
+                              IsChecked="{Binding Sdvx.IsLocalhost}"
+                              Margin="0,6,0,0" />
                     <StackPanel Orientation="Horizontal" Margin="0,4,0,0">
                         <TextBlock Text="接続先: " Foreground="Gray" />
                         <TextBlock Text="{Binding Sdvx.WatchTarget}" Foreground="Gray" />
                     </StackPanel>
-                    <TextBlock Text="SDVX Helper が同じ PC で動いている必要があります。曲決定時にプレイ開始を記録し、リザルトが SDVX Helper に登録された時点で成績を埋めます。"
+                    <TextBlock Text="SDVX Helper のデータ配信サーバは localhost にしか待ち受けないため、通常はこのPCのままにしてください（別PCのIPを指定しても接続できません）。曲決定時にプレイ開始を記録し、リザルトが SDVX Helper に登録された時点で成績を埋めます。"
                                Foreground="Gray" TextWrapping="Wrap" Margin="0,4,0,0" />
                 </StackPanel>
             </TabItem>

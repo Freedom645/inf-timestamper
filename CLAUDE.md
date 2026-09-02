@@ -99,7 +99,7 @@ INFINITAS のプレイ開始とプレイデータは、**Reflux が出力する�
 
 #### SOUND VOLTEX（SDVX Helper の WebSocket 購読）
 
-**ここだけファイル監視ではない。** SDVX Helper は v1.0 系まで `out/history_cursong.xml` を出力していたが、v2 系（v.2.0.0 以降）でファイル出力を廃止し、OBS ブラウザソース向けの WebSocket 配信（既定 `ws://127.0.0.1:8767`）へ移行した。`SdvxHelperPlayWatcher` はこの配信サーバへ `ClientWebSocket` で接続し、切断時は OBS 接続と同じ `BackoffSchedule` で再接続する（`Core/Sdvx/`）。
+**ここだけファイル監視ではない。** SDVX Helper は v1.0 系まで `out/history_cursong.xml` を出力していたが、v2 系（v.2.0.0 以降）でファイル出力を廃止し、OBS ブラウザソース向けの WebSocket 配信（既定 `ws://127.0.0.1:8767`）へ移行した。**SDVX Helper 側は `localhost` にしか bind しない**（`websockets.serve(handler, 'localhost', port)` でホストはハードコード）ので、別 PC からは繋がらない。設定でホストを変えられるようにはしてあるが、それはポートフォワード等を挟む場合のためで既定は `127.0.0.1`。`SdvxHelperPlayWatcher` はこの配信サーバへ `ClientWebSocket` で接続し、切断時は OBS 接続と同じ `BackoffSchedule` で再接続する（`Core/Sdvx/`）。
 
 **INFINITAS / pop'n と構造が違う二点**：
 
@@ -113,6 +113,11 @@ INFINITAS のプレイ開始とプレイデータは、**Reflux が出力する�
 クリップボードコピー時の文字列はユーザがフォーマット文字列で定義する。`$timestamp` `$title` `$diff_s` などの識別子が実データに置換される（識別子一覧は `docs/要件.md` 参照）。
 
 識別子は**ハイブリッド方針**（Phase 9 で決定）。ゲーム間で意味が変わらない `$timestamp` / `$title` / `$level` / `$diff_l` / `$diff_s` は共通で流用し、体系そのものが違う成績系はゲームごとに新設する（INFINITAS: `$dj_level` / `$lamp` / `$miss_count`、pop'n: `$rank` / `$medal` / `$bad`、SDVX: `$grade` / `$clear_lamp` / `$score_short`）。「そのプレイの得点」という意味が変わらない `$score`（pop'n / SDVX）と `$ex_score`（INFINITAS / SDVX）は複数ゲームで流用する。キーの正本は `Games/FieldKeys`、どの識別子がどのゲームで有効かは `Games/GameCatalog.Identifiers` が持つ。タイムスタンプフォーマットもゲームごとに別々に保持する（`AppSettings.Infinitas` / `AppSettings.Popn` / `AppSettings.Sdvx`）。
+
+識別子の論理名（設定画面で「論理名 ($key)」と見せるための日本語名）は `Games/FieldLabels`、
+セレクトボックス / サジェストに渡す 1 項目は `Games/IdentifierChoice`。サジェストの
+トークン切り出し・絞り込み・置換は `Formatting/IdentifierCompletion`（UI 非依存なのでテストがある）で、
+WPF 側の `Behaviors/IdentifierSuggestion` は Popup とキー操作だけを見る。
 
 重要な制約:
 - メインウィンドウの「タイムスタンプリスト」表示は、設定ウィンドウでのフォーマット変更を**リアクティブに反映**する（実コピー文字列と画面表示が常に一致）。WPF の `INotifyPropertyChanged` / `DataContext` でバインドする想定。
@@ -170,13 +175,13 @@ inf-timestamper/
 | --- | --- |
 | `Coordination/` | `RecordingCoordinator` — 状態機械・プレイ監視・OBS 接続を束ねる中核 |
 | `States/` | `AppStateMachine` — 4 状態のメイン状態機械 |
-| `Games/` | ゲーム抽象化。`FieldKeys`（識別子キーの正本）/ `GameCatalog`（ゲーム別メタデータ）/ `IPlayWatcher` / `PlayEvents` |
+| `Games/` | ゲーム抽象化。`FieldKeys`（識別子キーの正本）/ `FieldLabels`（識別子の論理名）/ `GameCatalog`（ゲーム別メタデータ）/ `IPlayWatcher` / `PlayEvents` |
 | `Reflux/` | INFINITAS のゲーム検知。`RefluxPlayWatcher` / `RefluxLatestJson` / `RefluxFieldMapper` |
 | `Popn/` | pop'n music のゲーム検知。`PopnPlayWatcher` / `PopnResultJson` / `PopnFieldMapper` |
 | `Sdvx/` | SOUND VOLTEX のゲーム検知。`SdvxHelperPlayWatcher`（WebSocket 購読）/ `SdvxFieldMapper` |
 | `Obs/` | OBS WebSocket 接続と再接続バックオフ。配信開始/終了の検知のみ |
 | `Persistence/` | `JsonRecordStore` — バックアップ JSON のアトミック保存と異常終了復旧 |
-| `Formatting/` | `FormatExpander` — `$identifier` の展開 |
+| `Formatting/` | `FormatExpander`（`$identifier` の展開）/ `IdentifierCompletion`（サジェストのロジック） |
 | `Models/` | `StreamRecord` / `TimestampEntry` / `GameId` 等 |
 | `Settings/` | `AppSettings` / `SettingsStore` |
 | `Updates/` | GitHub Releases 照会とバージョン比較 |

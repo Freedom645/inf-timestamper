@@ -1,9 +1,10 @@
-using System.Text.RegularExpressions;
 using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Controls.Primitives;
 using System.Windows.Input;
 using System.Windows.Media;
+using InfTimestamper.Core.Formatting;
+using InfTimestamper.Core.Games;
 
 namespace InfTimestamper.Behaviors;
 
@@ -13,33 +14,31 @@ namespace InfTimestamper.Behaviors;
 ///
 /// 候補は <see cref="Popup"/> に出すだけでフォーカスは移さず、キー操作は TextBox 側の
 /// <c>PreviewKeyDown</c> で捌く。こうしないと入力の流れが途切れる。
+/// トークンの切り出し・絞り込み・確定時の置換は <see cref="IdentifierCompletion"/> に置いてある。
 /// </summary>
 public sealed class IdentifierSuggestion
 {
-    /// <summary>`$` に続く識別子として成立する文字（<see cref="Core.Formatting.FormatExpander"/> と同じ字種）。</summary>
-    private static readonly Regex TokenPattern = new(@"\$([a-z0-9_]*)$", RegexOptions.Compiled);
-
     private readonly TextBox _textBox;
-    private readonly IReadOnlyList<string> _identifiers;
+    private readonly IReadOnlyList<IdentifierChoice> _identifiers;
     private readonly Popup _popup;
     private readonly ListBox _list;
 
-    /// <summary>候補確定時に置換する対象範囲（`$` の位置とその時点のキャレット）。</summary>
+    /// <summary>候補確定時に置換する対象範囲の開始位置（`$` の位置）。</summary>
     private int _tokenStart = -1;
 
-    public IdentifierSuggestion(TextBox textBox, IReadOnlyList<string> identifiers)
+    public IdentifierSuggestion(TextBox textBox, IReadOnlyList<IdentifierChoice> identifiers)
     {
         _textBox = textBox ?? throw new ArgumentNullException(nameof(textBox));
-        _identifiers = identifiers ?? Array.Empty<string>();
+        _identifiers = identifiers ?? Array.Empty<IdentifierChoice>();
 
         _list = new ListBox
         {
             MaxHeight = 160,
-            MinWidth = 160,
-            FontFamily = new FontFamily("Consolas, Cascadia Mono"),
+            MinWidth = 220,
             // フォーカスを奪うと TextBox の LostFocus で候補が閉じてしまうので、
             // 候補一覧はフォーカスを取らずマウス押下だけを拾う
             Focusable = false,
+            ItemTemplate = BuildItemTemplate(),
         };
         _list.PreviewMouseLeftButtonDown += OnListMouseDown;
 
@@ -64,35 +63,42 @@ public sealed class IdentifierSuggestion
         _textBox.PreviewKeyDown += OnPreviewKeyDown;
     }
 
+    /// <summary>候補 1 行の見た目。<c>$key</c> を等幅で、論理名をグレーで添える。</summary>
+    private static DataTemplate BuildItemTemplate()
+    {
+        var panel = new FrameworkElementFactory(typeof(StackPanel));
+        panel.SetValue(StackPanel.OrientationProperty, Orientation.Horizontal);
+
+        var token = new FrameworkElementFactory(typeof(TextBlock));
+        token.SetBinding(TextBlock.TextProperty, new System.Windows.Data.Binding(nameof(IdentifierChoice.Token)));
+        token.SetValue(TextBlock.FontFamilyProperty, new FontFamily("Consolas, Cascadia Mono"));
+        panel.AppendChild(token);
+
+        var label = new FrameworkElementFactory(typeof(TextBlock));
+        label.SetBinding(TextBlock.TextProperty, new System.Windows.Data.Binding(nameof(IdentifierChoice.Label)));
+        label.SetValue(TextBlock.ForegroundProperty, SystemColors.GrayTextBrush);
+        label.SetValue(FrameworkElement.MarginProperty, new Thickness(8, 0, 0, 0));
+        panel.AppendChild(label);
+
+        return new DataTemplate { VisualTree = panel };
+    }
+
     private void Refresh()
     {
-        var caret = _textBox.CaretIndex;
-        var text = _textBox.Text ?? string.Empty;
-        if (caret < 0 || caret > text.Length)
+        if (!IdentifierCompletion.TryGetToken(_textBox.Text, _textBox.CaretIndex, out var tokenStart, out var prefix))
         {
             Hide();
             return;
         }
 
-        var match = TokenPattern.Match(text[..caret]);
-        if (!match.Success)
-        {
-            Hide();
-            return;
-        }
-
-        var prefix = match.Groups[1].Value;
-        var candidates = _identifiers
-            .Where(id => id.StartsWith(prefix, StringComparison.Ordinal))
-            .ToList();
-
+        var candidates = IdentifierCompletion.Filter(_identifiers, prefix);
         if (candidates.Count == 0)
         {
             Hide();
             return;
         }
 
-        _tokenStart = match.Index;
+        _tokenStart = tokenStart;
         _list.ItemsSource = candidates;
         _list.SelectedIndex = 0;
         _popup.IsOpen = true;
@@ -152,23 +158,17 @@ public sealed class IdentifierSuggestion
     {
         // Text を書き換えると TextChanged 経由で Refresh が走り _tokenStart が変わるので、先に控える
         var tokenStart = _tokenStart;
-        if (tokenStart < 0 || _list.SelectedItem is not string identifier)
+        if (tokenStart < 0 || _list.SelectedItem is not IdentifierChoice choice)
         {
             Hide();
             return;
         }
 
-        var text = _textBox.Text ?? string.Empty;
-        var caret = Math.Min(_textBox.CaretIndex, text.Length);
-        if (tokenStart > caret)
-        {
-            Hide();
-            return;
-        }
+        var (text, caret) = IdentifierCompletion.Apply(
+            _textBox.Text, tokenStart, _textBox.CaretIndex, choice.Key);
 
-        var replacement = "$" + identifier;
-        _textBox.Text = text[..tokenStart] + replacement + text[caret..];
-        _textBox.CaretIndex = tokenStart + replacement.Length;
+        _textBox.Text = text;
+        _textBox.CaretIndex = caret;
         _textBox.Focus();
         Hide();
     }

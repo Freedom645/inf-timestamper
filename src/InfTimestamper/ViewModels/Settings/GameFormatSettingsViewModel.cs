@@ -24,8 +24,8 @@ public abstract class GameFormatSettingsViewModel : ObservableBase
             ? Core.Settings.AppSettings.DefaultTimestampFormat
             : timestampFormat;
 
-        AvailableIdentifiers = GameCatalog.Identifiers(game);
-        _selectedIdentifier = AvailableIdentifiers.Count > 0 ? AvailableIdentifiers[0] : string.Empty;
+        AvailableIdentifiers = GameCatalog.IdentifierChoices(game);
+        _selectedIdentifier = AvailableIdentifiers.Count > 0 ? AvailableIdentifiers[0].Key : string.Empty;
     }
 
     public GameId Game { get; }
@@ -40,8 +40,10 @@ public abstract class GameFormatSettingsViewModel : ObservableBase
         }
     }
 
-    public IReadOnlyList<string> AvailableIdentifiers { get; }
+    /// <summary>セレクトボックスとサジェストに出す識別子。「論理名 ($key)」で見せる。</summary>
+    public IReadOnlyList<IdentifierChoice> AvailableIdentifiers { get; }
 
+    /// <summary>選択中の識別子キー（<c>$</c> 抜き）。</summary>
     public string SelectedIdentifier
     {
         get => _selectedIdentifier;

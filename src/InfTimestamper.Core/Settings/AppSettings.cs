@@ -10,8 +10,8 @@ public sealed class AppSettings
     public const string DefaultObsHost = "127.0.0.1";
     public const int DefaultObsPort = 4455;
 
-    /// <summary>SDVX Helper のデータ配信 WebSocket は localhost にしか bind しないため、ホストは固定。</summary>
-    public const string SdvxHelperHost = "127.0.0.1";
+    /// <summary>SDVX Helper のデータ配信 WebSocket の既定ホスト。</summary>
+    public const string DefaultSdvxHelperHost = "127.0.0.1";
 
     /// <summary>SDVX Helper の <c>websocket_data_port</c> の既定値。</summary>
     public const int DefaultSdvxHelperPort = 8767;
@@ -60,6 +60,7 @@ public sealed class AppSettings
         Sdvx = new SdvxSettings
         {
             TimestampFormat = DefaultTimestampFormat,
+            HelperHost = DefaultSdvxHelperHost,
             HelperPort = DefaultSdvxHelperPort,
         },
     };
@@ -84,12 +85,13 @@ public sealed class AppSettings
     public string WatchTargetFor(GameId game) => (game switch
     {
         GameId.Popn => Popn?.TrackerDirectory,
-        GameId.Sdvx => Sdvx is null ? null : SdvxHelperEndpoint(Sdvx.HelperPort),
+        GameId.Sdvx => Sdvx is null ? null : SdvxHelperEndpoint(Sdvx.HelperHost, Sdvx.HelperPort),
         _ => Infinitas?.RefluxDirectory,
     }) ?? string.Empty;
 
-    /// <summary>SDVX Helper のデータ配信 WebSocket の接続先。</summary>
-    public static string SdvxHelperEndpoint(int port) => $"ws://{SdvxHelperHost}:{port}";
+    /// <summary>SDVX Helper のデータ配信 WebSocket の接続先。ホスト未設定なら既定ホスト。</summary>
+    public static string SdvxHelperEndpoint(string? host, int port)
+        => $"ws://{(string.IsNullOrWhiteSpace(host) ? DefaultSdvxHelperHost : host.Trim())}:{port}";
 
     /// <summary>永続化された選択ゲームを解釈する。未知の値・欠損時は INFINITAS。</summary>
     public GameId ResolveSelectedGame()
@@ -178,9 +180,14 @@ public sealed class SdvxSettings
     public string TimestampFormat { get; set; } = AppSettings.DefaultTimestampFormat;
 
     /// <summary>
-    /// SDVX Helper のデータ配信 WebSocket のポート（SDVX Helper 側の <c>websocket_data_port</c>）。
-    /// SDVX Helper は localhost にしか bind しないため、ホストは設定させない。
+    /// SDVX Helper のデータ配信 WebSocket のホスト。
+    /// SDVX Helper 自身は localhost にしか bind しないため、通常は既定値のままでよい
+    /// （ポートフォワード等を挟む場合のために設定できるようにしてある）。
     /// </summary>
     [JsonPropertyOrder(1)]
+    public string HelperHost { get; set; } = AppSettings.DefaultSdvxHelperHost;
+
+    /// <summary>SDVX Helper のデータ配信ポート（SDVX Helper 側の <c>websocket_data_port</c>）。</summary>
+    [JsonPropertyOrder(2)]
     public int HelperPort { get; set; } = AppSettings.DefaultSdvxHelperPort;
 }
