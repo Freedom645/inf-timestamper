@@ -147,6 +147,8 @@ WPF 側の `Behaviors/IdentifierSuggestion` は Popup とキー操作だけを�
 
 Velopack 未インストール環境（開発実行・ZIP 解凍配置）では `IUpdateService.IsInstalled` が false になり、リリースページをブラウザで開くフォールバックへ切り替わる。
 
+バージョンは `Updates/SemanticVersion`（SemVer 2.0、プレリリース対応）で扱う。実行中のバージョンは csproj の `<Version>` 由来の `AssemblyInformationalVersion` から読む（`1.2.0-alpha.1+<sha>` の `+` 以降は無視）。**α 版（プレリリース）を正式版の利用者に配らない**ために、GitHub API は `releases/latest`（プレリリースを含まない）を見て、Velopack も `GithubSource(prerelease: false)` にしている。実行中が α 版のときだけ `releases` 一覧からプレリリース込みで SemVer 最大を選び、`GithubSource(prerelease: true)` に切り替える。α 版の出し方は `docs/release.md`。
+
 ## ファイル構成
 
 ```

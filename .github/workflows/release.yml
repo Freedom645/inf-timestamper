@@ -3,6 +3,10 @@ name: リリース（ドラフト作成）
 # 手動実行のみ。Velopack のドラフトリリースは公開するまでタグを作らないため、
 # 「タグ push で起動」とは運用が噛み合わない（先にタグを作ると二重管理になる）。
 # リリース番号の正本は src/InfTimestamper/InfTimestamper.csproj の <Version>。
+#
+# α 版: <Version> を 1.2.0-alpha.1 のようにプレリリース表記にして、feature ブランチを選んで実行する。
+# GitHub Release は pre-release として作られ、releases/latest（正式版利用者のバージョンチェック）には
+# 出てこない。α 版利用者だけがプレリリース込みで更新候補を見る。
 on:
   workflow_dispatch:
     inputs:
@@ -39,9 +43,11 @@ jobs:
           $proj.Load((Resolve-Path 'src/InfTimestamper/InfTimestamper.csproj').Path)
 
           $version = $proj.SelectSingleNode('/Project/PropertyGroup/Version').InnerText.Trim()
-          if ($version -notmatch '^\d+\.\d+\.\d+$') {
-            throw "csproj の <Version> が Major.Minor.Patch 形式ではありません: '$version'"
+          # SemVer 2.0。プレリリース（-alpha.1 等）を許容し、ビルドメタデータ（+…）は不可
+          if ($version -notmatch '^\d+\.\d+\.\d+(-[0-9A-Za-z][0-9A-Za-z.-]*)?$') {
+            throw "csproj の <Version> が Major.Minor.Patch[-prerelease] 形式ではありません: '$version'"
           }
+          $prerelease = $version.Contains('-')
 
           # vpk CLI は参照している Velopack ライブラリと同じバージョンでないと生成物が壊れる
           $velopack = $proj.SelectSingleNode("/Project/ItemGroup/PackageReference[@Include='Velopack']").GetAttribute('Version')
@@ -59,11 +65,13 @@ jobs:
             throw "タグ v$version は既に存在します。csproj の <Version> を上げてください。"
           }
 
-          "version=$version"   >> $env:GITHUB_OUTPUT
-          "velopack=$velopack" >> $env:GITHUB_OUTPUT
-          "notes=$notes"       >> $env:GITHUB_OUTPUT
+          "version=$version"     >> $env:GITHUB_OUTPUT
+          "velopack=$velopack"   >> $env:GITHUB_OUTPUT
+          "notes=$notes"         >> $env:GITHUB_OUTPUT
+          "prerelease=$($prerelease.ToString().ToLower())" >> $env:GITHUB_OUTPUT
 
-          Write-Host "リリース対象: v$version (Velopack $velopack, リリースノート $notes)"
+          $kind = if ($prerelease) { 'プレリリース' } else { '正式版' }
+          Write-Host "リリース対象: v$version ($kind, Velopack $velopack, リリースノート $notes)"
 
       - name: 復元
         run: dotnet restore InfTimestamper.sln
@@ -121,6 +129,8 @@ jobs:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         # --publish を付けないのでドラフトのまま作られる。
         # 中身を確認してから GitHub 上で Publish release を押すとタグが打たれる。
+        # プレリリース版は --pre で GitHub 側にも pre-release と印を付ける
+        # （releases/latest から除外され、正式版利用者の自動更新に乗らない）。
         run: >
           vpk upload github
           --repoUrl https://github.com/${{ github.repository }}
@@ -128,11 +138,13 @@ jobs:
           --tag v${{ steps.meta.outputs.version }}
           --releaseName v${{ steps.meta.outputs.version }}
           --targetCommitish ${{ github.sha }}
+          ${{ steps.meta.outputs.prerelease == 'true' && '--pre' || '' }}
 
       - name: 結果を表示する
         shell: pwsh
         run: |
           $version = '${{ steps.meta.outputs.version }}'
+          $kind = if ('${{ steps.meta.outputs.prerelease }}' -eq 'true') { 'プレリリース' } else { '正式版' }
           if ('${{ inputs.dry_run }}' -eq 'true') {
             $summary = @(
               "## v$version をドライランで作成しました",
@@ -141,7 +153,7 @@ jobs:
             )
           } else {
             $summary = @(
-              "## v$version のドラフトリリースを作成しました",
+              "## v$version のドラフトリリース（$kind）を作成しました",
               '',
               "https://github.com/${{ github.repository }}/releases",
               '',

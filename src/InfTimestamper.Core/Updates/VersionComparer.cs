@@ -1,32 +1,21 @@
 namespace InfTimestamper.Core.Updates;
 
+/// <summary>GitHub Releases のタグ（<c>v1.2.0</c> / <c>v1.2.0-alpha.1</c>）と実行中バージョンの比較。</summary>
 public static class VersionComparer
 {
-    public static bool TryParseTag(string? tag, out Version version)
+    /// <summary>タグを <see cref="SemanticVersion"/> として解釈する。先頭の <c>v</c> は許容する。</summary>
+    public static bool TryParseTag(string? tag, out SemanticVersion version)
+        => SemanticVersion.TryParse(tag, out version);
+
+    /// <summary>
+    /// <paramref name="remoteTag"/> が <paramref name="current"/> より新しいか。
+    /// プレリリースは SemVer の規則で比較する（<c>1.2.0-alpha.1</c> &lt; <c>1.2.0</c>）ので、
+    /// α 版を使っている人には正式版が「新しい」と判定される。
+    /// </summary>
+    public static bool IsNewer(string? remoteTag, SemanticVersion current)
     {
-        version = new Version(0, 0, 0);
-        if (string.IsNullOrEmpty(tag)) return false;
-
-        var trimmed = tag.TrimStart('v', 'V').Trim();
-        // セマンティックバージョンのプレリリース部分（-beta など）を除去
-        var dash = trimmed.IndexOf('-');
-        if (dash >= 0) trimmed = trimmed[..dash];
-
-        return Version.TryParse(trimmed, out version!);
-    }
-
-    public static bool IsNewer(string? remoteTag, Version current)
-    {
+        ArgumentNullException.ThrowIfNull(current);
         if (!TryParseTag(remoteTag, out var remote)) return false;
-        return Normalize(remote).CompareTo(Normalize(current)) > 0;
-    }
-
-    private static Version Normalize(Version v)
-    {
-        // Major.Minor.Build まで比較し、Build が -1 なら 0 として扱う
-        return new Version(
-            v.Major < 0 ? 0 : v.Major,
-            v.Minor < 0 ? 0 : v.Minor,
-            v.Build < 0 ? 0 : v.Build);
+        return remote.CompareTo(current) > 0;
     }
 }

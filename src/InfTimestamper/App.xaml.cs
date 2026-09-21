@@ -75,10 +75,13 @@ public partial class App : Application
             {
                 var settingsPath = SettingsStore.DefaultSettingsPath();
                 services.AddSingleton<AppStateMachine>();
+                // csproj の <Version> 由来（α 版なら 1.2.0-alpha.1 のようにプレリリース表記を含む）
+                var appVersion = SemanticVersion.FromAssembly(typeof(App).Assembly);
+
                 services.AddSingleton<JsonRecordStore>(_ => new JsonRecordStore(
                     JsonOptionsFactory.CreateRecordOptions(),
                     // 記録ファイルの app.version は実行アセンブリのバージョンを載せる
-                    typeof(App).Assembly.GetName().Version?.ToString(3) ?? AppInfo.DefaultVersion));
+                    appVersion.ToString()));
                 services.AddSingleton<SettingsStore>();
                 services.AddSingleton<AppSettings>(sp =>
                 {
@@ -98,8 +101,10 @@ public partial class App : Application
                     sp.GetRequiredService<HttpClient>(),
                     GitHubReleaseChecker.DefaultRepository,
                     sp.GetRequiredService<ILogger<GitHubReleaseChecker>>()));
+                // α 版を動かしているときだけプレリリースも更新候補にする
                 services.AddSingleton<IUpdateService>(sp => new VelopackUpdateService(
                     VelopackUpdateService.DefaultRepositoryUrl,
+                    includePrerelease: appVersion.IsPrerelease,
                     sp.GetRequiredService<ILogger<VelopackUpdateService>>()));
                 services.AddSingleton<IObsConnectionTester>(sp => new ObsConnectionTester(
                     () => new ObsWebSocketConnection(sp.GetRequiredService<ILogger<ObsWebSocketConnection>>()),

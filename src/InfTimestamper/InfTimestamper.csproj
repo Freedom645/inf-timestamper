@@ -32,9 +32,13 @@
     <ApplicationIcon>Assets\icon.ico</ApplicationIcon>
   </PropertyGroup>
 
-  <!-- リリース時に更新する。GitHub Releases のタグは v{Version} 形式（VersionComparer が v を許容） -->
+  <!--
+    リリース時に更新する。GitHub Releases のタグは v{Version} 形式（VersionComparer が v を許容）。
+    α 版は 1.2.0-alpha.1 のように SemVer のプレリリース表記にする（AssemblyVersion / FileVersion は数値のみ）。
+    <Version> は AssemblyInformationalVersion に入り、SemanticVersion.FromAssembly が実行時に読む。
+  -->
   <PropertyGroup>
-    <Version>1.2.0</Version>
+    <Version>1.2.0-alpha.1</Version>
     <AssemblyVersion>1.2.0.0</AssemblyVersion>
     <FileVersion>1.2.0.0</FileVersion>
     <Product>INF-TIMESTAMPER</Product>

@@ -15,12 +15,16 @@ public sealed class VelopackUpdateService : IUpdateService
     private UpdateInfo? _pendingUpdate;
 
     public VelopackUpdateService()
-        : this(DefaultRepositoryUrl, NullLogger<VelopackUpdateService>.Instance) { }
+        : this(DefaultRepositoryUrl, includePrerelease: false, NullLogger<VelopackUpdateService>.Instance) { }
 
-    public VelopackUpdateService(string repositoryUrl, ILogger<VelopackUpdateService> logger)
+    /// <param name="includePrerelease">
+    /// GitHub のプレリリースも更新候補に含めるか。α 版を動かしているときだけ true にして、
+    /// 正式版の利用者に α 版を配らないようにする。
+    /// </param>
+    public VelopackUpdateService(string repositoryUrl, bool includePrerelease, ILogger<VelopackUpdateService> logger)
     {
         _logger = logger ?? NullLogger<VelopackUpdateService>.Instance;
-        _manager = new UpdateManager(new GithubSource(repositoryUrl, null, false));
+        _manager = new UpdateManager(new GithubSource(repositoryUrl, null, includePrerelease));
     }
 
     public bool IsInstalled => _manager.IsInstalled;

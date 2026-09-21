@@ -1,6 +1,7 @@
 using System.Collections.Specialized;
 using System.ComponentModel;
 using System.Reflection;
+using InfTimestamper.Core.Updates;
 using System.Windows;
 using System.Windows.Threading;
 using InfTimestamper.ViewModels;
@@ -16,9 +17,8 @@ public partial class MainWindow : Window
         InitializeComponent();
 
         // 要件「タイトル：アプリ名、バージョンを表示」
-        var version = Assembly.GetExecutingAssembly().GetName().Version?.ToString(3);
-        if (!string.IsNullOrEmpty(version))
-            Title = $"INF-TIMESTAMPER v{version}";
+        var version = SemanticVersion.FromAssembly(Assembly.GetExecutingAssembly());
+        Title = $"INF-TIMESTAMPER v{version}";
 
         if (viewModel is not null)
             DataContext = viewModel;

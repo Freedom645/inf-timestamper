@@ -29,6 +29,9 @@ public sealed class MainWindowViewModel : ObservableBase
     public const string JsonFileFilter = "JSON ファイル (*.json)|*.json|すべてのファイル (*.*)|*.*";
     public const string GitHubUrl = "https://github.com/Freedom645/inf-timestamper";
 
+    /// <summary>実行中のバージョン。csproj の <c>&lt;Version&gt;</c> 由来でプレリリース表記（<c>-alpha.1</c>）を含む。</summary>
+    public static SemanticVersion CurrentVersion { get; } = SemanticVersion.FromAssembly(Assembly.GetExecutingAssembly());
+
     private readonly AppStateMachine _stateMachine;
     private readonly IClipboardService _clipboard;
     private readonly IDialogService _dialog;
@@ -423,9 +426,8 @@ public sealed class MainWindowViewModel : ObservableBase
 
     private void ExecuteShowAbout()
     {
-        var version = Assembly.GetExecutingAssembly().GetName().Version?.ToString() ?? "0.0.0";
         _dialog.ShowInfo("バージョン情報",
-            $"INF-TIMESTAMPER\nバージョン: {version}\n\nGitHub: {GitHubUrl}");
+            $"INF-TIMESTAMPER\nバージョン: {CurrentVersion}\n\nGitHub: {GitHubUrl}");
     }
 
     private void ExecuteOpenGitHub()
@@ -458,7 +460,11 @@ public sealed class MainWindowViewModel : ObservableBase
         GitHubRelease? release;
         try
         {
-            release = await _releaseChecker.GetLatestReleaseAsync(cancellationToken).ConfigureAwait(true);
+            // α 版を動かしているときはプレリリースも見る（次の α 版へ更新できるように）。
+            // 正式版の利用者には releases/latest（プレリリースを含まない）だけを見せる
+            release = await _releaseChecker
+                .GetLatestReleaseAsync(CurrentVersion.IsPrerelease, cancellationToken)
+                .ConfigureAwait(true);
         }
         catch (Exception ex)
         {
@@ -475,7 +481,7 @@ public sealed class MainWindowViewModel : ObservableBase
             return;
         }
 
-        var current = Assembly.GetExecutingAssembly().GetName().Version ?? new Version(0, 0, 0);
+        var current = CurrentVersion;
         var hasNewer = VersionComparer.IsNewer(release.TagName, current);
 
         if (hasNewer)
