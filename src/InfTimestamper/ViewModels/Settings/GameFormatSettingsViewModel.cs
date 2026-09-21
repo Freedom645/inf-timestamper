@@ -10,7 +10,7 @@ namespace InfTimestamper.ViewModels.Settings;
 /// ここに集約してゲーム固有の差分は <see cref="GameCatalog"/> と派生クラスに閉じる。
 ///
 /// プレイ検知の設定はゲームによって形が違う（ファイル監視系は出力ディレクトリ、
-/// SOUND VOLTEX は SDVX Helper のポート）ので、<see cref="WatchTarget"/> の作り方は派生クラスに委ねる。
+/// SOUND VOLTEX は SDVX Helper の接続先 + 任意でフォルダ）ので、そこは派生クラスが持つ。
 /// </summary>
 public abstract class GameFormatSettingsViewModel : ObservableBase
 {
@@ -52,9 +52,6 @@ public abstract class GameFormatSettingsViewModel : ObservableBase
 
     /// <summary>要件どおり、ハードコードのダミーデータで展開結果を見せる。</summary>
     public string Preview => FormatExpander.Expand(_timestampFormat, GameCatalog.PreviewFields(Game));
-
-    /// <summary>プレイ監視へ渡す監視対象（RecordingCoordinator の <c>WatchTarget</c>）。</summary>
-    public abstract string WatchTarget { get; }
 
     public void InsertIdentifierAtCursor(int cursorPosition, string? identifier = null)
     {

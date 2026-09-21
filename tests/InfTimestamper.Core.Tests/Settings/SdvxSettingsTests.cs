@@ -58,13 +58,43 @@ public class SdvxSettingsTests
         var settings = AppSettings.CreateDefault();
         settings.Sdvx.HelperPort = 8767;
 
-        Assert.Equal("ws://127.0.0.1:8767", settings.WatchTargetFor(GameId.Sdvx));
+        var target = settings.WatchTargetFor(GameId.Sdvx);
+        Assert.Equal("ws://127.0.0.1:8767", target.Endpoint);
+        Assert.Null(target.Directory);
+        Assert.False(target.IsEmpty);
 
         settings.Sdvx.HelperPort = 9100;
-        Assert.Equal("ws://127.0.0.1:9100", settings.WatchTargetFor(GameId.Sdvx));
+        Assert.Equal("ws://127.0.0.1:9100", settings.WatchTargetFor(GameId.Sdvx).Endpoint);
 
         settings.Sdvx.HelperHost = "192.168.1.20";
-        Assert.Equal("ws://192.168.1.20:9100", settings.WatchTargetFor(GameId.Sdvx));
+        Assert.Equal("ws://192.168.1.20:9100", settings.WatchTargetFor(GameId.Sdvx).Endpoint);
+    }
+
+    [Fact]
+    public void WatchTargetFor_Sdvx_CarriesTheHelperDirectoryWhenSet()
+    {
+        var settings = AppSettings.CreateDefault();
+        settings.Sdvx.HelperDirectory = @"C:\sdvx_helper";
+
+        var target = settings.WatchTargetFor(GameId.Sdvx);
+        Assert.Equal("ws://127.0.0.1:8767", target.Endpoint);
+        Assert.Equal(@"C:\sdvx_helper", target.Directory);
+    }
+
+    [Fact]
+    public void SaveAndLoad_RoundTripsTheHelperDirectory()
+    {
+        using var dir = new TempDirectory();
+        var path = Path.Combine(dir.Path, "settings.json");
+        var store = new SettingsStore();
+
+        var settings = AppSettings.CreateDefault();
+        settings.Sdvx.HelperDirectory = @"D:\games\sdvx_helper";
+
+        store.SaveAtomic(settings, path);
+        var loaded = store.Load(path);
+
+        Assert.Equal(@"D:\games\sdvx_helper", loaded.Sdvx.HelperDirectory);
     }
 
     [Fact]

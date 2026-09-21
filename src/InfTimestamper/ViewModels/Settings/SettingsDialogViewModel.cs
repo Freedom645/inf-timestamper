@@ -31,7 +31,8 @@ public sealed class SettingsDialogViewModel : ObservableBase
             dialog);
 
         Sdvx = new SdvxSettingsViewModel(
-            settings.Sdvx ?? new SdvxSettings { TimestampFormat = AppSettings.DefaultTimestampFormat });
+            settings.Sdvx ?? new SdvxSettings { TimestampFormat = AppSettings.DefaultTimestampFormat },
+            dialog);
 
         ConfirmCommand = new RelayCommand(Confirm);
         CancelCommand = new RelayCommand(Cancel);

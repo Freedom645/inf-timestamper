@@ -48,7 +48,7 @@ public class StreamStateSyncTests
         {
             StreamObs = DefaultObs,
             Game = GameId.Infinitas,
-            WatchTarget = watchDirectory,
+            WatchTarget = WatchTarget.ForDirectory(watchDirectory),
         });
         return coordinator;
     }
@@ -144,7 +144,7 @@ public class StreamStateSyncTests
             {
                 StreamObs = new ObsConnectionOptions("192.168.1.111", 4455, ""),
                 Game = GameId.Infinitas,
-                WatchTarget = string.Empty,
+                WatchTarget = WatchTarget.Empty,
             });
 
             await WaitUntilAsync(() => connection.ConnectAttempts > before, 1000);
@@ -168,7 +168,7 @@ public class StreamStateSyncTests
             {
                 StreamObs = new ObsConnectionOptions("127.0.0.1", 4455, ""),
                 Game = GameId.Infinitas,
-                WatchTarget = string.Empty,
+                WatchTarget = WatchTarget.Empty,
             });
 
             await Task.Delay(50);

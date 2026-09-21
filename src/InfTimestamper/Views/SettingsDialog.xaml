@@ -10,7 +10,7 @@
         Title="設定"
         Icon="/Assets/icon.ico"
         Width="600" MinWidth="520"
-        Height="520" MinHeight="460"
+        Height="640" MinHeight="560"
         WindowStartupLocation="CenterOwner"
         ShowInTaskbar="False">
     <Window.Resources>
@@ -246,9 +246,25 @@
                               Margin="0,6,0,0" />
                     <StackPanel Orientation="Horizontal" Margin="0,4,0,0">
                         <TextBlock Text="接続先: " Foreground="Gray" />
-                        <TextBlock Text="{Binding Sdvx.WatchTarget}" Foreground="Gray" />
+                        <TextBlock Text="{Binding Sdvx.Endpoint}" Foreground="Gray" />
                     </StackPanel>
-                    <TextBlock Text="SDVX Helper のデータ配信サーバは localhost にしか待ち受けないため、通常はこのPCのままにしてください（別PCのIPを指定しても接続できません）。曲決定時にプレイ開始を記録し、リザルトが SDVX Helper に登録された時点で成績を埋めます。"
+                    <TextBlock Text="SDVX Helper のデータ配信サーバは localhost にしか待ち受けないため、通常はこのPCのままにしてください（別PCのIPを指定しても接続できません）。リザルトが SDVX Helper に登録された時点で成績を埋めます。"
+                               Foreground="Gray" TextWrapping="Wrap" Margin="0,4,0,0" />
+
+                    <TextBlock Text="SDVX Helper のフォルダ（推奨）" FontWeight="Bold" Margin="0,12,0,4" />
+                    <Grid>
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="*" />
+                            <ColumnDefinition Width="Auto" />
+                        </Grid.ColumnDefinitions>
+                        <TextBox Grid.Column="0"
+                                 Text="{Binding Sdvx.WatchDirectory, UpdateSourceTrigger=PropertyChanged}"
+                                 ToolTip="sdvx_helper.exe があるフォルダ（直下に log フォルダが作られます）"
+                                 Padding="4" />
+                        <Button Grid.Column="1" Content="参照..." Width="80" Margin="6,0,0,0"
+                                Command="{Binding Sdvx.BrowseWatchDirectoryCommand}" />
+                    </Grid>
+                    <TextBlock Text="指定すると log\sdvx_helper.log の画面遷移を監視し、プレイ画面に入った時刻をプレイ開始として記録します。リザルト画面からのリトライや、曲決定画面を取りこぼした場合もこれで拾えます。未指定の場合は曲決定画面の検知だけになり、リトライは記録されません。"
                                Foreground="Gray" TextWrapping="Wrap" Margin="0,4,0,0" />
                 </StackPanel>
             </TabItem>

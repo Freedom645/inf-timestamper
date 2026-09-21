@@ -63,6 +63,13 @@ public sealed class PopnPlayWatcher : IPlayWatcher
         get { lock (_gate) return _watcher is not null; }
     }
 
+    public void Start(WatchTarget target)
+    {
+        ArgumentNullException.ThrowIfNull(target);
+        Start(target.Directory ?? string.Empty);
+    }
+
+    /// <summary>popn-lively-tracker の出力ディレクトリを指定して監視を開始する。</summary>
     public void Start(string directory)
     {
         if (string.IsNullOrWhiteSpace(directory))

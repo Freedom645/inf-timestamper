@@ -4,7 +4,8 @@ using InfTimestamper.Services;
 namespace InfTimestamper.ViewModels.Settings;
 
 /// <summary>
-/// 外部ツールの出力ディレクトリを監視するゲーム（INFINITAS / pop'n music）のタブ用 ViewModel。
+/// 外部ツールのフォルダを指定するゲーム（INFINITAS / pop'n music の出力ディレクトリ、
+/// SOUND VOLTEX の SDVX Helper フォルダ）のタブ用 ViewModel。
 /// 「参照... でフォルダを選ぶ」という UI がそのまま共通なのでここに寄せている。
 /// </summary>
 public abstract class DirectoryWatchSettingsViewModel : GameFormatSettingsViewModel
@@ -36,11 +37,12 @@ public abstract class DirectoryWatchSettingsViewModel : GameFormatSettingsViewMo
         set
         {
             if (SetField(ref _watchDirectory, value ?? string.Empty))
-                RaisePropertyChanged(nameof(WatchTarget));
+                OnWatchDirectoryChanged();
         }
     }
 
-    public override string WatchTarget => _watchDirectory;
+    /// <summary>フォルダに連動する派生プロパティを持つ派生クラス向けのフック。</summary>
+    protected virtual void OnWatchDirectoryChanged() { }
 
     public RelayCommand BrowseWatchDirectoryCommand { get; }
 

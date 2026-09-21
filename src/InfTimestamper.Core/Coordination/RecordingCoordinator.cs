@@ -77,7 +77,7 @@ public sealed class RecordingCoordinator : IAsyncDisposable
 
         if (_activeWatcher is not null
             && (previous.Game != _options.Game
-                || !string.Equals(previous.WatchTarget, _options.WatchTarget, StringComparison.OrdinalIgnoreCase)))
+                || previous.WatchTarget != _options.WatchTarget))
         {
             _logger.LogInformation("プレイ監視の設定が変更されたため、監視を張り直します。");
             StopWatcher();
@@ -176,7 +176,7 @@ public sealed class RecordingCoordinator : IAsyncDisposable
         }
 
         var target = _options.WatchTarget;
-        if (string.IsNullOrWhiteSpace(target))
+        if (target.IsEmpty)
         {
             _logger.LogWarning("{Tool} の監視対象が未指定のため、監視を開始しません。",
                 GameCatalog.WatcherToolName(game));
@@ -320,9 +320,9 @@ public sealed class RecordingCoordinatorOptions
 
     /// <summary>
     /// ゲーム検知の監視対象。INFINITAS（Reflux）と pop'n music（popn-lively-tracker）は
-    /// 出力ディレクトリのパス、SOUND VOLTEX（SDVX Helper）は <c>ws://host:port</c> の接続先。
+    /// 出力ディレクトリ、SOUND VOLTEX（SDVX Helper）は <c>ws://host:port</c> の接続先 + 任意でフォルダ。
     /// </summary>
-    public string WatchTarget { get; set; } = string.Empty;
+    public WatchTarget WatchTarget { get; set; } = WatchTarget.Empty;
 }
 
 public sealed class RecordingObsStatusChangedEventArgs : EventArgs

@@ -27,7 +27,7 @@ dotnet publish src/InfTimestamper/InfTimestamper.csproj -c Release -r win-x64 --
 
 ゲーム抽象化は Phase 9 で `Core/Games/` に抽出済み。**ゲームを増やすときに触るのは 4 箇所**：`Models/GameId`（enum + シリアライズ表記）／`Games/GameCatalog`（表示名・識別子リスト・プレビューデータ・監視ツール名）／新しい `IPlayWatcher` 実装（+ 対応する FieldMapper）／設定ダイアログのタブと `AppSettings` のゲーム別セクション。
 
-`IPlayWatcher.Start(string source)` の `source` は実装ごとの監視対象で、ファイル監視系は出力ディレクトリのパス、SDVX は `ws://host:port`。`AppSettings.WatchTargetFor(GameId)` がゲームごとにこれを組み立てる。
+`IPlayWatcher.Start(WatchTarget target)` の `WatchTarget` は `Directory` / `Endpoint` を持つレコード。ファイル監視系は `Directory`（出力ディレクトリ）だけ、SDVX は `Endpoint`（`ws://host:port`）+ 任意で `Directory`（SDVX Helper のフォルダ。ログ監視用）。`AppSettings.WatchTargetFor(GameId)` がゲームごとにこれを組み立てる。
 
 ### 前段アプリとの関係
 
@@ -101,9 +101,10 @@ INFINITAS のプレイ開始とプレイデータは、**Reflux が出力する�
 
 **ここだけファイル監視ではない。** SDVX Helper は v1.0 系まで `out/history_cursong.xml` を出力していたが、v2 系（v.2.0.0 以降）でファイル出力を廃止し、OBS ブラウザソース向けの WebSocket 配信（既定 `ws://127.0.0.1:8767`）へ移行した。**SDVX Helper 側は `localhost` にしか bind しない**（`websockets.serve(handler, 'localhost', port)` でホストはハードコード）ので、別 PC からは繋がらない。設定でホストを変えられるようにはしてあるが、それはポートフォワード等を挟む場合のためで既定は `127.0.0.1`。`SdvxHelperPlayWatcher` はこの配信サーバへ `ClientWebSocket` で接続し、切断時は OBS 接続と同じ `BackoffSchedule` で再接続する（`Core/Sdvx/`）。
 
-**INFINITAS / pop'n と構造が違う二点**：
+**INFINITAS / pop'n と構造が違う三点**：
 
-- **プレイ開始の判別が payload 依存**。`nowplaying` は「選曲画面でカーソルが動いたとき」と「曲決定画面を読めたとき」の 2 箇所から飛ぶ。前者は `images` にジャケットしか入らず、後者はタイトル / レベル / BPM / エフェクター / イラストレーターの切り出し画像も入る。**この差だけが曲決定（＝プレイ開始）の手がかり**なので、判定は `SdvxFieldMapper.IsSongDecided` に閉じてある。SDVX Helper 側の `_broadcast_nowplaying` の呼び出し元が変わると壊れる箇所
+- **WebSocket にはプレイ開始のイベントが無い。** 主信号は SDVX Helper のログ `log/sdvx_helper.log` の `モード変更: X → play` 行（`SdvxHelperLogTail` が追記を tail する）。リザルト画面からのリトライも、画面判定が曲決定画面を取りこぼして `select → play` と直接遷移した場合も、この行は必ず出る。ログの書式（`src/logger.py`）と `detect_mode` の名前に依存するので、SDVX Helper 側が変わると壊れる箇所。SDVX Helper のフォルダが未設定ならログは使えず、次の `nowplaying` だけで動く（リトライは落ちる）
+- **曲情報は `nowplaying` からしか取れず、その判別が payload 依存**。`nowplaying` は「選曲画面でカーソルが動いたとき」と「曲決定画面を読めたとき」の 2 箇所から飛ぶ。前者は `images` にジャケットしか入らず、後者はタイトル / レベル / BPM / エフェクター / イラストレーターの切り出し画像も入る。判定は `SdvxFieldMapper.IsSongDecided` に閉じてある。曲決定で発火したあと 45 秒以内のログのプレイ画面遷移は同じプレイとして吸収する（`DuplicatePlayStartWindow`）
 - **リザルトは `today_results`（本日分の全リザルト）で飛んでくる**。`items` の `timestamp` 最大のエントリを採り、プレイ開始より前（2 秒の猶予つき）なら前のプレイのものとして棄却する。リザルト待ちでない状態の `today_results` は無視する（接続直後に本日分のキャッシュがまとめて飛んでくる）
 
 メッセージは base64 の切り出し画像を含んで大きいため、DTO へは起こさず `JsonDocument` のまま必要なフィールドだけ読む。マッピングは `SdvxFieldMapper` に集約。**`pre_score` / `pre_ex` / `is_*_updated` / `max_exscore` は自己ベスト・理論値でこのプレイの成績ではないため取り込んでいない。**
@@ -177,10 +178,10 @@ inf-timestamper/
 | --- | --- |
 | `Coordination/` | `RecordingCoordinator` — 状態機械・プレイ監視・OBS 接続を束ねる中核 |
 | `States/` | `AppStateMachine` — 4 状態のメイン状態機械 |
-| `Games/` | ゲーム抽象化。`FieldKeys`（識別子キーの正本）/ `FieldLabels`（識別子の論理名）/ `GameCatalog`（ゲーム別メタデータ）/ `IPlayWatcher` / `PlayEvents` |
+| `Games/` | ゲーム抽象化。`FieldKeys`（識別子キーの正本）/ `FieldLabels`（識別子の論理名）/ `GameCatalog`（ゲーム別メタデータ）/ `IPlayWatcher` / `WatchTarget` / `PlayEvents` |
 | `Reflux/` | INFINITAS のゲーム検知。`RefluxPlayWatcher` / `RefluxLatestJson` / `RefluxFieldMapper` |
 | `Popn/` | pop'n music のゲーム検知。`PopnPlayWatcher` / `PopnResultJson` / `PopnFieldMapper` |
-| `Sdvx/` | SOUND VOLTEX のゲーム検知。`SdvxHelperPlayWatcher`（WebSocket 購読）/ `SdvxFieldMapper` |
+| `Sdvx/` | SOUND VOLTEX のゲーム検知。`SdvxHelperPlayWatcher`（WebSocket 購読）/ `SdvxHelperLogTail`（ログ監視）/ `SdvxFieldMapper` |
 | `Obs/` | OBS WebSocket 接続と再接続バックオフ。配信開始/終了の検知のみ |
 | `Persistence/` | `JsonRecordStore` — バックアップ JSON のアトミック保存と異常終了復旧 |
 | `Formatting/` | `FormatExpander`（`$identifier` の展開）/ `IdentifierCompletion`（サジェストのロジック） |

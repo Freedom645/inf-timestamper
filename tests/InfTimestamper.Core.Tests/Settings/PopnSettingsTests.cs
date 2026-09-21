@@ -45,9 +45,9 @@ public class PopnSettingsTests
 
         Assert.Equal(GameId.Infinitas, loaded.ResolveSelectedGame());
         Assert.NotNull(loaded.Popn);
-        Assert.Equal(string.Empty, loaded.WatchTargetFor(GameId.Popn));
+        Assert.True(loaded.WatchTargetFor(GameId.Popn).IsEmpty);
         Assert.Equal(AppSettings.DefaultTimestampFormat, loaded.TimestampFormatFor(GameId.Popn));
-        Assert.Equal(@"C:\reflux", loaded.WatchTargetFor(GameId.Infinitas));
+        Assert.Equal(@"C:\reflux", loaded.WatchTargetFor(GameId.Infinitas).Directory);
     }
 
     [Fact]
@@ -77,8 +77,8 @@ public class PopnSettingsTests
         settings.Infinitas.RefluxDirectory = @"C:\reflux";
         settings.Popn.TrackerDirectory = @"C:\popn";
 
-        Assert.Equal(@"C:\reflux", settings.WatchTargetFor(GameId.Infinitas));
-        Assert.Equal(@"C:\popn", settings.WatchTargetFor(GameId.Popn));
+        Assert.Equal(@"C:\reflux", settings.WatchTargetFor(GameId.Infinitas).Directory);
+        Assert.Equal(@"C:\popn", settings.WatchTargetFor(GameId.Popn).Directory);
     }
 
     [Theory]

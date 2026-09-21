@@ -18,9 +18,16 @@ namespace InfTimestamper.Core.Sdvx;
 /// 検知の要点:
 /// <list type="bullet">
 /// <item><description>
-/// <b>プレイ開始</b>は <c>nowplaying</c> のうち曲決定画面（楽曲情報画面）由来のものだけを採る。
-/// 選曲画面でカーソルが動いたときにも同じ型のメッセージが飛ぶため、切り出し画像の有無で選り分ける
-/// （判定は <see cref="SdvxFieldMapper.IsSongDecided"/>）。曲決定 1 回につき 1 通しか飛ばない。
+/// <b>プレイ開始</b>の主信号は SDVX Helper のログ（<see cref="SdvxHelperLogTail"/>）の「プレイ画面へ遷移」。
+/// WebSocket にはプレイ開始のイベントが無く、曲決定画面の <c>nowplaying</c> で代用すると
+/// リザルト画面からのリトライと曲決定画面の取りこぼしを落とすため。SDVX Helper のフォルダが
+/// 未設定ならログは使えないので、<c>nowplaying</c> だけで動く。
+/// </description></item>
+/// <item><description>
+/// <c>nowplaying</c> は曲決定画面（楽曲情報画面）由来のものだけを採る。選曲画面でカーソルが動いたときにも
+/// 同じ型のメッセージが飛ぶため、切り出し画像の有無で選り分ける（判定は <see cref="SdvxFieldMapper.IsSongDecided"/>）。
+/// 曲決定 1 回につき 1 通しか飛ばない。曲情報（<c>$title</c> 等）はここからしか取れないので、
+/// ログとの二重発火は時間窓で抑える（曲決定 → プレイ画面は数秒、リトライは 1 曲ぶん以上空く）。
 /// </description></item>
 /// <item><description>
 /// <b>プレイリザルト</b>は <c>today_results</c>（リザルトを DB へ登録したときに飛ぶ）の最新エントリを採る。
@@ -42,12 +49,21 @@ public sealed class SdvxHelperPlayWatcher : IPlayWatcher
 
     private const int ReceiveBufferBytes = 64 * 1024;
 
+    /// <summary>
+    /// 曲決定画面の <c>nowplaying</c> でプレイ開始を発火したあと、この時間内にログの「プレイ画面へ遷移」が
+    /// 来ても同じプレイとみなして二重に発火しない。曲決定 → プレイ画面は長くても十数秒、
+    /// リトライで次のプレイに入るまでは 1 曲ぶん（1 分半以上）空くので、その間を取っている。
+    /// </summary>
+    internal static readonly TimeSpan DuplicatePlayStartWindow = TimeSpan.FromSeconds(45);
+
     private readonly ILogger<SdvxHelperPlayWatcher> _logger;
     private readonly object _gate = new();
 
     private CancellationTokenSource? _cts;
     private Task? _loopTask;
+    private SdvxHelperLogTail? _logTail;
     private DateTimeOffset? _awaitingResultSince;
+    private DateTimeOffset? _lastPlayStartedAt;
     private bool _disposed;
 
     public SdvxHelperPlayWatcher()
@@ -58,7 +74,10 @@ public sealed class SdvxHelperPlayWatcher : IPlayWatcher
         _logger = logger ?? NullLogger<SdvxHelperPlayWatcher>.Instance;
     }
 
-    /// <summary>プレイ開始検知。CapturedAt は曲決定を受信した時刻。Fields は曲情報のみ。</summary>
+    /// <summary>
+    /// プレイ開始検知。CapturedAt は曲決定を受信した時刻、またはログのプレイ画面遷移時刻。
+    /// Fields は曲決定由来なら曲情報、ログ由来（リトライ等）なら空（リザルトで埋まる）。
+    /// </summary>
     public event EventHandler<PlayStartedEventArgs>? PlayStarted;
 
     /// <summary>プレイリザルト検知。Fields は today_results の最新エントリから展開した各識別子。</summary>
@@ -69,8 +88,18 @@ public sealed class SdvxHelperPlayWatcher : IPlayWatcher
         get { lock (_gate) return _cts is not null; }
     }
 
+    /// <summary>
+    /// <see cref="WatchTarget.Endpoint"/> は <c>ws://host:port</c> 形式の接続先（必須）。
+    /// <see cref="WatchTarget.Directory"/> は SDVX Helper のフォルダ（任意。ログ監視に使う）。
+    /// </summary>
+    public void Start(WatchTarget target)
+    {
+        ArgumentNullException.ThrowIfNull(target);
+        Start(target.Endpoint ?? string.Empty, target.Directory);
+    }
+
     /// <summary><paramref name="source"/> は <c>ws://host:port</c> 形式の接続先。</summary>
-    public void Start(string source)
+    public void Start(string source, string? helperDirectory = null)
     {
         if (string.IsNullOrWhiteSpace(source))
             throw new ArgumentException("SDVX Helper の接続先が指定されていません。", nameof(source));
@@ -88,12 +117,38 @@ public sealed class SdvxHelperPlayWatcher : IPlayWatcher
                 throw new InvalidOperationException("既に監視が動作中です。");
 
             _awaitingResultSince = null;
+            _lastPlayStartedAt = null;
             _cts = new CancellationTokenSource();
 
             var token = _cts.Token;
             _loopTask = Task.Run(() => RunAsync(endpoint, token), token);
 
             _logger.LogInformation("SDVX Helper への接続を開始します: {Endpoint}", endpoint);
+
+            // ログ監視は任意。張れなくても WebSocket だけで動く（リトライは拾えなくなる）
+            if (!string.IsNullOrWhiteSpace(helperDirectory))
+            {
+                var tail = new SdvxHelperLogTail(_logger);
+                try
+                {
+                    tail.PlayEntered += OnLogPlayEntered;
+                    tail.Start(helperDirectory);
+                    _logTail = tail;
+                }
+                catch (Exception ex)
+                {
+                    tail.PlayEntered -= OnLogPlayEntered;
+                    tail.Dispose();
+                    _logger.LogWarning(ex,
+                        "SDVX Helper のログ監視を開始できませんでした。曲決定画面の検知だけで動作します: {Directory}",
+                        helperDirectory);
+                }
+            }
+            else
+            {
+                _logger.LogInformation(
+                    "SDVX Helper のフォルダが未設定のため、プレイ開始は曲決定画面の検知だけで判定します（リトライは記録されません）。");
+            }
         }
     }
 
@@ -102,14 +157,24 @@ public sealed class SdvxHelperPlayWatcher : IPlayWatcher
         CancellationTokenSource? cts;
         Task? loopTask;
 
+        SdvxHelperLogTail? tail;
         lock (_gate)
         {
             if (_cts is null) return;
             cts = _cts;
             loopTask = _loopTask;
+            tail = _logTail;
             _cts = null;
             _loopTask = null;
+            _logTail = null;
             _awaitingResultSince = null;
+            _lastPlayStartedAt = null;
+        }
+
+        if (tail is not null)
+        {
+            tail.PlayEntered -= OnLogPlayEntered;
+            tail.Dispose();
         }
 
         try { cts.Cancel(); } catch (ObjectDisposedException) { /* ignore */ }
@@ -250,15 +315,42 @@ public sealed class SdvxHelperPlayWatcher : IPlayWatcher
             return;
         }
 
-        var startedAt = DateTimeOffset.Now;
         var fields = SdvxFieldMapper.MapNowPlaying(data);
+        _logger.LogDebug("SDVX: 曲決定画面を検知しました（{Count} フィールド）。", fields.Count);
+        RaisePlayStarted(DateTimeOffset.Now, fields, "曲決定画面");
+    }
 
+    /// <summary>
+    /// SDVX Helper のログでプレイ画面への遷移を検知したとき。
+    /// 直前に曲決定画面で発火済みなら同じプレイなので二重に起こさない。
+    /// </summary>
+    private void OnLogPlayEntered(object? sender, DateTimeOffset at)
+    {
+        lock (_gate)
+        {
+            if (_lastPlayStartedAt is DateTimeOffset last && at - last < DuplicatePlayStartWindow)
+            {
+                _logger.LogDebug("SDVX: 直前の曲決定画面と同じプレイのため、ログのプレイ画面遷移を無視します。");
+                return;
+            }
+        }
+
+        // リトライや曲決定画面の取りこぼし。曲情報はリザルトで埋まる
+        RaisePlayStarted(at, new Dictionary<string, string>(), "ログのプレイ画面遷移");
+    }
+
+    /// <summary>テスト用: ログにプレイ画面遷移が書かれたのと同じ経路を通す。</summary>
+    internal void SimulateLogPlayEntered(DateTimeOffset at) => OnLogPlayEntered(this, at);
+
+    private void RaisePlayStarted(DateTimeOffset startedAt, IReadOnlyDictionary<string, string> fields, string source)
+    {
         lock (_gate)
         {
             _awaitingResultSince = startedAt;
+            _lastPlayStartedAt = startedAt;
         }
 
-        _logger.LogDebug("SDVX: プレイ開始を検知しました（{Count} フィールド）。", fields.Count);
+        _logger.LogDebug("SDVX: プレイ開始を検知しました（{Source}）。", source);
         PlayStarted?.Invoke(this, new PlayStartedEventArgs(startedAt, fields));
     }
 

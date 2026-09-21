@@ -1,4 +1,5 @@
 using System.Text.Json.Serialization;
+using InfTimestamper.Core.Games;
 using InfTimestamper.Core.Models;
 
 namespace InfTimestamper.Core.Settings;
@@ -79,15 +80,17 @@ public sealed class AppSettings
 
     /// <summary>
     /// ゲーム検知の監視対象。INFINITAS / pop'n music は外部ツールの出力ディレクトリ、
-    /// SOUND VOLTEX は SDVX Helper のデータ配信 WebSocket の接続先。
-    /// 未設定なら空文字列（検知しない）。
+    /// SOUND VOLTEX は SDVX Helper のデータ配信 WebSocket の接続先 + 任意で SDVX Helper のフォルダ。
+    /// 未設定なら <see cref="WatchTarget.Empty"/>（検知しない）。
     /// </summary>
-    public string WatchTargetFor(GameId game) => (game switch
+    public WatchTarget WatchTargetFor(GameId game) => game switch
     {
-        GameId.Popn => Popn?.TrackerDirectory,
-        GameId.Sdvx => Sdvx is null ? null : SdvxHelperEndpoint(Sdvx.HelperHost, Sdvx.HelperPort),
-        _ => Infinitas?.RefluxDirectory,
-    }) ?? string.Empty;
+        GameId.Popn => WatchTarget.ForDirectory(Popn?.TrackerDirectory),
+        GameId.Sdvx => Sdvx is null
+            ? WatchTarget.Empty
+            : WatchTarget.ForEndpoint(SdvxHelperEndpoint(Sdvx.HelperHost, Sdvx.HelperPort), Sdvx.HelperDirectory),
+        _ => WatchTarget.ForDirectory(Infinitas?.RefluxDirectory),
+    };
 
     /// <summary>SDVX Helper のデータ配信 WebSocket の接続先。ホスト未設定なら既定ホスト。</summary>
     public static string SdvxHelperEndpoint(string? host, int port)
@@ -190,4 +193,12 @@ public sealed class SdvxSettings
     /// <summary>SDVX Helper のデータ配信ポート（SDVX Helper 側の <c>websocket_data_port</c>）。</summary>
     [JsonPropertyOrder(2)]
     public int HelperPort { get; set; } = AppSettings.DefaultSdvxHelperPort;
+
+    /// <summary>
+    /// SDVX Helper のフォルダ（<c>sdvx_helper.exe</c> があり、直下に <c>log/</c> が作られる場所）。任意。
+    /// 指定すると <c>log/sdvx_helper.log</c> の画面遷移ログを監視し、リトライや曲決定画面の
+    /// 取りこぼしがあってもプレイ開始を記録できる。
+    /// </summary>
+    [JsonPropertyOrder(3)]
+    public string HelperDirectory { get; set; } = string.Empty;
 }

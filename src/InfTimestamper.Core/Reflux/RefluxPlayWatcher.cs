@@ -62,6 +62,13 @@ public sealed class RefluxPlayWatcher : IPlayWatcher
     }
 
     /// <summary>指定ディレクトリの監視を開始する。</summary>
+    public void Start(WatchTarget target)
+    {
+        ArgumentNullException.ThrowIfNull(target);
+        Start(target.Directory ?? string.Empty);
+    }
+
+    /// <summary>Reflux の出力ディレクトリを指定して監視を開始する。</summary>
     public void Start(string directory)
     {
         if (string.IsNullOrWhiteSpace(directory))

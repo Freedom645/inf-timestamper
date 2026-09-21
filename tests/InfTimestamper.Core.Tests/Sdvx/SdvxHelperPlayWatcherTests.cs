@@ -158,6 +158,121 @@ public class SdvxHelperPlayWatcherTests
         Assert.Throws<ArgumentException>(() => watcher.Start(string.Empty));
         Assert.Throws<ArgumentException>(() => watcher.Start(@"C:\sdvx_helper\out"));
         Assert.Throws<ArgumentException>(() => watcher.Start("http://127.0.0.1:8767"));
+        Assert.Throws<ArgumentException>(() => watcher.Start(WatchTarget.ForDirectory(@"C:\sdvx_helper")));
         Assert.False(watcher.IsRunning);
+    }
+
+    // ---- SDVX Helper のログ（プレイ画面への遷移）経由のプレイ開始 ----
+
+    [Fact]
+    public void LogPlayEntered_WithoutSongDecided_FiresPlayStartedWithEmptyFields()
+    {
+        // リトライ: 選曲も曲決定も通らないので nowplaying は来ない。ログの遷移だけで起こす
+        var watcher = new SdvxHelperPlayWatcher();
+        PlayStartedEventArgs? started = null;
+        watcher.PlayStarted += (_, e) => started = e;
+
+        var at = DateTimeOffset.Now;
+        watcher.SimulateLogPlayEntered(at);
+
+        Assert.NotNull(started);
+        Assert.Equal(at, started!.CapturedAt);
+        Assert.Empty(started.Fields);
+    }
+
+    [Fact]
+    public void LogPlayEntered_RightAfterSongDecided_IsTheSamePlay()
+    {
+        // 通常の流れ: 曲決定画面（nowplaying）→ 数秒後にプレイ画面（ログ）。二重に起こさない
+        var watcher = new SdvxHelperPlayWatcher();
+        var startedCount = 0;
+        watcher.PlayStarted += (_, _) => startedCount++;
+
+        watcher.HandleMessage(SdvxMessages.Utf8(SdvxMessages.NowPlayingFromSongDecided()));
+        watcher.SimulateLogPlayEntered(DateTimeOffset.Now.AddSeconds(5));
+
+        Assert.Equal(1, startedCount);
+    }
+
+    [Fact]
+    public void LogPlayEntered_LongAfterSongDecided_IsANewPlay()
+    {
+        // 曲決定 → プレイ → リザルト → リトライでプレイ。2 回目はログでしか分からない
+        var watcher = new SdvxHelperPlayWatcher();
+        var startedCount = 0;
+        watcher.PlayStarted += (_, _) => startedCount++;
+
+        watcher.HandleMessage(SdvxMessages.Utf8(SdvxMessages.NowPlayingFromSongDecided()));
+        watcher.SimulateLogPlayEntered(
+            DateTimeOffset.Now + SdvxHelperPlayWatcher.DuplicatePlayStartWindow + TimeSpan.FromSeconds(1));
+
+        Assert.Equal(2, startedCount);
+    }
+
+    [Fact]
+    public void LogPlayEntered_ThenResult_FillsThePlay()
+    {
+        var watcher = new SdvxHelperPlayWatcher();
+        PlayResultEventArgs? result = null;
+        watcher.PlayResultDetected += (_, e) => result = e;
+
+        watcher.SimulateLogPlayEntered(DateTimeOffset.Now);
+        watcher.HandleMessage(SdvxMessages.Utf8(SdvxMessages.TodayResults(
+            SdvxMessages.ResultItem(DateTimeOffset.Now.AddMinutes(2), title: "Retry Song"))));
+
+        Assert.NotNull(result);
+        Assert.Equal("Retry Song", result!.Fields["title"]);
+    }
+
+    [Fact]
+    public void ResultBeforeTheLogPlayEntered_IsRejected()
+    {
+        // 前のプレイのリザルトを、ログで起こしたプレイに紐づけない
+        var watcher = new SdvxHelperPlayWatcher();
+        var resultCount = 0;
+        watcher.PlayResultDetected += (_, _) => resultCount++;
+
+        watcher.SimulateLogPlayEntered(DateTimeOffset.Now);
+        watcher.HandleMessage(SdvxMessages.Utf8(SdvxMessages.TodayResults(
+            SdvxMessages.ResultItem(DateTimeOffset.Now.AddMinutes(-3)))));
+
+        Assert.Equal(0, resultCount);
+    }
+
+    [Fact]
+    public async Task Start_WithHelperDirectory_TailsTheLog()
+    {
+        using var dir = new TempDirectory();
+        var watcher = new SdvxHelperPlayWatcher();
+
+        // 接続先は繋がらなくてよい（バックオフで再試行し続けるだけ）
+        watcher.Start(WatchTarget.ForEndpoint("ws://127.0.0.1:1", dir.Path));
+        try
+        {
+            Assert.True(watcher.IsRunning);
+            Assert.True(Directory.Exists(Path.Combine(dir.Path, SdvxHelperLogTail.LogDirectoryName)));
+        }
+        finally
+        {
+            await watcher.StopAsync();
+        }
+        Assert.False(watcher.IsRunning);
+    }
+
+    [Fact]
+    public async Task Start_WithMissingHelperDirectory_StillRunsWithoutTheLog()
+    {
+        var watcher = new SdvxHelperPlayWatcher();
+        var missing = Path.Combine(Path.GetTempPath(), "sdvx-missing-" + Guid.NewGuid().ToString("N"));
+
+        watcher.Start(WatchTarget.ForEndpoint("ws://127.0.0.1:1", missing));
+        try
+        {
+            Assert.True(watcher.IsRunning);
+        }
+        finally
+        {
+            await watcher.StopAsync();
+        }
     }
 }

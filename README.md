@@ -50,7 +50,8 @@ SDVX だけはファイル監視ではなく、**SDVX Helper のデータ配信 
 
 - SDVX Helper 側で「WebSocketデータ配信ポート」を確認し、本アプリの SOUND VOLTEX タブに同じ値を入れてください
 - 配信サーバは localhost にしか待ち受けないため、SDVX Helper と本アプリは同じ PC で動かす必要があります（ホスト欄は既定の `127.0.0.1` のままにしてください。ポートフォワード等を挟む場合のために変更できるようにしてあります）
-- 曲を決定した時刻をプレイ開始として記録し、SDVX Helper がリザルトを登録した時点で成績を紐づけます
+- **SDVX Helper のフォルダ（`sdvx_helper.exe` がある場所）も指定してください。** SDVX Helper のログ（`log\sdvx_helper.log`）からプレイ画面に入った時刻を拾い、これをプレイ開始として記録します。リザルト画面からのリトライもこれで記録されます。未指定の場合は曲決定画面の検知だけになり、リトライは記録されず、曲決定画面を取りこぼすと記録が抜けます
+- SDVX Helper がリザルトを登録した時点で成績を紐づけます
 
 ## 仕組み
 
@@ -128,7 +129,7 @@ OBS を使わない場合は、「開始」のあとに続けて「強制開始�
 
 - INFINITAS: Reflux が `playstate.txt` / `title.txt` / `level.txt` / `latest.json` を出力するフォルダ
 - pop'n music: トラッカーが `state.txt` / `result.json` を出力するフォルダ
-- SOUND VOLTEX: SDVX Helper の「WebSocketデータ配信ポート」（既定 8767）
+- SOUND VOLTEX: SDVX Helper の「WebSocketデータ配信ポート」（既定 8767）と、SDVX Helper のフォルダ
 
 ### 2. 設定
 
@@ -136,7 +137,7 @@ OBS を使わない場合は、「開始」のあとに続けて「強制開始�
 
 - **配信ソフト連携タブ**: OBS のホスト・ポート・パスワードを入力し、「接続テスト」で疎通を確認します
 - **INFINITAS タブ / pop'n music タブ**: 外部ツールの出力フォルダを指定し、タイムスタンプの書式を決めます
-- **SOUND VOLTEX タブ**: SDVX Helper の接続先（ホスト・ポート）を指定し、タイムスタンプの書式を決めます
+- **SOUND VOLTEX タブ**: SDVX Helper の接続先（ホスト・ポート）とフォルダを指定し、タイムスタンプの書式を決めます
 
 ### 3. 記録
 
