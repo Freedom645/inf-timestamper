@@ -103,9 +103,10 @@ INFINITAS のプレイ開始とプレイデータは、**Reflux が出力する�
 
 **INFINITAS / pop'n と構造が違う三点**：
 
-- **WebSocket にはプレイ開始のイベントが無い。** 主信号は SDVX Helper のログ `log/sdvx_helper.log` の `モード変更: X → play` 行（`SdvxHelperLogTail` が追記を tail する）。リザルト画面からのリトライも、画面判定が曲決定画面を取りこぼして `select → play` と直接遷移した場合も、この行は必ず出る。ログの書式（`src/logger.py`）と `detect_mode` の名前に依存するので、SDVX Helper 側が変わると壊れる箇所。SDVX Helper のフォルダが未設定ならログは使えず、次の `nowplaying` だけで動く（リトライは落ちる）
-- **曲情報は `nowplaying` からしか取れず、その判別が payload 依存**。`nowplaying` は「選曲画面でカーソルが動いたとき」と「曲決定画面を読めたとき」の 2 箇所から飛ぶ。前者は `images` にジャケットしか入らず、後者はタイトル / レベル / BPM / エフェクター / イラストレーターの切り出し画像も入る。判定は `SdvxFieldMapper.IsSongDecided` に閉じてある。曲決定で発火したあと 45 秒以内のログのプレイ画面遷移は同じプレイとして吸収する（`DuplicatePlayStartWindow`）
-- **リザルトは `today_results`（本日分の全リザルト）で飛んでくる**。`items` の `timestamp` 最大のエントリを採り、プレイ開始より前（2 秒の猶予つき）なら前のプレイのものとして棄却する。リザルト待ちでない状態の `today_results` は無視する（接続直後に本日分のキャッシュがまとめて飛んでくる）
+- **WebSocket にはプレイ開始のイベントが無い。** プレイ開始は SDVX Helper のログ `log/sdvx_helper.log` の `モード変更: X → play` 行で決める（`SdvxHelperLogTail` が追記を tail する）。リザルト画面からのリトライでもこの行は出る。ログの書式（`src/logger.py`）と `detect_mode` の名前に依存するので、SDVX Helper 側が変わると壊れる箇所。フォルダが未設定ならログは使えず、`nowplaying` だけで動く（リトライは落ちる）
+  - **`init` を状態として扱わないのが肝。** 画面判定は暗転・演出・ロード中に頻繁に `init` へ落ちるので、実ログでは遷移がほぼ全て `init` 経由になり、1 プレイ中に `play → init → play` が何度も起きる（実測サンプルで `→ play` 21 回 ＝ 実プレイ 12 回）。`init` は直前の既知モードを保ったまま読み飛ばし、既知モードが `play` 以外 → `play` のときだけ発火する。α.2 でここを素直に拾って二重記録・空の記録を出した
+- **`nowplaying` は曲情報のキャッシュであってプレイ開始ではない**（曲を決めてからプレイせずに戻ることがある）。曲決定画面由来のもので更新し、選曲画面由来のもので捨てる。プレイ開始時にその時点のキャッシュを添えるので、リトライでも直前と同じ譜面の曲情報が入る。曲決定画面かどうかの判別は payload 依存で、`images` にジャケット以外（タイトル / レベル / BPM / エフェクター / イラストレーター）の切り出し画像が入るかで見る（`SdvxFieldMapper.IsSongDecided`）
+- **リザルトは `today_results`（本日分の全リザルト）で飛んでくる**。`items` の `timestamp` 最大のエントリを採り、プレイ開始より前（2 秒の猶予つき）なら前のプレイのものとして棄却する。リザルト待ちでない状態の `today_results` は無視する（接続直後に本日分のキャッシュがまとめて飛んでくる）。SDVX Helper がリザルト画面を 2 回読み取って同じプレイを 2 回登録することがあり、そのとき `timestamp` がずれる（実測 2 秒差）ので、同一判定は譜面 + 成績の内容 + 30 秒の時間窓で行う
 
 メッセージは base64 の切り出し画像を含んで大きいため、DTO へは起こさず `JsonDocument` のまま必要なフィールドだけ読む。マッピングは `SdvxFieldMapper` に集約。**`pre_score` / `pre_ex` / `is_*_updated` / `max_exscore` は自己ベスト・理論値でこのプレイの成績ではないため取り込んでいない。**
 
@@ -162,7 +163,7 @@ inf-timestamper/
 │   ├── 要件.md                     仕様の正本
 │   ├── 実装計画.md                 フェーズ別の進捗・DoD・引き継ぎメモ
 │   ├── release.md                  publish → vpk pack → GitHub Releases のリリース手順
-│   └── sample/                     外部ツールの実出力サンプル（reflux / popn-tracker）
+│   └── sample/                     外部ツールの実出力サンプル（reflux / popn-tracker / sdvx_helper）
 ├── src/
 │   ├── InfTimestamper/             WPF 本体。Views / ViewModels / Services / Converters / Behaviors、
 │   │                               App.xaml.cs（DI 組立）、Program.cs（独自 Main + Velopack）、

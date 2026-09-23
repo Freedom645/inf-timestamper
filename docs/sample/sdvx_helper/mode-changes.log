@@ -1,0 +1,140 @@
+[2026-09-23 15:00:23,652] [INFO] sdvx_helper.pyw:753:_on_mode_changed - モード変更: select → init
+[2026-09-23 15:00:24,311] [INFO] sdvx_helper.pyw:753:_on_mode_changed - モード変更: init → select
+[2026-09-23 15:00:24,739] [INFO] sdvx_helper.pyw:753:_on_mode_changed - モード変更: select → init
+[2026-09-23 15:00:26,178] [INFO] sdvx_helper.pyw:753:_on_mode_changed - モード変更: init → detect
+[2026-09-23 15:00:26,659] [INFO] sdvx_helper.pyw:873:_process_detect - detect認識結果: title='Corrupting Wonderland', difficulty=MXM
+[2026-09-23 15:00:28,117] [INFO] sdvx_helper.pyw:753:_on_mode_changed - モード変更: detect → init
+[2026-09-23 15:00:32,728] [INFO] sdvx_helper.pyw:753:_on_mode_changed - モード変更: init → play
+[2026-09-23 15:02:42,451] [INFO] sdvx_helper.pyw:753:_on_mode_changed - モード変更: play → init
+[2026-09-23 15:02:49,730] [INFO] sdvx_helper.pyw:753:_on_mode_changed - モード変更: init → result_exscore
+[2026-09-23 15:02:49,774] [WARNING] sdvx_helper.pyw:972:_process_result - リザルト登録スキップ: スコア/ランプ認識不足 title='Corrupting Wonderland', difficulty=MXM, score=None, lamp=EXC-COMP
+[2026-09-23 15:02:50,001] [INFO] sdvx_helper.pyw:753:_on_mode_changed - モード変更: result_exscore → result
+[2026-09-23 15:02:50,467] [INFO] sdvx_helper.pyw:1104:_process_result - リザルト登録: [result] Corrupting Wonderland (MXM) lv:18 score:9919478 ex:7181 grade:S lamp:EXC-COMP vf:382 ts:2026-09-23 15:02:49
+[2026-09-23 15:02:50,659] [INFO] sdvx_helper.pyw:753:_on_mode_changed - モード変更: result → init
+[2026-09-23 15:02:51,312] [INFO] sdvx_helper.pyw:753:_on_mode_changed - モード変更: init → result
+[2026-09-23 15:02:51,800] [INFO] sdvx_helper.pyw:1104:_process_result - リザルト登録: [result] Corrupting Wonderland (MXM) lv:18 score:9919478 ex:7181 grade:S lamp:EXC-COMP vf:382 ts:2026-09-23 15:02:51
+[2026-09-23 15:02:52,624] [INFO] sdvx_helper.pyw:753:_on_mode_changed - モード変更: result → init
+[2026-09-23 15:02:57,211] [INFO] sdvx_helper.pyw:753:_on_mode_changed - モード変更: init → select
+[2026-09-23 15:03:28,934] [INFO] sdvx_helper.pyw:753:_on_mode_changed - モード変更: select → init
+[2026-09-23 15:03:30,028] [INFO] sdvx_helper.pyw:753:_on_mode_changed - モード変更: init → select
+[2026-09-23 15:03:30,461] [INFO] sdvx_helper.pyw:753:_on_mode_changed - モード変更: select → init
+[2026-09-23 15:03:32,105] [INFO] sdvx_helper.pyw:753:_on_mode_changed - モード変更: init → detect
+[2026-09-23 15:03:32,585] [INFO] sdvx_helper.pyw:873:_process_detect - detect認識結果: title='最強女神†ウーサペコラ', difficulty=MXM
+[2026-09-23 15:03:33,405] [INFO] sdvx_helper.pyw:753:_on_mode_changed - モード変更: detect → init
+[2026-09-23 15:03:38,006] [INFO] sdvx_helper.pyw:753:_on_mode_changed - モード変更: init → play
+[2026-09-23 15:05:53,854] [INFO] sdvx_helper.pyw:753:_on_mode_changed - モード変更: play → init
+[2026-09-23 15:05:54,297] [INFO] sdvx_helper.pyw:753:_on_mode_changed - モード変更: init → play
+[2026-09-23 15:05:58,240] [INFO] sdvx_helper.pyw:753:_on_mode_changed - モード変更: play → init
+[2026-09-23 15:06:04,134] [INFO] sdvx_helper.pyw:753:_on_mode_changed - モード変更: init → result
+[2026-09-23 15:06:04,624] [INFO] sdvx_helper.pyw:1104:_process_result - リザルト登録: [result] 最強女神†ウーサペコラ (MXM) lv:18 score:9807421 ex:6385 grade:AAA+ lamp:EXC-COMP vf:367 ts:2026-09-23 15:06:04
+[2026-09-23 15:06:11,353] [INFO] sdvx_helper.pyw:753:_on_mode_changed - モード変更: result → init
+[2026-09-23 15:06:18,517] [INFO] sdvx_helper.pyw:753:_on_mode_changed - モード変更: init → play
+[2026-09-23 15:08:08,261] [INFO] sdvx_helper.pyw:753:_on_mode_changed - モード変更: play → init
+[2026-09-23 15:08:09,265] [INFO] sdvx_helper.pyw:753:_on_mode_changed - モード変更: init → result_exscore
+[2026-09-23 15:08:09,315] [WARNING] sdvx_helper.pyw:972:_process_result - リザルト登録スキップ: スコア/ランプ認識不足 title=None, difficulty=MXM, score=None, lamp=PLAYED
+[2026-09-23 15:08:09,477] [INFO] sdvx_helper.pyw:753:_on_mode_changed - モード変更: result_exscore → init
+[2026-09-23 15:08:12,761] [INFO] sdvx_helper.pyw:753:_on_mode_changed - モード変更: init → play
+[2026-09-23 15:08:34,834] [INFO] sdvx_helper.pyw:753:_on_mode_changed - モード変更: play → init
+[2026-09-23 15:08:39,447] [INFO] sdvx_helper.pyw:753:_on_mode_changed - モード変更: init → play
+[2026-09-23 15:10:55,077] [INFO] sdvx_helper.pyw:753:_on_mode_changed - モード変更: play → init
+[2026-09-23 15:10:55,512] [INFO] sdvx_helper.pyw:753:_on_mode_changed - モード変更: init → play
+[2026-09-23 15:10:59,455] [INFO] sdvx_helper.pyw:753:_on_mode_changed - モード変更: play → init
+[2026-09-23 15:11:00,987] [INFO] sdvx_helper.pyw:753:_on_mode_changed - モード変更: init → result_exscore
+[2026-09-23 15:11:01,030] [WARNING] sdvx_helper.pyw:972:_process_result - リザルト登録スキップ: スコア/ランプ認識不足 title='最強女神†ウーサペコラ', difficulty=MXM, score=None, lamp=EXC-COMP
+[2026-09-23 15:11:01,198] [INFO] sdvx_helper.pyw:753:_on_mode_changed - モード変更: result_exscore → result
+[2026-09-23 15:11:01,694] [INFO] sdvx_helper.pyw:1104:_process_result - リザルト登録: [result] 最強女神†ウーサペコラ (MXM) lv:18 score:9889619 ex:6497 grade:AAA+ lamp:EXC-COMP vf:370 ts:2026-09-23 15:11:00
+[2026-09-23 15:11:12,577] [INFO] sdvx_helper.pyw:753:_on_mode_changed - モード変更: result → init
+[2026-09-23 15:11:19,841] [INFO] sdvx_helper.pyw:753:_on_mode_changed - モード変更: init → play
+[2026-09-23 15:12:18,197] [INFO] sdvx_helper.pyw:753:_on_mode_changed - モード変更: play → init
+[2026-09-23 15:12:22,898] [INFO] sdvx_helper.pyw:753:_on_mode_changed - モード変更: init → play
+[2026-09-23 15:14:43,117] [INFO] sdvx_helper.pyw:753:_on_mode_changed - モード変更: play → init
+[2026-09-23 15:14:50,617] [INFO] sdvx_helper.pyw:753:_on_mode_changed - モード変更: init → result
+[2026-09-23 15:14:51,154] [INFO] sdvx_helper.pyw:1104:_process_result - リザルト登録: [result] 最強女神†ウーサペコラ (MXM) lv:18 score:9931892 ex:6540 grade:S lamp:EXC-COMP vf:382 ts:2026-09-23 15:14:50
+[2026-09-23 15:14:55,319] [WARNING] sdvx_helper.pyw:972:_process_result - リザルト登録スキップ: スコア/ランプ認識不足 title=None, difficulty=MXM, score=None, lamp=PLAYED
+[2026-09-23 15:14:55,526] [WARNING] sdvx_helper.pyw:972:_process_result - リザルト登録スキップ: スコア/ランプ認識不足 title=None, difficulty=MXM, score=None, lamp=PLAYED
+[2026-09-23 15:14:55,747] [WARNING] sdvx_helper.pyw:972:_process_result - リザルト登録スキップ: スコア/ランプ認識不足 title=None, difficulty=MXM, score=None, lamp=PLAYED
+[2026-09-23 15:14:55,967] [WARNING] sdvx_helper.pyw:972:_process_result - リザルト登録スキップ: スコア/ランプ認識不足 title=None, difficulty=MXM, score=None, lamp=PLAYED
+[2026-09-23 15:14:56,186] [WARNING] sdvx_helper.pyw:972:_process_result - リザルト登録スキップ: スコア/ランプ認識不足 title=None, difficulty=MXM, score=None, lamp=PLAYED
+[2026-09-23 15:14:56,625] [WARNING] sdvx_helper.pyw:972:_process_result - リザルト登録スキップ: スコア/ランプ認識不足 title=None, difficulty=MXM, score=None, lamp=PLAYED
+[2026-09-23 15:14:56,795] [INFO] sdvx_helper.pyw:753:_on_mode_changed - モード変更: result → init
+[2026-09-23 15:14:59,850] [INFO] sdvx_helper.pyw:753:_on_mode_changed - モード変更: init → result
+[2026-09-23 15:15:00,559] [INFO] sdvx_helper.pyw:1104:_process_result - リザルト登録: [result] 最強女神†ウーサペコラ (MXM) lv:18 score:9931892 ex:6540 grade:S lamp:EXC-COMP vf:382 ts:2026-09-23 15:14:59
+[2026-09-23 15:15:05,762] [INFO] sdvx_helper.pyw:753:_on_mode_changed - モード変更: result → result_exscore
+[2026-09-23 15:15:05,803] [WARNING] sdvx_helper.pyw:972:_process_result - リザルト登録スキップ: スコア/ランプ認識不足 title='perditus†paradisus', difficulty=MXM, score=None, lamp=PLAYED
+[2026-09-23 15:15:05,983] [INFO] sdvx_helper.pyw:753:_on_mode_changed - モード変更: result_exscore → init
+[2026-09-23 15:15:10,791] [INFO] sdvx_helper.pyw:753:_on_mode_changed - モード変更: init → select
+[2026-09-23 15:16:31,954] [INFO] sdvx_helper.pyw:753:_on_mode_changed - モード変更: select → init
+[2026-09-23 15:16:32,390] [INFO] sdvx_helper.pyw:753:_on_mode_changed - モード変更: init → select
+[2026-09-23 15:16:32,827] [INFO] sdvx_helper.pyw:753:_on_mode_changed - モード変更: select → init
+[2026-09-23 15:16:34,360] [INFO] sdvx_helper.pyw:753:_on_mode_changed - モード変更: init → detect
+[2026-09-23 15:16:34,850] [INFO] sdvx_helper.pyw:873:_process_detect - detect認識結果: title='スラッシュ//シスターズ', difficulty=MXM
+[2026-09-23 15:16:36,645] [INFO] sdvx_helper.pyw:753:_on_mode_changed - モード変更: detect → init
+[2026-09-23 15:16:41,138] [INFO] sdvx_helper.pyw:753:_on_mode_changed - モード変更: init → play
+[2026-09-23 15:18:50,858] [INFO] sdvx_helper.pyw:753:_on_mode_changed - モード変更: play → init
+[2026-09-23 15:18:56,543] [INFO] sdvx_helper.pyw:753:_on_mode_changed - モード変更: init → result_exscore
+[2026-09-23 15:18:56,585] [WARNING] sdvx_helper.pyw:972:_process_result - リザルト登録スキップ: スコア/ランプ認識不足 title='スラッシュ//シスターズ', difficulty=MXM, score=None, lamp=EXC-COMP
+[2026-09-23 15:18:56,766] [INFO] sdvx_helper.pyw:753:_on_mode_changed - モード変更: result_exscore → result
+[2026-09-23 15:18:57,251] [INFO] sdvx_helper.pyw:1104:_process_result - リザルト登録: [result] スラッシュ//シスターズ (MXM) lv:18 score:9808110 ex:6771 grade:AAA+ lamp:EXC-COMP vf:367 ts:2026-09-23 15:18:56
+[2026-09-23 15:19:03,773] [INFO] sdvx_helper.pyw:753:_on_mode_changed - モード変更: result → result_exscore
+[2026-09-23 15:19:03,824] [WARNING] sdvx_helper.pyw:972:_process_result - リザルト登録スキップ: スコア/ランプ認識不足 title=None, difficulty=MXM, score=None, lamp=EXC-COMP
+[2026-09-23 15:19:03,984] [INFO] sdvx_helper.pyw:753:_on_mode_changed - モード変更: result_exscore → init
+[2026-09-23 15:19:11,035] [INFO] sdvx_helper.pyw:753:_on_mode_changed - モード変更: init → play
+[2026-09-23 15:19:24,966] [INFO] sdvx_helper.pyw:753:_on_mode_changed - モード変更: play → init
+[2026-09-23 15:19:25,964] [INFO] sdvx_helper.pyw:753:_on_mode_changed - モード変更: init → result_exscore
+[2026-09-23 15:19:26,015] [WARNING] sdvx_helper.pyw:972:_process_result - リザルト登録スキップ: スコア/ランプ認識不足 title=None, difficulty=MXM, score=None, lamp=PLAYED
+[2026-09-23 15:19:26,180] [INFO] sdvx_helper.pyw:753:_on_mode_changed - モード変更: result_exscore → init
+[2026-09-23 15:19:29,466] [INFO] sdvx_helper.pyw:753:_on_mode_changed - モード変更: init → play
+[2026-09-23 15:21:03,743] [INFO] sdvx_helper.pyw:753:_on_mode_changed - モード変更: play → init
+[2026-09-23 15:21:08,448] [INFO] sdvx_helper.pyw:753:_on_mode_changed - モード変更: init → play
+[2026-09-23 15:22:06,410] [INFO] sdvx_helper.pyw:753:_on_mode_changed - モード変更: play → init
+[2026-09-23 15:22:10,914] [INFO] sdvx_helper.pyw:753:_on_mode_changed - モード変更: init → play
+[2026-09-23 15:24:20,842] [INFO] sdvx_helper.pyw:753:_on_mode_changed - モード変更: play → init
+[2026-09-23 15:24:22,373] [INFO] sdvx_helper.pyw:753:_on_mode_changed - モード変更: init → result
+[2026-09-23 15:24:22,868] [INFO] sdvx_helper.pyw:1104:_process_result - リザルト登録: [result] スラッシュ//シスターズ (MXM) lv:18 score:9876900 ex:6874 grade:AAA+ lamp:EXC-COMP vf:369 ts:2026-09-23 15:24:22
+[2026-09-23 15:24:33,749] [INFO] sdvx_helper.pyw:753:_on_mode_changed - モード変更: result → init
+[2026-09-23 15:24:41,126] [INFO] sdvx_helper.pyw:753:_on_mode_changed - モード変更: init → play
+[2026-09-23 15:26:43,124] [INFO] sdvx_helper.pyw:753:_on_mode_changed - モード変更: play → init
+[2026-09-23 15:26:47,514] [INFO] sdvx_helper.pyw:753:_on_mode_changed - モード変更: init → play
+[2026-09-23 15:28:57,451] [INFO] sdvx_helper.pyw:753:_on_mode_changed - モード変更: play → init
+[2026-09-23 15:29:04,732] [INFO] sdvx_helper.pyw:753:_on_mode_changed - モード変更: init → result_exscore
+[2026-09-23 15:29:04,774] [WARNING] sdvx_helper.pyw:972:_process_result - リザルト登録スキップ: スコア/ランプ認識不足 title='スラッシュ//シスターズ', difficulty=MXM, score=None, lamp=EXC-COMP
+[2026-09-23 15:29:04,999] [INFO] sdvx_helper.pyw:753:_on_mode_changed - モード変更: result_exscore → result
+[2026-09-23 15:29:05,485] [INFO] sdvx_helper.pyw:1104:_process_result - リザルト登録: [result] スラッシュ//シスターズ (MXM) lv:18 score:9958363 ex:6956 grade:S lamp:EXC-COMP vf:383 ts:2026-09-23 15:29:04
+[2026-09-23 15:29:08,501] [INFO] sdvx_helper.pyw:753:_on_mode_changed - モード変更: result → init
+[2026-09-23 15:29:09,370] [INFO] sdvx_helper.pyw:753:_on_mode_changed - モード変更: init → result
+[2026-09-23 15:29:09,860] [INFO] sdvx_helper.pyw:1104:_process_result - リザルト登録: [result] スラッシュ//シスターズ (MXM) lv:18 score:9958363 ex:6956 grade:S lamp:EXC-COMP vf:383 ts:2026-09-23 15:29:09
+[2026-09-23 15:29:11,340] [INFO] sdvx_helper.pyw:753:_on_mode_changed - モード変更: result → init
+[2026-09-23 15:29:16,147] [INFO] sdvx_helper.pyw:753:_on_mode_changed - モード変更: init → select
+[2026-09-23 15:29:52,249] [INFO] sdvx_helper.pyw:753:_on_mode_changed - モード変更: select → init
+[2026-09-23 15:29:52,681] [INFO] sdvx_helper.pyw:753:_on_mode_changed - モード変更: init → select
+[2026-09-23 15:29:53,120] [INFO] sdvx_helper.pyw:753:_on_mode_changed - モード変更: select → init
+[2026-09-23 15:29:54,758] [INFO] sdvx_helper.pyw:753:_on_mode_changed - モード変更: init → detect
+[2026-09-23 15:29:55,242] [INFO] sdvx_helper.pyw:873:_process_detect - detect認識結果: title='Distorted Floor -Boosted-', difficulty=MXM
+[2026-09-23 15:29:56,283] [INFO] sdvx_helper.pyw:753:_on_mode_changed - モード変更: detect → init
+[2026-09-23 15:30:00,777] [INFO] sdvx_helper.pyw:753:_on_mode_changed - モード変更: init → play
+[2026-09-23 15:32:04,380] [INFO] sdvx_helper.pyw:753:_on_mode_changed - モード変更: play → init
+[2026-09-23 15:32:04,594] [INFO] sdvx_helper.pyw:753:_on_mode_changed - モード変更: init → play
+[2026-09-23 15:32:08,530] [INFO] sdvx_helper.pyw:753:_on_mode_changed - モード変更: play → init
+[2026-09-23 15:32:14,441] [INFO] sdvx_helper.pyw:753:_on_mode_changed - モード変更: init → result
+[2026-09-23 15:32:14,921] [INFO] sdvx_helper.pyw:1104:_process_result - リザルト登録: [result] Distorted Floor -Boosted- (MXM) lv:18 score:9889946 ex:5379 grade:AAA+ lamp:EXC-COMP vf:370 ts:2026-09-23 15:32:14
+[2026-09-23 15:32:19,473] [INFO] sdvx_helper.pyw:753:_on_mode_changed - モード変更: result → init
+[2026-09-23 15:32:26,742] [INFO] sdvx_helper.pyw:753:_on_mode_changed - モード変更: init → play
+[2026-09-23 15:34:00,407] [INFO] sdvx_helper.pyw:753:_on_mode_changed - モード変更: play → init
+[2026-09-23 15:34:04,907] [INFO] sdvx_helper.pyw:753:_on_mode_changed - モード変更: init → play
+[2026-09-23 15:34:24,815] [INFO] sdvx_helper.pyw:753:_on_mode_changed - モード変更: play → init
+[2026-09-23 15:34:26,352] [INFO] sdvx_helper.pyw:753:_on_mode_changed - モード変更: init → result_exscore
+[2026-09-23 15:34:26,397] [WARNING] sdvx_helper.pyw:972:_process_result - リザルト登録スキップ: スコア/ランプ認識不足 title='Distorted Floor -Boosted-', difficulty=MXM, score=None, lamp=PLAYED
+[2026-09-23 15:34:26,561] [INFO] sdvx_helper.pyw:753:_on_mode_changed - モード変更: result_exscore → result
+[2026-09-23 15:34:27,057] [INFO] sdvx_helper.pyw:1104:_process_result - リザルト登録: [result] Distorted Floor -Boosted- (MXM) lv:18 score:916121 ex:479 grade:D lamp:PLAYED vf:13 ts:2026-09-23 15:34:26
+[2026-09-23 15:34:35,089] [INFO] sdvx_helper.pyw:753:_on_mode_changed - モード変更: result → result_exscore
+[2026-09-23 15:34:35,138] [WARNING] sdvx_helper.pyw:972:_process_result - リザルト登録スキップ: スコア/ランプ認識不足 title=None, difficulty=MXM, score=None, lamp=PLAYED
+[2026-09-23 15:34:35,317] [INFO] sdvx_helper.pyw:753:_on_mode_changed - モード変更: result_exscore → init
+[2026-09-23 15:34:39,897] [INFO] sdvx_helper.pyw:753:_on_mode_changed - モード変更: init → select
+[2026-09-23 15:34:40,999] [INFO] sdvx_helper.pyw:753:_on_mode_changed - モード変更: select → init
+[2026-09-23 15:34:41,655] [INFO] sdvx_helper.pyw:753:_on_mode_changed - モード変更: init → select
+[2026-09-23 15:34:41,886] [INFO] sdvx_helper.pyw:753:_on_mode_changed - モード変更: select → init
+[2026-09-23 15:34:43,513] [INFO] sdvx_helper.pyw:753:_on_mode_changed - モード変更: init → detect
+[2026-09-23 15:34:44,007] [INFO] sdvx_helper.pyw:873:_process_detect - detect認識結果: title='Distorted Floor -Boosted-', difficulty=MXM
+[2026-09-23 15:34:44,924] [INFO] sdvx_helper.pyw:753:_on_mode_changed - モード変更: detect → init
+[2026-09-23 15:34:49,423] [INFO] sdvx_helper.pyw:753:_on_mode_changed - モード変更: init → play
+[2026-09-23 15:36:57,389] [INFO] sdvx_helper.pyw:753:_on_mode_changed - モード変更: play → init

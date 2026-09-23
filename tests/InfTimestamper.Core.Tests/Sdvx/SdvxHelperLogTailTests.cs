@@ -84,6 +84,68 @@ public class SdvxHelperLogTailTests
         Assert.Equal(1, count);
     }
 
+    // ---- `init`（画面判定不能）の扱い ----
+    // 実ログでは遷移がほぼ全て init 経由になり、1 プレイ中に play → init → play が何度も起きる。
+    // init は状態として扱わず、直前の既知モードを保ったまま読み飛ばす。
+
+    [Fact]
+    public void PlayThroughInitAndBack_IsTheSamePlay()
+    {
+        // 実ログの抜粋（2026-09-23 15:08:12〜15:11:00 は 1 プレイ）
+        using var tail = new SdvxHelperLogTail();
+        var count = 0;
+        tail.PlayEntered += (_, _) => count++;
+        using var harness = new Harness(tail);
+
+        harness.Append(string.Concat(
+            Line("result_exscore", "init", "2026-09-23 15:08:09,477"), "\n",
+            Line("init", "play", "2026-09-23 15:08:12,761"), "\n",
+            Line("play", "init", "2026-09-23 15:08:34,834"), "\n",
+            Line("init", "play", "2026-09-23 15:08:39,447"), "\n",
+            Line("play", "init", "2026-09-23 15:10:55,077"), "\n",
+            Line("init", "play", "2026-09-23 15:10:55,512"), "\n",
+            Line("play", "init", "2026-09-23 15:10:59,455"), "\n",
+            Line("init", "result_exscore", "2026-09-23 15:11:00,987"), "\n"));
+        tail.Poll();
+
+        Assert.Equal(1, count);
+    }
+
+    [Fact]
+    public void PlayAfterAnotherScreenThroughInit_IsANewPlay()
+    {
+        // detect → init → play も result → init → play も、init を挟んでいても新しいプレイ
+        using var tail = new SdvxHelperLogTail();
+        var entered = new List<DateTimeOffset>();
+        tail.PlayEntered += (_, at) => entered.Add(at);
+        using var harness = new Harness(tail);
+
+        harness.Append(string.Concat(
+            Line("detect", "init", "2026-09-23 15:03:33,405"), "\n",
+            Line("init", "play", "2026-09-23 15:03:38,006"), "\n",   // 1 回目（曲決定から）
+            Line("play", "init", "2026-09-23 15:05:58,240"), "\n",
+            Line("init", "result", "2026-09-23 15:06:04,134"), "\n",
+            Line("result", "init", "2026-09-23 15:06:11,353"), "\n",
+            Line("init", "play", "2026-09-23 15:06:18,517"), "\n"));  // 2 回目（リトライ）
+        tail.Poll();
+
+        Assert.Equal(2, entered.Count);
+        Assert.Equal(new DateTime(2026, 9, 23, 15, 3, 38, 6, DateTimeKind.Local), entered[0].LocalDateTime);
+        Assert.Equal(new DateTime(2026, 9, 23, 15, 6, 18, 517, DateTimeKind.Local), entered[1].LocalDateTime);
+    }
+
+    [Fact]
+    public void LastKnownMode_IgnoresInit()
+    {
+        using var tail = new SdvxHelperLogTail();
+        using var harness = new Harness(tail);
+
+        harness.Append(Line("init", "select") + "\n" + Line("select", "init") + "\n");
+        tail.Poll();
+
+        Assert.Equal("select", tail.LastKnownMode);
+    }
+
     [Fact]
     public void Poll_OnlyReadsAppendedText()
     {
@@ -98,7 +160,7 @@ public class SdvxHelperLogTailTests
         harness.Append(Line("play", "result") + "\n" + Line("result", "play", "2026-09-22 20:20:00,000") + "\n");
         tail.Poll();
 
-        Assert.Equal(2, count);
+        Assert.Equal(2, count);   // 1 曲目 + リトライ
     }
 
     [Fact]
@@ -147,6 +209,7 @@ public class SdvxHelperLogTailTests
 
         harness.Append(Line("play", "result") + "\n" + Line("result", "select") + "\n" + Line("select", "detect") + "\n");
         tail.Poll();
+        Assert.Equal(0, count);
 
         // RotatingFileHandler が新しい（短い）ファイルに置き換えた
         File.WriteAllText(harness.LogPath, ModeChangeToPlay + "\n", new UTF8Encoding(false));
@@ -207,6 +270,30 @@ public class SdvxHelperLogTailTests
         Assert.True(Directory.Exists(Path.Combine(dir.Path, SdvxHelperLogTail.LogDirectoryName)));
         tail.Stop();
         Assert.False(tail.IsRunning);
+    }
+
+    [Fact]
+    public void RealLogSample_CountsOnePlayStartPerPlay()
+    {
+        // 実機ログの抜粋（2026-09-23 15:00〜15:36）。この区間で SDVX Helper が登録したリザルトは 12 件。
+        // `→ play` を素直に拾うと 21 回になる（画面判定が init を往復するため）ので、
+        // ここが 12 と一致していることが「二重記録・空の記録が出ない」ことの担保になる。
+        var sample = TestPaths.RepositoryFile("docs", "sample", "sdvx_helper", "mode-changes.log");
+        Assert.True(File.Exists(sample), $"サンプルがありません: {sample}");
+
+        using var tail = new SdvxHelperLogTail();
+        var count = 0;
+        tail.PlayEntered += (_, _) => count++;
+        using var harness = new Harness(tail);
+
+        harness.Append(File.ReadAllText(sample));
+        tail.Poll();
+
+        var registeredResults = File.ReadAllLines(sample)
+            .Count(line => line.Contains("リザルト登録:", StringComparison.Ordinal));
+
+        Assert.Equal(12, registeredResults);
+        Assert.Equal(registeredResults, count);
     }
 
     [Theory]

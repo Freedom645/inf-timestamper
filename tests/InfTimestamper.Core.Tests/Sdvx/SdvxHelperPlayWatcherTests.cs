@@ -9,6 +9,29 @@ namespace InfTimestamper.Core.Tests.Sdvx;
 /// </summary>
 public class SdvxHelperPlayWatcherTests
 {
+    /// <summary>
+    /// ログ監視を有効にしたウォッチャ。繋がらない接続先を渡すので WebSocket は再接続を試み続けるだけで、
+    /// メッセージは <c>HandleMessage</c> / <c>SimulateLogPlayEntered</c> から直接流す。
+    /// </summary>
+    private sealed class TailingWatcher : IDisposable
+    {
+        private readonly TempDirectory _dir = new();
+
+        public TailingWatcher()
+        {
+            Watcher = new SdvxHelperPlayWatcher();
+            Watcher.Start(WatchTarget.ForEndpoint("ws://127.0.0.1:1", _dir.Path));
+        }
+
+        public SdvxHelperPlayWatcher Watcher { get; }
+
+        public void Dispose()
+        {
+            Watcher.StopAsync().GetAwaiter().GetResult();
+            _dir.Dispose();
+        }
+    }
+
     [Fact]
     public void SongDecidedNowPlaying_FiresPlayStartedWithSongInfo()
     {
@@ -119,6 +142,49 @@ public class SdvxHelperPlayWatcherTests
     }
 
     [Fact]
+    public void TheSameResultRegisteredTwice_IsOnlyTakenOnce()
+    {
+        // SDVX Helper がリザルト画面を 2 回読み取って同じリザルトを 2 回登録することがある。
+        // 2 回目のプレイ開始の成績として拾ってしまわないこと
+        var watcher = new SdvxHelperPlayWatcher();
+        var results = new List<PlayResultEventArgs>();
+        watcher.PlayResultDetected += (_, e) => results.Add(e);
+
+        // 二重登録は登録ごとに timestamp がずれる（実ログでは 15:02:49 と 15:02:51）ので、
+        // 時刻ではなく成績の内容で同一判定する
+        var resultTime = DateTimeOffset.Now.AddMinutes(2);
+
+        watcher.SimulateLogPlayEntered(DateTimeOffset.Now);
+        watcher.HandleMessage(SdvxMessages.Utf8(
+            SdvxMessages.TodayResults(SdvxMessages.ResultItem(resultTime))));
+
+        watcher.SimulateLogPlayEntered(resultTime.AddSeconds(1));
+        watcher.HandleMessage(SdvxMessages.Utf8(
+            SdvxMessages.TodayResults(SdvxMessages.ResultItem(resultTime.AddSeconds(2)))));
+
+        Assert.Single(results);
+    }
+
+    [Fact]
+    public void ADifferentResultAtTheSameChart_IsTakenAgain()
+    {
+        var watcher = new SdvxHelperPlayWatcher();
+        var results = new List<PlayResultEventArgs>();
+        watcher.PlayResultDetected += (_, e) => results.Add(e);
+
+        var first = DateTimeOffset.Now.AddMinutes(2);
+        watcher.SimulateLogPlayEntered(DateTimeOffset.Now);
+        watcher.HandleMessage(SdvxMessages.Utf8(SdvxMessages.TodayResults(SdvxMessages.ResultItem(first))));
+
+        // 同じ譜面をリトライして別のスコアが出た
+        watcher.SimulateLogPlayEntered(first.AddSeconds(10));
+        watcher.HandleMessage(SdvxMessages.Utf8(SdvxMessages.TodayResults(
+            SdvxMessages.ResultItem(first.AddMinutes(3), score: 9_900_000))));
+
+        Assert.Equal(2, results.Count);
+    }
+
+    [Fact]
     public void EmptyTodayResults_IsIgnored()
     {
         var watcher = new SdvxHelperPlayWatcher();
@@ -181,32 +247,67 @@ public class SdvxHelperPlayWatcherTests
     }
 
     [Fact]
-    public void LogPlayEntered_RightAfterSongDecided_IsTheSamePlay()
+    public void WithLogTail_SongDecided_DoesNotStartAPlayByItself()
     {
-        // 通常の流れ: 曲決定画面（nowplaying）→ 数秒後にプレイ画面（ログ）。二重に起こさない
-        var watcher = new SdvxHelperPlayWatcher();
+        // ログ監視があるときの曲決定画面は曲情報のキャッシュにすぎない
+        // （曲を決めてからプレイせずに戻ることもある）
+        using var harness = new TailingWatcher();
         var startedCount = 0;
-        watcher.PlayStarted += (_, _) => startedCount++;
+        harness.Watcher.PlayStarted += (_, _) => startedCount++;
 
-        watcher.HandleMessage(SdvxMessages.Utf8(SdvxMessages.NowPlayingFromSongDecided()));
-        watcher.SimulateLogPlayEntered(DateTimeOffset.Now.AddSeconds(5));
+        harness.Watcher.HandleMessage(SdvxMessages.Utf8(SdvxMessages.NowPlayingFromSongDecided()));
 
-        Assert.Equal(1, startedCount);
+        Assert.Equal(0, startedCount);
     }
 
     [Fact]
-    public void LogPlayEntered_LongAfterSongDecided_IsANewPlay()
+    public void WithLogTail_SongDecidedThenPlay_StartsOncePreservingTheSongInfo()
     {
-        // 曲決定 → プレイ → リザルト → リトライでプレイ。2 回目はログでしか分からない
-        var watcher = new SdvxHelperPlayWatcher();
-        var startedCount = 0;
-        watcher.PlayStarted += (_, _) => startedCount++;
+        // 通常の流れ: 曲決定画面（nowplaying でキャッシュ）→ 数秒後にプレイ画面（ログで発火）
+        using var harness = new TailingWatcher();
+        var started = new List<PlayStartedEventArgs>();
+        harness.Watcher.PlayStarted += (_, e) => started.Add(e);
 
-        watcher.HandleMessage(SdvxMessages.Utf8(SdvxMessages.NowPlayingFromSongDecided()));
-        watcher.SimulateLogPlayEntered(
-            DateTimeOffset.Now + SdvxHelperPlayWatcher.DuplicatePlayStartWindow + TimeSpan.FromSeconds(1));
+        harness.Watcher.HandleMessage(SdvxMessages.Utf8(
+            SdvxMessages.NowPlayingFromSongDecided("999", "MXM", 20)));
+        harness.Watcher.SimulateLogPlayEntered(DateTimeOffset.Now.AddSeconds(5));
 
-        Assert.Equal(2, startedCount);
+        var single = Assert.Single(started);
+        Assert.Equal("999", single.Fields["title"]);
+        Assert.Equal("MXM", single.Fields["diff_s"]);
+    }
+
+    [Fact]
+    public void WithLogTail_Retry_ReusesTheCachedSongInfo()
+    {
+        // リトライは選曲も曲決定も通らないので nowplaying が飛ばないが、譜面は直前と同じ
+        using var harness = new TailingWatcher();
+        var started = new List<PlayStartedEventArgs>();
+        harness.Watcher.PlayStarted += (_, e) => started.Add(e);
+
+        harness.Watcher.HandleMessage(SdvxMessages.Utf8(
+            SdvxMessages.NowPlayingFromSongDecided("999", "MXM", 20)));
+        harness.Watcher.SimulateLogPlayEntered(DateTimeOffset.Now);
+        harness.Watcher.SimulateLogPlayEntered(DateTimeOffset.Now.AddMinutes(3));
+
+        Assert.Equal(2, started.Count);
+        Assert.All(started, e => Assert.Equal("999", e.Fields["title"]));
+    }
+
+    [Fact]
+    public void WithLogTail_SelectScreen_DropsTheCachedSongInfo()
+    {
+        // 選曲画面に戻った＝別の曲を選び直している。古い曲情報を次のプレイに付けない
+        using var harness = new TailingWatcher();
+        PlayStartedEventArgs? started = null;
+        harness.Watcher.PlayStarted += (_, e) => started = e;
+
+        harness.Watcher.HandleMessage(SdvxMessages.Utf8(SdvxMessages.NowPlayingFromSongDecided("999")));
+        harness.Watcher.HandleMessage(SdvxMessages.Utf8(SdvxMessages.NowPlayingFromSelect("Another Song")));
+        harness.Watcher.SimulateLogPlayEntered(DateTimeOffset.Now);
+
+        Assert.NotNull(started);
+        Assert.Empty(started!.Fields);
     }
 
     [Fact]

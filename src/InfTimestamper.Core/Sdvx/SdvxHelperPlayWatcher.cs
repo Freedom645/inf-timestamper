@@ -18,20 +18,21 @@ namespace InfTimestamper.Core.Sdvx;
 /// 検知の要点:
 /// <list type="bullet">
 /// <item><description>
-/// <b>プレイ開始</b>の主信号は SDVX Helper のログ（<see cref="SdvxHelperLogTail"/>）の「プレイ画面へ遷移」。
+/// <b>プレイ開始</b>は SDVX Helper のログ（<see cref="SdvxHelperLogTail"/>）の「プレイ画面へ遷移」だけで決める。
 /// WebSocket にはプレイ開始のイベントが無く、曲決定画面の <c>nowplaying</c> で代用すると
-/// リザルト画面からのリトライと曲決定画面の取りこぼしを落とすため。SDVX Helper のフォルダが
-/// 未設定ならログは使えないので、<c>nowplaying</c> だけで動く。
+/// リザルト画面からのリトライ（選曲も曲決定も通らない）を落とすため。
+/// SDVX Helper のフォルダが未設定でログを使えないときに限り、<c>nowplaying</c> で代用する。
 /// </description></item>
 /// <item><description>
-/// <c>nowplaying</c> は曲決定画面（楽曲情報画面）由来のものだけを採る。選曲画面でカーソルが動いたときにも
-/// 同じ型のメッセージが飛ぶため、切り出し画像の有無で選り分ける（判定は <see cref="SdvxFieldMapper.IsSongDecided"/>）。
-/// 曲決定 1 回につき 1 通しか飛ばない。曲情報（<c>$title</c> 等）はここからしか取れないので、
-/// ログとの二重発火は時間窓で抑える（曲決定 → プレイ画面は数秒、リトライは 1 曲ぶん以上空く）。
+/// <c>nowplaying</c> は<b>曲情報のキャッシュ</b>として扱う。曲決定画面由来のものでキャッシュを更新し、
+/// 選曲画面由来のもの（＝別の曲を選び直している）でキャッシュを捨てる。プレイ開始時にその時点の
+/// キャッシュを添えるので、リトライでも直前と同じ譜面の曲情報が入る。
+/// 曲決定画面かどうかは切り出し画像の有無で判定する（<see cref="SdvxFieldMapper.IsSongDecided"/>）。
 /// </description></item>
 /// <item><description>
 /// <b>プレイリザルト</b>は <c>today_results</c>（リザルトを DB へ登録したときに飛ぶ）の最新エントリを採る。
 /// 接続直後にもキャッシュ済みの本日分がまとめて飛んでくるので、プレイ開始を検知していない間は無視する。
+/// SDVX Helper が同じリザルトを 2 回登録することがあるため、同一エントリ（譜面 + 時刻）は 1 度しか採らない。
 /// </description></item>
 /// </list>
 /// 接続失敗・切断は指数バックオフで再接続し、配信の記録自体には影響させない（ログのみ）。
@@ -44,17 +45,19 @@ public sealed class SdvxHelperPlayWatcher : IPlayWatcher
     /// </summary>
     private static readonly TimeSpan ResultTimeSlack = TimeSpan.FromSeconds(2);
 
+    /// <summary>
+    /// SDVX Helper がリザルト画面を 2 回読み取り、同じプレイを 2 回登録することがある
+    /// （実ログでは 1〜2 秒差。登録ごとに <c>timestamp</c> がずれるので時刻では同一判定できない）。
+    /// この時間内に同じ内容のリザルトが来たら二重登録とみなす。
+    /// 同じ譜面を同じスコアでリトライし切るには短すぎる長さにしてある。
+    /// </summary>
+    private static readonly TimeSpan DuplicateResultWindow = TimeSpan.FromSeconds(30);
+
     /// <summary>1 メッセージの上限。<c>nowplaying</c> は base64 の切り出し画像を含むため大きめに取る。</summary>
     private const int MaxMessageBytes = 16 * 1024 * 1024;
 
     private const int ReceiveBufferBytes = 64 * 1024;
 
-    /// <summary>
-    /// 曲決定画面の <c>nowplaying</c> でプレイ開始を発火したあと、この時間内にログの「プレイ画面へ遷移」が
-    /// 来ても同じプレイとみなして二重に発火しない。曲決定 → プレイ画面は長くても十数秒、
-    /// リトライで次のプレイに入るまでは 1 曲ぶん（1 分半以上）空くので、その間を取っている。
-    /// </summary>
-    internal static readonly TimeSpan DuplicatePlayStartWindow = TimeSpan.FromSeconds(45);
 
     private readonly ILogger<SdvxHelperPlayWatcher> _logger;
     private readonly object _gate = new();
@@ -63,7 +66,16 @@ public sealed class SdvxHelperPlayWatcher : IPlayWatcher
     private Task? _loopTask;
     private SdvxHelperLogTail? _logTail;
     private DateTimeOffset? _awaitingResultSince;
-    private DateTimeOffset? _lastPlayStartedAt;
+
+    /// <summary>直近に曲決定画面で見えた曲情報。プレイ開始時に添える。</summary>
+    private IReadOnlyDictionary<string, string>? _pendingSongFields;
+
+    /// <summary>採用済みリザルトの内容（譜面 + 成績）。SDVX Helper の二重登録を弾く。</summary>
+    private string? _lastConsumedResultKey;
+
+    /// <summary>そのリザルトを採用した時刻。<see cref="DuplicateResultWindow"/> の判定に使う。</summary>
+    private DateTimeOffset _lastConsumedResultAt;
+
     private bool _disposed;
 
     public SdvxHelperPlayWatcher()
@@ -75,8 +87,9 @@ public sealed class SdvxHelperPlayWatcher : IPlayWatcher
     }
 
     /// <summary>
-    /// プレイ開始検知。CapturedAt は曲決定を受信した時刻、またはログのプレイ画面遷移時刻。
-    /// Fields は曲決定由来なら曲情報、ログ由来（リトライ等）なら空（リザルトで埋まる）。
+    /// プレイ開始検知。CapturedAt はログのプレイ画面遷移時刻
+    /// （ログ監視が無いときは曲決定を受信した時刻）。
+    /// Fields は直近の曲決定画面で見えた曲情報。取れていなければ空（リザルトで埋まる）。
     /// </summary>
     public event EventHandler<PlayStartedEventArgs>? PlayStarted;
 
@@ -117,7 +130,9 @@ public sealed class SdvxHelperPlayWatcher : IPlayWatcher
                 throw new InvalidOperationException("既に監視が動作中です。");
 
             _awaitingResultSince = null;
-            _lastPlayStartedAt = null;
+            _pendingSongFields = null;
+            _lastConsumedResultKey = null;
+            _lastConsumedResultAt = default;
             _cts = new CancellationTokenSource();
 
             var token = _cts.Token;
@@ -140,14 +155,14 @@ public sealed class SdvxHelperPlayWatcher : IPlayWatcher
                     tail.PlayEntered -= OnLogPlayEntered;
                     tail.Dispose();
                     _logger.LogWarning(ex,
-                        "SDVX Helper のログ監視を開始できませんでした。曲決定画面の検知だけで動作します: {Directory}",
+                        "SDVX: ログ監視を開始できませんでした。曲決定画面の検知だけで動作します（リトライは記録されません）: {Directory}",
                         helperDirectory);
                 }
             }
             else
             {
                 _logger.LogInformation(
-                    "SDVX Helper のフォルダが未設定のため、プレイ開始は曲決定画面の検知だけで判定します（リトライは記録されません）。");
+                    "SDVX: SDVX Helper のフォルダが未設定のため、プレイ開始は曲決定画面の検知だけで判定します（リトライは記録されません）。");
             }
         }
     }
@@ -168,7 +183,9 @@ public sealed class SdvxHelperPlayWatcher : IPlayWatcher
             _loopTask = null;
             _logTail = null;
             _awaitingResultSince = null;
-            _lastPlayStartedAt = null;
+            _pendingSongFields = null;
+            _lastConsumedResultKey = null;
+            _lastConsumedResultAt = default;
         }
 
         if (tail is not null)
@@ -306,37 +323,51 @@ public sealed class SdvxHelperPlayWatcher : IPlayWatcher
         }
     }
 
-    /// <summary>曲決定画面由来の nowplaying だけをプレイ開始として扱う。</summary>
+    /// <summary>
+    /// <c>nowplaying</c> は曲情報のキャッシュとして扱う。
+    /// ログ監視が使えないときだけ、曲決定をプレイ開始の代用にする。
+    /// </summary>
     private void ProcessNowPlaying(JsonElement data)
     {
         if (!SdvxFieldMapper.IsSongDecided(data))
         {
-            _logger.LogDebug("SDVX: 選曲画面の nowplaying のため無視します。");
+            // 選曲画面でカーソルが動いた。別の曲を選び直しているので、前の曲情報は捨てる
+            lock (_gate)
+            {
+                if (_pendingSongFields is not null)
+                    _logger.LogDebug("SDVX: 選曲画面に戻ったため、保持していた曲情報を破棄します。");
+                _pendingSongFields = null;
+            }
             return;
         }
 
         var fields = SdvxFieldMapper.MapNowPlaying(data);
-        _logger.LogDebug("SDVX: 曲決定画面を検知しました（{Count} フィールド）。", fields.Count);
-        RaisePlayStarted(DateTimeOffset.Now, fields, "曲決定画面");
-    }
-
-    /// <summary>
-    /// SDVX Helper のログでプレイ画面への遷移を検知したとき。
-    /// 直前に曲決定画面で発火済みなら同じプレイなので二重に起こさない。
-    /// </summary>
-    private void OnLogPlayEntered(object? sender, DateTimeOffset at)
-    {
+        bool hasLogTail;
         lock (_gate)
         {
-            if (_lastPlayStartedAt is DateTimeOffset last && at - last < DuplicatePlayStartWindow)
-            {
-                _logger.LogDebug("SDVX: 直前の曲決定画面と同じプレイのため、ログのプレイ画面遷移を無視します。");
-                return;
-            }
+            _pendingSongFields = fields;
+            hasLogTail = _logTail is not null;
         }
 
-        // リトライや曲決定画面の取りこぼし。曲情報はリザルトで埋まる
-        RaisePlayStarted(at, new Dictionary<string, string>(), "ログのプレイ画面遷移");
+        _logger.LogInformation(
+            "SDVX: 曲決定画面を検知しました（{Title} / {Diff} Lv.{Level}）。",
+            Describe(fields, FieldKeys.Title), Describe(fields, FieldKeys.DiffShort), Describe(fields, FieldKeys.Level));
+
+        // ログ監視があるときはプレイ画面への遷移で起こす（曲決定してもプレイせずに戻ることがあるため）
+        if (!hasLogTail)
+            RaisePlayStarted(DateTimeOffset.Now, fields, "曲決定画面");
+    }
+
+    /// <summary>SDVX Helper のログでプレイ画面への遷移を検知したとき（プレイ開始の主信号）。</summary>
+    private void OnLogPlayEntered(object? sender, DateTimeOffset at)
+    {
+        IReadOnlyDictionary<string, string> fields;
+        lock (_gate)
+        {
+            fields = _pendingSongFields ?? new Dictionary<string, string>();
+        }
+
+        RaisePlayStarted(at, fields, "ログのプレイ画面遷移");
     }
 
     /// <summary>テスト用: ログにプレイ画面遷移が書かれたのと同じ経路を通す。</summary>
@@ -347,12 +378,16 @@ public sealed class SdvxHelperPlayWatcher : IPlayWatcher
         lock (_gate)
         {
             _awaitingResultSince = startedAt;
-            _lastPlayStartedAt = startedAt;
         }
 
-        _logger.LogDebug("SDVX: プレイ開始を検知しました（{Source}）。", source);
+        _logger.LogInformation(
+            "SDVX: プレイ開始を記録します（{Source}、{At:HH:mm:ss}、曲: {Title}）。",
+            source, startedAt, Describe(fields, FieldKeys.Title));
         PlayStarted?.Invoke(this, new PlayStartedEventArgs(startedAt, fields));
     }
+
+    private static string Describe(IReadOnlyDictionary<string, string> fields, string key)
+        => fields.TryGetValue(key, out var value) && !string.IsNullOrEmpty(value) ? value : "-";
 
     /// <summary>today_results の最新エントリを、プレイ開始後のものだけ採用する。</summary>
     private void ProcessTodayResults(JsonElement data)
@@ -375,20 +410,55 @@ public sealed class SdvxHelperPlayWatcher : IPlayWatcher
         // 読めない場合は判定材料が無いので採用する。
         if (resultTime is not null && resultTime.Value < awaitingSince - ResultTimeSlack)
         {
-            _logger.LogDebug(
-                "SDVX: プレイ開始 {Started} より前のリザルト（{ResultTime}）のため無視します。",
+            _logger.LogInformation(
+                "SDVX: プレイ開始（{Started:HH:mm:ss}）より前のリザルト（{ResultTime:HH:mm:ss}）のため無視します。",
                 awaitingSince, resultTime.Value);
             return;
         }
 
+        // SDVX Helper がリザルト画面を 2 回読み取って同じプレイを 2 回登録することがある
+        var key = BuildResultKey(latest);
+        var now = DateTimeOffset.Now;
         lock (_gate)
         {
+            if (key is not null && key == _lastConsumedResultKey
+                && now - _lastConsumedResultAt < DuplicateResultWindow)
+            {
+                _logger.LogInformation(
+                    "SDVX: 直前に採用したものと同じリザルト（{Key}）のため、二重登録とみなして無視します。", key);
+                return;
+            }
             _awaitingResultSince = null;
+            _lastConsumedResultKey = key;
+            _lastConsumedResultAt = now;
         }
 
         var fields = SdvxFieldMapper.MapResult(latest);
-        _logger.LogDebug("SDVX: プレイリザルトを検知 ({Count} フィールド)", fields.Count);
+        _logger.LogInformation(
+            "SDVX: プレイリザルトを記録します（{Title} / {Diff}、スコア {Score}、{Lamp}）。",
+            Describe(fields, FieldKeys.Title), Describe(fields, FieldKeys.DiffShort),
+            Describe(fields, FieldKeys.Score), Describe(fields, FieldKeys.ClearLamp));
         PlayResultDetected?.Invoke(this, new PlayResultEventArgs(DateTimeOffset.Now, fields));
+    }
+
+    /// <summary>
+    /// 採用済みリザルトの識別子（譜面 + 成績）。
+    /// <c>timestamp</c> は二重登録のたびにずれるので使わない。
+    /// </summary>
+    private static string? BuildResultKey(JsonElement item)
+    {
+        var parts = new List<string>(4);
+        foreach (var name in new[] { "chart_id", "score", "exscore", "lamp" })
+        {
+            if (!item.TryGetProperty(name, out var value)) continue;
+            parts.Add(value.ValueKind switch
+            {
+                JsonValueKind.String => value.GetString() ?? string.Empty,
+                JsonValueKind.Number => value.GetRawText(),
+                _ => string.Empty,
+            });
+        }
+        return parts.Count == 0 ? null : string.Join('/', parts);
     }
 
     /// <summary>

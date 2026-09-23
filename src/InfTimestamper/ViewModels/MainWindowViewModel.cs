@@ -383,13 +383,21 @@ public sealed class MainWindowViewModel : ObservableBase
         foreach (var (key, value) in e.Fields)
             SetEntryField(entry, key, value);
         AddTimestamp(entry);
+
+        _logger.LogInformation(
+            "タイムスタンプを追加しました（{At:HH:mm:ss}、{Count} 件目、フィールド: {Fields}）。",
+            entry.PlayStartedAt, Timestamps.Count, DescribeFields(e.Fields));
     }
 
     private void OnPlayResultDetected(object? sender, PlayResultEventArgs e)
     {
         // 直近のプレイ開始エントリに結果フィールドをマージ
         var latestEntry = _record.Timestamps.LastOrDefault();
-        if (latestEntry is null) return;
+        if (latestEntry is null)
+        {
+            _logger.LogWarning("プレイリザルトを検知しましたが、対象のタイムスタンプがありません。");
+            return;
+        }
 
         foreach (var (key, value) in e.Fields)
             SetEntryField(latestEntry, key, value);
@@ -397,7 +405,17 @@ public sealed class MainWindowViewModel : ObservableBase
         var vm = Timestamps.FirstOrDefault(t => ReferenceEquals(t.Entry, latestEntry));
         vm?.NotifyEntryUpdated();
         MarkDirtyAndSaveBackup();
+
+        _logger.LogInformation(
+            "タイムスタンプ（{At:HH:mm:ss}）にプレイリザルトをマージしました（フィールド: {Fields}）。",
+            latestEntry.PlayStartedAt, DescribeFields(e.Fields));
     }
+
+    /// <summary>ログ用に「key=value」を並べる。値が長くなりすぎないよう件数だけ落とさない。</summary>
+    private static string DescribeFields(IReadOnlyDictionary<string, string> fields)
+        => fields.Count == 0
+            ? "(なし)"
+            : string.Join(", ", fields.Select(pair => $"{pair.Key}={pair.Value}"));
 
     /// <summary>
     /// 検知結果を 1 フィールド書き込む。プレイ監視は値を文字列で渡してくるので、

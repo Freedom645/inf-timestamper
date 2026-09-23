@@ -58,6 +58,10 @@ _ReSharper*/
 # Application runtime artifacts (アプリ実行時に書き出されるもの)
 logs/
 *.log
+# ただし外部ツールの実出力サンプルは追跡する（マッピング調整の正本）
+!docs/sample/**/*.log
+# 実機から丸ごと持ってきたログ置き場は追跡しない（抜粋だけをサンプルとして残す）
+docs/sample/**/log/
 backups/
 frames/
 
