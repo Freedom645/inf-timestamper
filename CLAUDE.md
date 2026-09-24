@@ -4,7 +4,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## リポジトリの状態
 
-実装は一通り完了している。MVP に必要な機能（状態機械・OBS 接続・ゲーム検知・フォーマット展開・永続化・設定画面・ログ・自己アップデート）に加え、3 ゲーム目（SOUND VOLTEX）まで通っている。`dotnet build` 警告 0 / `dotnet test` 全緑。残っているのは主にユーザ実環境での検証（SDVX の実機検証、Velopack バンドル作成、GitHub Releases アップロード、別 PC での通しテスト、実機での配信〜プレイ〜リザルトの通し確認）。
+実装は一通り完了している。MVP に必要な機能（状態機械・OBS 接続・ゲーム検知・フォーマット展開・永続化・設定画面・ログ・自己アップデート）に加え、3 ゲーム目（SOUND VOLTEX）まで通っており、**3 ゲームとも実機検証済み**。`dotnet build` 警告 0 / `dotnet test` 全緑。最新リリースは v1.2.0。
 
 進捗と「次にやること」の正本は `docs/実装計画.md`（フェーズ別の DoD とセッション引き継ぎメモ）。**作業を始める前にその「現在のフェーズ」節を読むこと。**
 
