@@ -4,7 +4,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## リポジトリの状態
 
-実装は一通り完了している。MVP に必要な機能（状態機械・OBS 接続・ゲーム検知・フォーマット展開・永続化・設定画面・ログ・自己アップデート）に加え、3 ゲーム目（SOUND VOLTEX）まで通っており、**3 ゲームとも実機検証済み**。`dotnet build` 警告 0 / `dotnet test` 全緑。最新リリースは v1.2.0。
+実装は一通り完了している。MVP に必要な機能（状態機械・OBS 接続・ゲーム検知・フォーマット展開・永続化・設定画面・ログ・自己アップデート）に加え、3 ゲーム目（SOUND VOLTEX）まで通っており、**3 ゲームとも実機検証済み**。`dotnet build` 警告 0 / `dotnet test` 全緑。最新の正式リリースは v1.2.0。YouTube の概要欄の自動更新（Phase 12）を v1.3.0-alpha.1 として α 版で配布中（ライブへの書き込みは実機検証待ち）。
 
 進捗と「次にやること」の正本は `docs/実装計画.md`（フェーズ別の DoD とセッション引き継ぎメモ）。**作業を始める前にその「現在のフェーズ」節を読むこと。**
 
@@ -110,6 +110,16 @@ INFINITAS のプレイ開始とプレイデータは、**Reflux が出力する�
 
 メッセージは base64 の切り出し画像を含んで大きいため、DTO へは起こさず `JsonDocument` のまま必要なフィールドだけ読む。マッピングは `SdvxFieldMapper` に集約。**`pre_score` / `pre_ex` / `is_*_updated` / `max_exscore` は自己ベスト・理論値でこのプレイの成績ではないため取り込んでいない。**
 
+### YouTube 概要欄の自動更新（任意機能）
+
+事前に YouTube にログインしておくと、`記録中` の間、配信開始時間 ±10 分に始まった**配信中の**ライブ（`liveBroadcasts.list`）の概要欄の末尾（見出し行 `▼タイムスタンプ` から末尾）を、コピー結果と同じ行で書き換え続ける（`Core/YouTube/`）。仕様は要件.md「YouTube 概要欄の自動更新仕様」、利用者向け手順は `docs/youtube.md`。
+
+- **OAuth クライアントは同梱しない。** 利用者が各自 Google Cloud で作る（クォータ 10,000/日をクライアント単位で持つため）。ループバック + PKCE で、受け口は `TcpListener`
+- ログイン情報（クライアント ID / シークレット / リフレッシュトークン）は DPAPI で暗号化した `youtube_credential.bin` に置き、`settings.json` には書かない。`AppSettings.YouTube` は有効 / 見出し行 / 更新間隔だけ
+- `videos.update` は 1 回 50 ユニットなので、`YouTubeDescriptionSync` が最新の内容だけ保持して最短 `更新間隔`（既定 60 秒）で間引く。`記録終了` への遷移では即時に最終版を書く
+- `videos.update` は snippet を丸ごと置き換えるので、`tags` 等は取得した値を送り返す（送らないと消える）
+- 失敗はダイアログにせず、メイン画面の `YouTube:` 状態ラベルに出すだけ。クォータ超過と要再ログインではその記録の同期をやめる
+
 ### フォーマット識別子システム
 
 クリップボードコピー時の文字列はユーザがフォーマット文字列で定義する。`$timestamp` `$title` `$diff_s` などの識別子が実データに置換される（識別子一覧は `docs/要件.md` 参照）。
@@ -163,6 +173,8 @@ inf-timestamper/
 │   ├── 要件.md                     仕様の正本
 │   ├── 実装計画.md                 フェーズ別の進捗・DoD・引き継ぎメモ
 │   ├── release.md                  publish → vpk pack → GitHub Releases のリリース手順
+│   ├── youtube.md                  YouTube 概要欄の自動更新の利用者向け手順（OAuth クライアントの作成）
+│   ├── privacy.md                  プライバシーポリシー（OAuth 同意画面の本番公開に必要な URL の指し先）
 │   └── sample/                     外部ツールの実出力サンプル（reflux / popn-tracker / sdvx_helper）
 ├── src/
 │   ├── InfTimestamper/             WPF 本体。Views / ViewModels / Services / Converters / Behaviors、
@@ -184,6 +196,7 @@ inf-timestamper/
 | `Popn/` | pop'n music のゲーム検知。`PopnPlayWatcher` / `PopnResultJson` / `PopnFieldMapper` |
 | `Sdvx/` | SOUND VOLTEX のゲーム検知。`SdvxHelperPlayWatcher`（WebSocket 購読）/ `SdvxHelperLogTail`（ログ監視）/ `SdvxFieldMapper` |
 | `Obs/` | OBS WebSocket 接続と再接続バックオフ。配信開始/終了の検知のみ |
+| `YouTube/` | ライブの概要欄の自動更新。`YouTubeOAuthClient` / `YouTubeAccount`（ログイン）/ `YouTubeApiClient` / `YouTubeDescriptionComposer`（概要欄の合成）/ `YouTubeDescriptionSync`（検索・間引き・最終書き込み） |
 | `Persistence/` | `JsonRecordStore` — バックアップ JSON のアトミック保存と異常終了復旧 |
 | `Formatting/` | `FormatExpander`（`$identifier` の展開）/ `IdentifierCompletion`（サジェストのロジック） |
 | `Models/` | `StreamRecord` / `TimestampEntry` / `GameId` 等 |

@@ -12,6 +12,9 @@
         Icon="/Assets/icon.ico"
         Width="640" MinWidth="540"
         Height="600" MinHeight="480">
+    <Window.Resources>
+        <BooleanToVisibilityConverter x:Key="BoolToVisibility" />
+    </Window.Resources>
     <DockPanel LastChildFill="True">
         <Menu DockPanel.Dock="Top">
             <MenuItem Header="ファイル(_F)">
@@ -69,6 +72,14 @@
                     <TextBlock Text="状態:" FontWeight="Bold" VerticalAlignment="Center" />
                     <TextBlock Text="{Binding StateLabel}" Margin="4,0,0,0" VerticalAlignment="Center"
                                behaviors:HintTextBehavior.Text="アプリの状態。OBS 再接続中は試行回数が表示されます" />
+                    <StackPanel Orientation="Horizontal" Margin="16,0,0,0"
+                                Visibility="{Binding IsYouTubeStatusVisible, Converter={StaticResource BoolToVisibility}}">
+                        <TextBlock Text="YouTube:" FontWeight="Bold" VerticalAlignment="Center" />
+                        <TextBlock Text="{Binding YouTubeStatusText}" Margin="4,0,0,0" VerticalAlignment="Center"
+                                   MaxWidth="220" TextTrimming="CharacterEllipsis"
+                                   ToolTip="{Binding YouTubeStatusText}"
+                                   behaviors:HintTextBehavior.Text="ライブ配信の概要欄の自動更新の状態" />
+                    </StackPanel>
                 </StackPanel>
             </Border>
 

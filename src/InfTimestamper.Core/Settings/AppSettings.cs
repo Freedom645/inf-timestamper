@@ -18,6 +18,13 @@ public sealed class AppSettings
     public const int DefaultSdvxHelperPort = 8767;
     public const string DefaultStreamStartRowLabel = "配信開始";
 
+    /// <summary>YouTube の概要欄に書き込むタイムスタンプのブロックの見出し行の既定値。</summary>
+    public const string DefaultYouTubeDescriptionHeading = "▼タイムスタンプ";
+
+    /// <summary>YouTube の概要欄を書き換える間隔（秒）の既定値と下限。</summary>
+    public const int DefaultYouTubeUpdateIntervalSeconds = 60;
+    public const int MinYouTubeUpdateIntervalSeconds = 30;
+
     [JsonPropertyOrder(0)]
     public int SchemaVersion { get; set; } = CurrentSchemaVersion;
 
@@ -35,6 +42,9 @@ public sealed class AppSettings
 
     [JsonPropertyOrder(5)]
     public SdvxSettings Sdvx { get; set; } = new();
+
+    [JsonPropertyOrder(6)]
+    public YouTubeSettings YouTube { get; set; } = new();
 
     public static AppSettings CreateDefault() => new()
     {
@@ -64,6 +74,7 @@ public sealed class AppSettings
             HelperHost = DefaultSdvxHelperHost,
             HelperPort = DefaultSdvxHelperPort,
         },
+        YouTube = new YouTubeSettings(),
     };
 
     /// <summary>ゲームごとのタイムスタンプフォーマット。未設定なら既定フォーマット。</summary>
@@ -201,4 +212,32 @@ public sealed class SdvxSettings
     /// </summary>
     [JsonPropertyOrder(3)]
     public string HelperDirectory { get; set; } = string.Empty;
+}
+
+/// <summary>
+/// YouTube のライブの概要欄をタイムスタンプで更新する機能の設定。
+/// ログイン情報（クライアント ID / シークレット / リフレッシュトークン）はここには持たず、
+/// DPAPI で暗号化した別ファイルに置く（<c>YouTubeAccount</c>）。
+/// </summary>
+public sealed class YouTubeSettings
+{
+    [JsonPropertyOrder(0)]
+    public bool Enabled { get; set; }
+
+    /// <summary>概要欄のタイムスタンプのブロックの見出し行。この行から概要欄の末尾までを書き換える。</summary>
+    [JsonPropertyOrder(1)]
+    public string DescriptionHeading { get; set; } = AppSettings.DefaultYouTubeDescriptionHeading;
+
+    /// <summary>概要欄を書き換える最短間隔（秒）。</summary>
+    [JsonPropertyOrder(2)]
+    public int UpdateIntervalSeconds { get; set; } = AppSettings.DefaultYouTubeUpdateIntervalSeconds;
+
+    /// <summary>空・範囲外の値を既定値・下限へ寄せた見出し行。</summary>
+    public string ResolveHeading()
+        => string.IsNullOrWhiteSpace(DescriptionHeading)
+            ? AppSettings.DefaultYouTubeDescriptionHeading
+            : DescriptionHeading.Trim();
+
+    public TimeSpan ResolveUpdateInterval()
+        => TimeSpan.FromSeconds(Math.Max(AppSettings.MinYouTubeUpdateIntervalSeconds, UpdateIntervalSeconds));
 }

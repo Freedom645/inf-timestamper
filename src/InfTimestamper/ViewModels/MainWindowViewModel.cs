@@ -16,6 +16,7 @@ using InfTimestamper.Core.Persistence.Json;
 using InfTimestamper.Core.Settings;
 using InfTimestamper.Core.States;
 using InfTimestamper.Core.Updates;
+using InfTimestamper.Core.YouTube;
 using InfTimestamper.Services;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Logging.Abstractions;
@@ -41,6 +42,7 @@ public sealed class MainWindowViewModel : ObservableBase
     private readonly IGitHubReleaseChecker? _releaseChecker;
     private readonly IUpdateService? _updateService;
     private readonly IFileRecycler? _fileRecycler;
+    private readonly YouTubeDescriptionSync? _youTubeSync;
     private readonly ILogger<MainWindowViewModel> _logger;
 
     private AppSettings _settings = AppSettings.CreateDefault();
@@ -104,7 +106,8 @@ public sealed class MainWindowViewModel : ObservableBase
         IGitHubReleaseChecker? releaseChecker,
         IUpdateService? updateService,
         ILogger<MainWindowViewModel>? logger = null,
-        IFileRecycler? fileRecycler = null)
+        IFileRecycler? fileRecycler = null,
+        YouTubeDescriptionSync? youTubeSync = null)
     {
         _stateMachine = stateMachine ?? throw new ArgumentNullException(nameof(stateMachine));
         _clipboard = clipboard ?? throw new ArgumentNullException(nameof(clipboard));
@@ -116,6 +119,7 @@ public sealed class MainWindowViewModel : ObservableBase
         _releaseChecker = releaseChecker;
         _updateService = updateService;
         _fileRecycler = fileRecycler;
+        _youTubeSync = youTubeSync;
         _selectedGame = _settings.ResolveSelectedGame();
         _record.Game = _selectedGame;
         _format = _settings.TimestampFormatFor(_selectedGame);
@@ -123,6 +127,8 @@ public sealed class MainWindowViewModel : ObservableBase
 
         _stateMachine.StateChanged += OnStateMachineChanged;
         Timestamps.CollectionChanged += OnTimestampsChanged;
+        if (_youTubeSync is not null)
+            _youTubeSync.StatusChanged += OnYouTubeSyncStatusChanged;
 
         StartCommand = new RelayCommand(ExecuteStart, () => State == AppState.Initial);
         ForceStartCommand = new RelayCommand(ExecuteForceStart, () => State == AppState.WaitingForStream);
@@ -276,6 +282,32 @@ public sealed class MainWindowViewModel : ObservableBase
         : StreamStartedAt.Value.LocalDateTime.ToString("yyyy-MM-dd HH:mm:ss");
 
     public int TimestampCount => Timestamps.Count;
+
+    /// <summary>YouTube 連携の状態表示を出すか（設定で有効にしている場合のみ）。</summary>
+    public bool IsYouTubeStatusVisible => _youTubeSync is not null && _settings.YouTube?.Enabled == true;
+
+    /// <summary>YouTube の概要欄の同期状態。ダイアログは出さず、ここに簡潔に出すだけにする。</summary>
+    public string YouTubeStatusText
+    {
+        get
+        {
+            if (!IsYouTubeStatusVisible) return string.Empty;
+
+            var status = _youTubeSync!.Status;
+            return status.State switch
+            {
+                YouTubeSyncState.Searching => "配信を検索中",
+                YouTubeSyncState.Linked when status.LastUpdatedAt is { } at
+                    => $"{at.ToLocalTime():HH:mm:ss} に更新（{status.BroadcastTitle}）",
+                YouTubeSyncState.Linked => $"連携中（{status.BroadcastTitle}）",
+                YouTubeSyncState.NotFound => "対象の配信が見つかりません",
+                YouTubeSyncState.Error => "更新に失敗（再試行します）",
+                YouTubeSyncState.QuotaExceeded => "API の上限に達したため停止",
+                YouTubeSyncState.SignInRequired => "再ログインが必要です",
+                _ => _youTubeSync.IsAvailable ? "待機中" : "未ログイン",
+            };
+        }
+    }
 
     public bool CanReset => State == AppState.RecordingEnded;
 
@@ -792,6 +824,9 @@ public sealed class MainWindowViewModel : ObservableBase
         // OBS 接続情報や監視ディレクトリが変わった可能性があるので Coordinator にも反映
         ApplySettingsToCoordinator();
 
+        // YouTube 連携の有効 / 無効・見出し行・フォーマットの変更を記録中の同期へ反映
+        ApplyYouTubeSettings();
+
         PersistSettings();
     }
 
@@ -954,6 +989,7 @@ public sealed class MainWindowViewModel : ObservableBase
             _record.Stream.EndedAt = null;
             EnsureBackupPath();
             MarkDirtyAndSaveBackup();
+            BeginYouTubeSync();
         }
         else if (oldState == AppState.RecordingEnded && newState == AppState.Recording)
         {
@@ -961,13 +997,89 @@ public sealed class MainWindowViewModel : ObservableBase
             _record.Stream.EndedAt = null;
             EnsureBackupPath();
             MarkDirtyAndSaveBackup();
+            // 過去記録の再開でも、そのライブがまだ配信中なら同期される（配信中のライブだけが対象）
+            BeginYouTubeSync();
         }
         else if (oldState == AppState.Recording && newState == AppState.RecordingEnded)
         {
             _record.Stream.EndedAt = DateTimeOffset.Now.TruncateToSecond();
             MarkDirtyAndSaveBackup();
+            EndYouTubeSync(writeFinal: true);
         }
     }
+
+    // --- YouTube の概要欄の同期 -------------------------------------------
+
+    private YouTubeSyncOptions BuildYouTubeSyncOptions()
+    {
+        var youTube = _settings.YouTube ?? new YouTubeSettings();
+        return new YouTubeSyncOptions(
+            youTube.ResolveHeading(),
+            youTube.ResolveUpdateInterval(),
+            YouTubeBroadcastMatcher.DefaultTolerance);
+    }
+
+    /// <summary>概要欄に書く行。コピー結果と同じ（配信開始行を含む）。</summary>
+    private List<string> BuildYouTubeLines() => DisplayRows.Select(r => r.DisplayText).ToList();
+
+    private void BeginYouTubeSync()
+    {
+        if (_youTubeSync is null || _settings.YouTube?.Enabled != true) return;
+        if (_record.Stream.StartedAt == default) return;
+
+        _youTubeSync.BeginSession(_record.Stream.StartedAt, BuildYouTubeSyncOptions());
+        PushYouTubeUpdate();
+    }
+
+    /// <summary>記録中なら概要欄の更新を依頼する（書き込みは同期側で間引かれる）。</summary>
+    private void PushYouTubeUpdate()
+    {
+        if (_youTubeSync is null || State != AppState.Recording || !_youTubeSync.IsActive) return;
+        // プレイが 1 件も無いうちは「配信開始」行だけのブロックになるので書かない
+        if (Timestamps.Count == 0) return;
+        _youTubeSync.RequestUpdate(BuildYouTubeLines());
+    }
+
+    private async void EndYouTubeSync(bool writeFinal)
+    {
+        if (_youTubeSync is null || !_youTubeSync.IsActive) return;
+        try
+        {
+            var finalLines = writeFinal && Timestamps.Count > 0 ? BuildYouTubeLines() : null;
+            await _youTubeSync.EndSessionAsync(finalLines).ConfigureAwait(true);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogWarning(ex, "YouTube の概要欄の同期の終了処理に失敗しました。");
+        }
+    }
+
+    private void ApplyYouTubeSettings()
+    {
+        RaisePropertyChanged(nameof(IsYouTubeStatusVisible));
+        RaisePropertyChanged(nameof(YouTubeStatusText));
+        if (_youTubeSync is null || State != AppState.Recording) return;
+
+        var enabled = _settings.YouTube?.Enabled == true;
+        if (!enabled)
+        {
+            EndYouTubeSync(writeFinal: false);
+            return;
+        }
+
+        // 記録中に有効化した・ログインし直した場合はここから同期を始める
+        if (!_youTubeSync.IsActive || _youTubeSync.Status.State == YouTubeSyncState.SignInRequired)
+        {
+            BeginYouTubeSync();
+            return;
+        }
+
+        _youTubeSync.UpdateOptions(BuildYouTubeSyncOptions());
+        PushYouTubeUpdate();
+    }
+
+    private void OnYouTubeSyncStatusChanged(object? sender, YouTubeSyncStatus e)
+        => RaisePropertyChanged(nameof(YouTubeStatusText));
 
     // --- 配信開始行 -------------------------------------------------------
 
@@ -1053,6 +1165,7 @@ public sealed class MainWindowViewModel : ObservableBase
         _record.UpdatedAt = DateTimeOffset.Now;
         _isDirty = true;
         TrySaveBackup();
+        PushYouTubeUpdate();
     }
 
     /// <summary>

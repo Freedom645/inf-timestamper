@@ -3,6 +3,7 @@ using InfTimestamper.Core.Obs;
 using InfTimestamper.Core.Persistence;
 using InfTimestamper.Core.Settings;
 using InfTimestamper.Core.Updates;
+using InfTimestamper.Core.YouTube;
 using InfTimestamper.ViewModels;
 using InfTimestamper.ViewModels.Settings;
 using InfTimestamper.Views;
@@ -14,14 +15,22 @@ public sealed class WpfDialogService : IDialogService
 {
     private readonly Func<Window?> _ownerProvider;
     private readonly IObsConnectionTester? _tester;
+    private readonly YouTubeAccount? _youTubeAccount;
+    private readonly IYouTubeApi? _youTubeApi;
 
     public WpfDialogService(Func<Window?> ownerProvider)
         : this(ownerProvider, null) { }
 
-    public WpfDialogService(Func<Window?> ownerProvider, IObsConnectionTester? tester)
+    public WpfDialogService(
+        Func<Window?> ownerProvider,
+        IObsConnectionTester? tester,
+        YouTubeAccount? youTubeAccount = null,
+        IYouTubeApi? youTubeApi = null)
     {
         _ownerProvider = ownerProvider ?? throw new ArgumentNullException(nameof(ownerProvider));
         _tester = tester;
+        _youTubeAccount = youTubeAccount;
+        _youTubeApi = youTubeApi;
     }
 
     public IReadOnlyList<DateTimeOffset>? ShowDateTimeEditor(IReadOnlyList<DateTimeOffset> currentValues)
@@ -38,7 +47,7 @@ public sealed class WpfDialogService : IDialogService
     public AppSettings? ShowSettings(AppSettings current)
     {
         if (current is null) throw new ArgumentNullException(nameof(current));
-        var vm = new SettingsDialogViewModel(current, _tester, this);
+        var vm = new SettingsDialogViewModel(current, _tester, this, _youTubeAccount, _youTubeApi);
         var dialog = new SettingsDialog(vm) { Owner = _ownerProvider() };
         var ok = dialog.ShowDialog();
         return ok == true ? vm.Result : null;

@@ -1,5 +1,6 @@
 using InfTimestamper.Core.Obs;
 using InfTimestamper.Core.Settings;
+using InfTimestamper.Core.YouTube;
 using InfTimestamper.Services;
 
 namespace InfTimestamper.ViewModels.Settings;
@@ -9,7 +10,12 @@ public sealed class SettingsDialogViewModel : ObservableBase
     public SettingsDialogViewModel(AppSettings settings)
         : this(settings, null, null) { }
 
-    public SettingsDialogViewModel(AppSettings settings, IObsConnectionTester? tester, IDialogService? dialog)
+    public SettingsDialogViewModel(
+        AppSettings settings,
+        IObsConnectionTester? tester,
+        IDialogService? dialog,
+        YouTubeAccount? youTubeAccount = null,
+        IYouTubeApi? youTubeApi = null)
     {
         if (settings is null) throw new ArgumentNullException(nameof(settings));
 
@@ -34,6 +40,12 @@ public sealed class SettingsDialogViewModel : ObservableBase
             settings.Sdvx ?? new SdvxSettings { TimestampFormat = AppSettings.DefaultTimestampFormat },
             dialog);
 
+        YouTube = new YouTubeSettingsViewModel(
+            settings.YouTube ?? new YouTubeSettings(),
+            youTubeAccount,
+            youTubeApi,
+            dialog);
+
         ConfirmCommand = new RelayCommand(Confirm);
         CancelCommand = new RelayCommand(Cancel);
     }
@@ -43,6 +55,7 @@ public sealed class SettingsDialogViewModel : ObservableBase
     public InfinitasSettingsViewModel Infinitas { get; }
     public PopnSettingsViewModel Popn { get; }
     public SdvxSettingsViewModel Sdvx { get; }
+    public YouTubeSettingsViewModel YouTube { get; }
 
     public AppSettings? Result { get; private set; }
     public bool? DialogResult { get; private set; }
@@ -62,6 +75,7 @@ public sealed class SettingsDialogViewModel : ObservableBase
             Infinitas = Infinitas.ToModel(),
             Popn = Popn.ToModel(),
             Sdvx = Sdvx.ToModel(),
+            YouTube = YouTube.ToModel(),
         };
         DialogResult = true;
         RequestClose?.Invoke();

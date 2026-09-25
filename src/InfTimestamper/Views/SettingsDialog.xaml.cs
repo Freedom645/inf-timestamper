@@ -25,6 +25,11 @@ public partial class SettingsDialog : Window
         // 確定前に VM に戻す
         ObsPasswordBox.Password = viewModel.Obs.Password;
 
+        // クライアントシークレットは「ログイン」ボタンで確定前に使うので、入力のたびに VM へ流す
+        YouTubeClientSecretBox.Password = viewModel.YouTube.ClientSecret;
+        YouTubeClientSecretBox.PasswordChanged += (_, _) =>
+            viewModel.YouTube.ClientSecret = YouTubeClientSecretBox.Password;
+
         viewModel.RequestClose += OnRequestClose;
         Closed += (_, _) => viewModel.RequestClose -= OnRequestClose;
 

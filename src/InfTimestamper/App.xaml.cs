@@ -1,3 +1,4 @@
+using System.Diagnostics;
 using System.IO;
 using System.Net.Http;
 using System.Windows;
@@ -14,6 +15,7 @@ using InfTimestamper.Core.Settings;
 using InfTimestamper.Core.States;
 using InfTimestamper.Core.Threading;
 using InfTimestamper.Core.Updates;
+using InfTimestamper.Core.YouTube;
 using InfTimestamper.Services;
 using InfTimestamper.ViewModels;
 using Microsoft.Extensions.DependencyInjection;
@@ -110,10 +112,32 @@ public partial class App : Application
                     () => new ObsWebSocketConnection(sp.GetRequiredService<ILogger<ObsWebSocketConnection>>()),
                     sp.GetRequiredService<ILogger<ObsConnectionTester>>(),
                     ObsConnectionTester.DefaultTimeout));
-                services.AddSingleton<IDialogService>(sp =>
-                    new WpfDialogService(() => Current?.MainWindow, sp.GetRequiredService<IObsConnectionTester>()));
-
                 services.AddSingleton<IUiDispatcher, WpfDispatcher>();
+
+                // YouTube のライブの概要欄の同期。ログイン情報は DPAPI で暗号化して settings.json とは別に置く
+                services.AddSingleton<IYouTubeOAuthClient>(sp => new YouTubeOAuthClient(
+                    sp.GetRequiredService<HttpClient>(),
+                    url => Process.Start(new ProcessStartInfo(url) { UseShellExecute = true }),
+                    sp.GetRequiredService<ILogger<YouTubeOAuthClient>>()));
+                services.AddSingleton<YouTubeAccount>(sp => new YouTubeAccount(
+                    sp.GetRequiredService<IYouTubeOAuthClient>(),
+                    new DpapiYouTubeCredentialStore(DpapiYouTubeCredentialStore.DefaultPath()),
+                    TimeProvider.System,
+                    sp.GetRequiredService<ILogger<YouTubeAccount>>()));
+                services.AddSingleton<IYouTubeApi>(sp => new YouTubeApiClient(
+                    sp.GetRequiredService<HttpClient>(),
+                    sp.GetRequiredService<YouTubeAccount>()));
+                services.AddSingleton<YouTubeDescriptionSync>(sp => new YouTubeDescriptionSync(
+                    sp.GetRequiredService<IYouTubeApi>(),
+                    sp.GetRequiredService<IUiDispatcher>(),
+                    TimeProvider.System,
+                    sp.GetRequiredService<ILogger<YouTubeDescriptionSync>>()));
+
+                services.AddSingleton<IDialogService>(sp => new WpfDialogService(
+                    () => Current?.MainWindow,
+                    sp.GetRequiredService<IObsConnectionTester>(),
+                    sp.GetRequiredService<YouTubeAccount>(),
+                    sp.GetRequiredService<IYouTubeApi>()));
 
                 // ゲームのプレイ検知は外部ツールの出力を読んで行う（OBS は配信開始/終了検知に限定）。
                 // INFINITAS / pop'n music はファイル監視、SOUND VOLTEX は SDVX Helper の WebSocket 購読
@@ -152,7 +176,8 @@ public partial class App : Application
                     sp.GetRequiredService<IGitHubReleaseChecker>(),
                     sp.GetRequiredService<IUpdateService>(),
                     sp.GetService<ILogger<MainWindowViewModel>>(),
-                    sp.GetRequiredService<IFileRecycler>()));
+                    sp.GetRequiredService<IFileRecycler>(),
+                    sp.GetRequiredService<YouTubeDescriptionSync>()));
                 services.AddSingleton<MainWindow>(sp => new MainWindow(sp.GetRequiredService<MainWindowViewModel>()));
             })
             .Build();

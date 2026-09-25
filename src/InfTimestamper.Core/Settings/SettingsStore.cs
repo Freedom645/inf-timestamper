@@ -102,5 +102,8 @@ public sealed class SettingsStore
 
         if (string.IsNullOrEmpty(settings.Infinitas.TimestampFormat))
             settings.Infinitas.TimestampFormat = AppSettings.DefaultTimestampFormat;
+
+        // v1.2.0 以前の settings.json には youTube セクションが無い（null を明示された場合も既定に戻す）
+        settings.YouTube ??= new YouTubeSettings();
     }
 }

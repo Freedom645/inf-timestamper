@@ -107,6 +107,71 @@
                 </StackPanel>
             </TabItem>
 
+            <!-- YouTube 連携 -->
+            <TabItem Header="YouTube 連携">
+                <ScrollViewer VerticalScrollBarVisibility="Auto">
+                    <StackPanel Margin="12">
+                        <CheckBox x:Name="YouTubeEnabledCheckBox"
+                                  Content="ライブ配信の概要欄をタイムスタンプで自動更新する"
+                                  IsChecked="{Binding YouTube.Enabled}"
+                                  Margin="0,0,0,4" />
+                        <TextBlock Text="記録中、配信開始時間とほぼ同時刻（前後 10 分以内）に始まった自分のライブ配信を探し、その概要欄の末尾にタイムスタンプを書き込みます。配信中のライブだけが対象です。"
+                                   Foreground="Gray" TextWrapping="Wrap" Margin="20,0,0,12" />
+
+                        <TextBlock Text="アカウント" FontWeight="Bold" Margin="0,0,0,4" />
+                        <Grid Margin="0,0,0,4">
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="140" />
+                                <ColumnDefinition Width="*" />
+                            </Grid.ColumnDefinitions>
+                            <Grid.RowDefinitions>
+                                <RowDefinition Height="Auto" />
+                                <RowDefinition Height="Auto" />
+                            </Grid.RowDefinitions>
+                            <TextBlock Grid.Row="0" Grid.Column="0" Text="クライアント ID" VerticalAlignment="Center" />
+                            <TextBox Grid.Row="0" Grid.Column="1"
+                                     Text="{Binding YouTube.ClientId, UpdateSourceTrigger=PropertyChanged}"
+                                     IsEnabled="{Binding YouTube.CanEditCredentials}"
+                                     Padding="4" Margin="0,2" />
+                            <TextBlock Grid.Row="1" Grid.Column="0" Text="クライアント シークレット" VerticalAlignment="Center" />
+                            <PasswordBox Grid.Row="1" Grid.Column="1" x:Name="YouTubeClientSecretBox"
+                                         IsEnabled="{Binding YouTube.CanEditCredentials}"
+                                         Padding="4" Margin="0,2" />
+                        </Grid>
+                        <TextBlock Text="Google Cloud で作成した OAuth クライアント（種類「デスクトップ アプリ」）の値を入力します。作成手順は GitHub の docs/youtube.md を参照してください。"
+                                   Foreground="Gray" TextWrapping="Wrap" Margin="0,0,0,6" />
+                        <StackPanel Orientation="Horizontal" Margin="0,0,0,4">
+                            <Button Content="ログイン..." Width="100" Margin="0,0,6,0"
+                                    Command="{Binding YouTube.SignInCommand}" />
+                            <Button Content="中断" Width="60" Margin="0,0,6,0"
+                                    Command="{Binding YouTube.CancelSignInCommand}" />
+                            <Button Content="ログアウト" Width="100"
+                                    Command="{Binding YouTube.SignOutCommand}" />
+                        </StackPanel>
+                        <TextBlock Text="{Binding YouTube.AccountStatusText}" Margin="0,0,0,12" />
+
+                        <StackPanel IsEnabled="{Binding IsChecked, ElementName=YouTubeEnabledCheckBox}">
+                            <TextBlock Text="見出し行" FontWeight="Bold" Margin="0,0,0,4" />
+                            <TextBox Text="{Binding YouTube.DescriptionHeading, UpdateSourceTrigger=PropertyChanged}"
+                                     Background="{Binding YouTube.IsDescriptionHeadingValid, Converter={StaticResource ValidityToBrush}}"
+                                     Padding="4" />
+                            <TextBlock Text="概要欄のこの行から末尾までをタイムスタンプで置き換えます（無ければ末尾に追記します）。手書きの説明文はこの行より上に書いてください。"
+                                       Foreground="Gray" TextWrapping="Wrap" Margin="0,4,0,12" />
+
+                            <TextBlock Text="更新間隔（秒）" FontWeight="Bold" Margin="0,0,0,4" />
+                            <TextBox Text="{Binding YouTube.UpdateIntervalSeconds, UpdateSourceTrigger=PropertyChanged}"
+                                     Background="{Binding YouTube.IsUpdateIntervalValid, Converter={StaticResource ValidityToBrush}}"
+                                     Width="80" HorizontalAlignment="Left" Padding="4" />
+                            <TextBlock Foreground="Gray" TextWrapping="Wrap" Margin="0,4,0,0">
+                                <Run Text="概要欄の書き換えは 1 回ごとに API の上限（1 日 10,000 ユニット）を 50 消費するため、この間隔で間引きます（最短" />
+                                <Run Text="{Binding YouTube.MinUpdateIntervalSeconds, Mode=OneWay}" />
+                                <Run Text="秒）。記録停止時は間隔を待たずに最終版を書き込みます。" />
+                            </TextBlock>
+                        </StackPanel>
+                    </StackPanel>
+                </ScrollViewer>
+            </TabItem>
+
             <!-- INFINITAS -->
             <TabItem Header="INFINITAS">
                 <StackPanel Margin="12">
