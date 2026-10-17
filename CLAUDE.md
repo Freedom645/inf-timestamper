@@ -4,7 +4,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## リポジトリの状態
 
-実装は一通り完了している。MVP に必要な機能（状態機械・OBS 接続・ゲーム検知・フォーマット展開・永続化・設定画面・ログ・自己アップデート）に加え、3 ゲーム目（SOUND VOLTEX）まで通っており、**3 ゲームとも実機検証済み**。`dotnet build` 警告 0 / `dotnet test` 全緑。最新リリースは v1.2.0。INFINITAS の検知元に打鍵カウンタを選べるようにする対応（Phase 13 / issue #13）はコード側完了・実機確認待ち。
+実装は一通り完了している。MVP に必要な機能（状態機械・OBS 接続・ゲーム検知・フォーマット展開・永続化・設定画面・ログ・自己アップデート）に加え、3 ゲーム目（SOUND VOLTEX）まで通っており、**3 ゲームとも実機検証済み**。`dotnet build` 警告 0 / `dotnet test` 全緑。最新リリースは v1.2.0。INFINITAS の検知元に打鍵カウンタを選べるようにする対応（Phase 13 / issue #13）はコード側完了。v1.4.0-alpha.1 として α 版で配布し、実機確認待ち（YouTube 対応の v1.3.0-alpha.1 とは別系統で、YouTube の変更は含まない）。
 
 進捗と「次にやること」の正本は `docs/実装計画.md`（フェーズ別の DoD とセッション引き継ぎメモ）。**作業を始める前にその「現在のフェーズ」節を読むこと。**
 
