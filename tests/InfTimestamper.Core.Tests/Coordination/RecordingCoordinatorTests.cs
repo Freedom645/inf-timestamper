@@ -1,4 +1,5 @@
 using InfTimestamper.Core.Coordination;
+using InfTimestamper.Core.DakenCounter;
 using InfTimestamper.Core.Games;
 using InfTimestamper.Core.Models;
 using InfTimestamper.Core.Obs;
@@ -29,7 +30,7 @@ public class RecordingCoordinatorTests
 
         var coordinator = new RecordingCoordinator(
             state,
-            new Dictionary<GameId, IPlayWatcher> { [GameId.Infinitas] = watcher },
+            new Dictionary<PlaySourceId, IPlayWatcher> { [PlaySourceId.Reflux] = watcher },
             dispatcher,
             streamConnectionFactory: () => conn,
             managerFactory: c => new ObsConnectionManager(c, NullLogger<ObsConnectionManager>.Instance, new TestDelayProvider(), TimeSpan.FromMilliseconds(50)));
@@ -37,7 +38,7 @@ public class RecordingCoordinatorTests
         coordinator.Configure(new RecordingCoordinatorOptions
         {
             StreamObs = DefaultObs,
-            Game = GameId.Infinitas,
+            PlaySource = PlaySourceId.Reflux,
             WatchTarget = WatchTarget.ForDirectory(refluxDirectory),
         });
         return coordinator;
@@ -108,6 +109,54 @@ public class RecordingCoordinatorTests
     }
 
     [Fact]
+    public async Task PlaySource_SelectsWatcherAndSwitchingRestartsMonitoring()
+    {
+        // INFINITAS は Reflux / 打鍵カウンタを設定で切り替える（issue #13）。記録中に切り替えたら張り直す
+        using var dir = new TempDirectory();
+        var state = new AppStateMachine();
+        var reflux = new RefluxPlayWatcher(NullLogger<RefluxPlayWatcher>.Instance, TimeSpan.Zero);
+        var daken = new DakenCounterPlayWatcher();
+        var conn = new FakeObsConnection();
+        var coordinator = new RecordingCoordinator(
+            state,
+            new Dictionary<PlaySourceId, IPlayWatcher>
+            {
+                [PlaySourceId.Reflux] = reflux,
+                [PlaySourceId.DakenCounter] = daken,
+            },
+            ImmediateUiDispatcher.Instance,
+            streamConnectionFactory: () => conn,
+            managerFactory: c => new ObsConnectionManager(c, NullLogger<ObsConnectionManager>.Instance, new TestDelayProvider(), TimeSpan.FromMilliseconds(50)));
+
+        await using (coordinator)
+        {
+            coordinator.Configure(new RecordingCoordinatorOptions
+            {
+                StreamObs = DefaultObs,
+                PlaySource = PlaySourceId.DakenCounter,
+                // 繋がらない接続先。ウォッチャーは再接続を試み続けるだけ
+                WatchTarget = WatchTarget.ForEndpoint("ws://127.0.0.1:1"),
+            });
+
+            state.Start();
+            state.ForceStart();
+
+            Assert.True(daken.IsRunning);
+            Assert.False(reflux.IsRunning);
+
+            coordinator.Configure(new RecordingCoordinatorOptions
+            {
+                StreamObs = DefaultObs,
+                PlaySource = PlaySourceId.Reflux,
+                WatchTarget = WatchTarget.ForDirectory(dir.Path),
+            });
+
+            Assert.False(daken.IsRunning);
+            Assert.True(reflux.IsRunning);
+        }
+    }
+
+    [Fact]
     public void OnPlayStartedFromWatcher_BubblesViaCoordinator()
     {
         var coordinator = BuildCoordinator(out _, out var watcher, out _);
@@ -145,7 +194,7 @@ public class RecordingCoordinatorTests
 
         var coordinator = new RecordingCoordinator(
             state,
-            new Dictionary<GameId, IPlayWatcher> { [GameId.Infinitas] = watcher },
+            new Dictionary<PlaySourceId, IPlayWatcher> { [PlaySourceId.Reflux] = watcher },
             ImmediateUiDispatcher.Instance,
             streamConnectionFactory: () => conn,
             managerFactory: c => new ObsConnectionManager(c, NullLogger<ObsConnectionManager>.Instance, new TestDelayProvider(), TimeSpan.FromMilliseconds(50)));

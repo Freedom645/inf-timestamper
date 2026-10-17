@@ -1,5 +1,4 @@
 using InfTimestamper.Core.Games;
-using InfTimestamper.Core.Models;
 using InfTimestamper.Core.Obs;
 using InfTimestamper.Core.States;
 using InfTimestamper.Core.Threading;
@@ -11,7 +10,7 @@ namespace InfTimestamper.Core.Coordination;
 public sealed class RecordingCoordinator : IAsyncDisposable
 {
     private readonly AppStateMachine _stateMachine;
-    private readonly IReadOnlyDictionary<GameId, IPlayWatcher> _watchers;
+    private readonly IReadOnlyDictionary<PlaySourceId, IPlayWatcher> _watchers;
     private readonly IUiDispatcher _dispatcher;
     private readonly Func<IObsConnection> _streamConnectionFactory;
     private readonly Func<IObsConnection, ObsConnectionManager> _managerFactory;
@@ -28,7 +27,7 @@ public sealed class RecordingCoordinator : IAsyncDisposable
 
     public RecordingCoordinator(
         AppStateMachine stateMachine,
-        IReadOnlyDictionary<GameId, IPlayWatcher> watchers,
+        IReadOnlyDictionary<PlaySourceId, IPlayWatcher> watchers,
         IUiDispatcher dispatcher,
         Func<IObsConnection> streamConnectionFactory,
         Func<IObsConnection, ObsConnectionManager> managerFactory,
@@ -76,7 +75,7 @@ public sealed class RecordingCoordinator : IAsyncDisposable
         }
 
         if (_activeWatcher is not null
-            && (previous.Game != _options.Game
+            && (previous.PlaySource != _options.PlaySource
                 || previous.WatchTarget != _options.WatchTarget))
         {
             _logger.LogInformation("プレイ監視の設定が変更されたため、監視を張り直します。");
@@ -167,11 +166,11 @@ public sealed class RecordingCoordinator : IAsyncDisposable
     {
         if (_activeWatcher is not null) return;
 
-        var game = _options.Game;
-        if (!_watchers.TryGetValue(game, out var watcher))
+        var source = _options.PlaySource;
+        if (!_watchers.TryGetValue(source, out var watcher))
         {
-            _logger.LogWarning("{Game} のプレイ監視機構が登録されていないため、監視を開始しません。",
-                GameCatalog.DisplayName(game));
+            _logger.LogWarning("{Tool} のプレイ監視機構が登録されていないため、監視を開始しません。",
+                GameCatalog.WatcherToolName(source));
             return;
         }
 
@@ -179,7 +178,7 @@ public sealed class RecordingCoordinator : IAsyncDisposable
         if (target.IsEmpty)
         {
             _logger.LogWarning("{Tool} の監視対象が未指定のため、監視を開始しません。",
-                GameCatalog.WatcherToolName(game));
+                GameCatalog.WatcherToolName(source));
             return;
         }
 
@@ -188,13 +187,13 @@ public sealed class RecordingCoordinator : IAsyncDisposable
             watcher.Start(target);
             _activeWatcher = watcher;
             _logger.LogInformation("{Tool} のプレイ監視を開始しました: {Target}",
-                GameCatalog.WatcherToolName(game), target);
+                GameCatalog.WatcherToolName(source), target);
         }
         catch (Exception ex)
         {
             // 監視開始失敗は記録自体には影響しない（要件: ダイアログを出さずログのみ）
             _logger.LogWarning(ex, "{Tool} のプレイ監視の開始に失敗しました: {Target}",
-                GameCatalog.WatcherToolName(game), target);
+                GameCatalog.WatcherToolName(source), target);
         }
     }
 
@@ -315,12 +314,15 @@ public sealed class RecordingCoordinatorOptions
 {
     public ObsConnectionOptions? StreamObs { get; set; }
 
-    /// <summary>記録対象のゲーム。どの <c>IPlayWatcher</c> を動かすかを決める。</summary>
-    public GameId Game { get; set; } = GameId.Infinitas;
+    /// <summary>
+    /// プレイ検知の取得元。どの <c>IPlayWatcher</c> を動かすかを決める。
+    /// 記録対象のゲームと、INFINITAS では設定の検知元の選択から決まる（<c>AppSettings.PlaySourceFor</c>）。
+    /// </summary>
+    public PlaySourceId PlaySource { get; set; } = PlaySourceId.Reflux;
 
     /// <summary>
-    /// ゲーム検知の監視対象。INFINITAS（Reflux）と pop'n music（popn-lively-tracker）は
-    /// 出力ディレクトリ、SOUND VOLTEX（SDVX Helper）は <c>ws://host:port</c> の接続先 + 任意でフォルダ。
+    /// ゲーム検知の監視対象。Reflux と popn-lively-tracker は出力ディレクトリ、
+    /// 打鍵カウンタは <c>ws://host:port</c> の接続先、SDVX Helper は接続先 + 任意でフォルダ。
     /// </summary>
     public WatchTarget WatchTarget { get; set; } = WatchTarget.Empty;
 }

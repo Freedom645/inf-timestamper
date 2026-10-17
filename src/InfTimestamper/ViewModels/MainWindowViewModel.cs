@@ -368,7 +368,7 @@ public sealed class MainWindowViewModel : ObservableBase
         _coordinator.Configure(new RecordingCoordinatorOptions
         {
             StreamObs = streamObs,
-            Game = _selectedGame,
+            PlaySource = _settings.PlaySourceFor(_selectedGame),
             WatchTarget = _settings.WatchTargetFor(_selectedGame),
         });
     }

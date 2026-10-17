@@ -19,7 +19,7 @@ public class StreamDetectionTests
         var conn = new FakeObsConnection();
         var coord = new RecordingCoordinator(
             state,
-            new Dictionary<GameId, IPlayWatcher> { [GameId.Infinitas] = watcher },
+            new Dictionary<PlaySourceId, IPlayWatcher> { [PlaySourceId.Reflux] = watcher },
             ImmediateUiDispatcher.Instance,
             streamConnectionFactory: () => conn,
             managerFactory: c => new ObsConnectionManager(c, NullLogger<ObsConnectionManager>.Instance, new TestDelayProvider(), TimeSpan.FromMilliseconds(50)));

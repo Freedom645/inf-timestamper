@@ -142,11 +142,25 @@ public static class GameCatalog
         _ => InfinitasChoices,
     };
 
-    /// <summary>そのゲームのプレイ検知に使う外部ツール名（設定画面の説明文やログに使う）。</summary>
-    public static string WatcherToolName(GameId game) => game switch
+    /// <summary>プレイ検知に使う外部ツール名（設定画面の説明文やログに使う）。</summary>
+    public static string WatcherToolName(PlaySourceId source) => source switch
     {
-        GameId.Popn => "popn-lively-tracker",
-        GameId.Sdvx => "SDVX Helper",
+        PlaySourceId.DakenCounter => "打鍵カウンタ",
+        PlaySourceId.PopnTracker => "popn-lively-tracker",
+        PlaySourceId.SdvxHelper => "SDVX Helper",
         _ => "Reflux",
     };
+
+    /// <summary>そのゲームで選べるプレイ検知の取得元。先頭が既定。</summary>
+    public static IReadOnlyList<PlaySourceId> PlaySources(GameId game) => game switch
+    {
+        GameId.Popn => PopnSources,
+        GameId.Sdvx => SdvxSources,
+        _ => InfinitasSources,
+    };
+
+    private static readonly IReadOnlyList<PlaySourceId> InfinitasSources =
+        new[] { PlaySourceId.Reflux, PlaySourceId.DakenCounter };
+    private static readonly IReadOnlyList<PlaySourceId> PopnSources = new[] { PlaySourceId.PopnTracker };
+    private static readonly IReadOnlyList<PlaySourceId> SdvxSources = new[] { PlaySourceId.SdvxHelper };
 }

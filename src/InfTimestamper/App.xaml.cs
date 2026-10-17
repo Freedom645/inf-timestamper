@@ -2,6 +2,7 @@ using System.IO;
 using System.Net.Http;
 using System.Windows;
 using InfTimestamper.Core.Coordination;
+using InfTimestamper.Core.DakenCounter;
 using InfTimestamper.Core.Games;
 using InfTimestamper.Core.Models;
 using InfTimestamper.Core.Obs;
@@ -116,23 +117,27 @@ public partial class App : Application
                 services.AddSingleton<IUiDispatcher, WpfDispatcher>();
 
                 // ゲームのプレイ検知は外部ツールの出力を読んで行う（OBS は配信開始/終了検知に限定）。
-                // INFINITAS / pop'n music はファイル監視、SOUND VOLTEX は SDVX Helper の WebSocket 購読
+                // Reflux / popn-lively-tracker はファイル監視、打鍵カウンタ / SDVX Helper は WebSocket 購読。
+                // INFINITAS は Reflux と打鍵カウンタのどちらを使うかを設定で選ぶ
                 services.AddSingleton<RefluxPlayWatcher>(sp => new RefluxPlayWatcher(
                     sp.GetRequiredService<ILogger<RefluxPlayWatcher>>()));
+                services.AddSingleton<DakenCounterPlayWatcher>(sp => new DakenCounterPlayWatcher(
+                    sp.GetRequiredService<ILogger<DakenCounterPlayWatcher>>()));
                 services.AddSingleton<PopnPlayWatcher>(sp => new PopnPlayWatcher(
                     sp.GetRequiredService<ILogger<PopnPlayWatcher>>()));
                 services.AddSingleton<SdvxHelperPlayWatcher>(sp => new SdvxHelperPlayWatcher(
                     sp.GetRequiredService<ILogger<SdvxHelperPlayWatcher>>()));
-                services.AddSingleton<IReadOnlyDictionary<GameId, IPlayWatcher>>(sp =>
-                    new Dictionary<GameId, IPlayWatcher>
+                services.AddSingleton<IReadOnlyDictionary<PlaySourceId, IPlayWatcher>>(sp =>
+                    new Dictionary<PlaySourceId, IPlayWatcher>
                     {
-                        [GameId.Infinitas] = sp.GetRequiredService<RefluxPlayWatcher>(),
-                        [GameId.Popn] = sp.GetRequiredService<PopnPlayWatcher>(),
-                        [GameId.Sdvx] = sp.GetRequiredService<SdvxHelperPlayWatcher>(),
+                        [PlaySourceId.Reflux] = sp.GetRequiredService<RefluxPlayWatcher>(),
+                        [PlaySourceId.DakenCounter] = sp.GetRequiredService<DakenCounterPlayWatcher>(),
+                        [PlaySourceId.PopnTracker] = sp.GetRequiredService<PopnPlayWatcher>(),
+                        [PlaySourceId.SdvxHelper] = sp.GetRequiredService<SdvxHelperPlayWatcher>(),
                     });
                 services.AddSingleton<RecordingCoordinator>(sp => new RecordingCoordinator(
                     sp.GetRequiredService<AppStateMachine>(),
-                    sp.GetRequiredService<IReadOnlyDictionary<GameId, IPlayWatcher>>(),
+                    sp.GetRequiredService<IReadOnlyDictionary<PlaySourceId, IPlayWatcher>>(),
                     sp.GetRequiredService<IUiDispatcher>(),
                     streamConnectionFactory: () => new ObsWebSocketConnection(
                         sp.GetRequiredService<ILogger<ObsWebSocketConnection>>()),

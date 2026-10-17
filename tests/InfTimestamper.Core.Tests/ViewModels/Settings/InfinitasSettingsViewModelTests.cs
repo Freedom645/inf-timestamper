@@ -1,3 +1,4 @@
+using InfTimestamper.Core.Games;
 using InfTimestamper.Core.Settings;
 using InfTimestamper.Core.Tests.ViewModels;
 using InfTimestamper.ViewModels.Settings;
@@ -78,5 +79,88 @@ public class InfinitasSettingsViewModelTests
         Assert.Contains(vm.AvailableIdentifiers, c => c.Key == "ex_score");
         Assert.Contains(vm.AvailableIdentifiers, c => c.Key == "dj_level");
         Assert.Contains(vm.AvailableIdentifiers, c => c.Key == "lamp");
+    }
+
+    // ---- プレイの検知元（Reflux / 打鍵カウンタ。issue #13） ----
+
+    [Fact]
+    public void PlaySource_DefaultsToReflux()
+    {
+        var vm = Make();
+
+        Assert.Equal(PlaySourceId.Reflux, vm.PlaySource);
+        Assert.True(vm.IsRefluxSource);
+        Assert.False(vm.IsDakenCounterSource);
+    }
+
+    [Fact]
+    public void SelectingDakenCounter_SwitchesRadioButtonsAndModel()
+    {
+        var vm = Make();
+        var changes = new List<string?>();
+        vm.PropertyChanged += (_, e) => changes.Add(e.PropertyName);
+
+        vm.IsDakenCounterSource = true;
+
+        Assert.Equal(PlaySourceId.DakenCounter, vm.PlaySource);
+        Assert.False(vm.IsRefluxSource);
+        Assert.Contains(nameof(InfinitasSettingsViewModel.IsRefluxSource), changes);
+        Assert.Contains(nameof(InfinitasSettingsViewModel.IsDakenCounterSource), changes);
+        Assert.Equal(PlaySourceIdExtensions.DakenCounterSerialized, vm.ToModel().PlaySource);
+    }
+
+    [Fact]
+    public void ToModel_KeepsSettingsOfTheUnselectedSource()
+    {
+        // 検知元を切り替えても、選んでいない側の設定は消さない（戻したときに入れ直さなくて済むように）
+        var vm = new InfinitasSettingsViewModel(new InfinitasSettings
+        {
+            TimestampFormat = "$timestamp",
+            RefluxDirectory = @"C:eflux",
+            PlaySource = PlaySourceIdExtensions.DakenCounterSerialized,
+            DakenCounterHost = "192.168.1.10",
+            DakenCounterPort = 9000,
+        });
+
+        vm.IsRefluxSource = true;
+        var model = vm.ToModel();
+
+        Assert.Equal(PlaySourceIdExtensions.RefluxSerialized, model.PlaySource);
+        Assert.Equal(@"C:eflux", model.RefluxDirectory);
+        Assert.Equal("192.168.1.10", model.DakenCounterHost);
+        Assert.Equal(9000, model.DakenCounterPort);
+    }
+
+    [Fact]
+    public void DakenCounterEndpoint_FollowsHostAndPort()
+    {
+        var vm = Make();
+        Assert.Equal("ws://127.0.0.1:8767", vm.DakenCounterEndpoint);
+        Assert.True(vm.IsDakenCounterLocalhost);
+
+        vm.DakenCounterHost = "192.168.1.10";
+        vm.DakenCounterPort = 9000;
+
+        Assert.Equal("ws://192.168.1.10:9000", vm.DakenCounterEndpoint);
+        Assert.False(vm.IsDakenCounterLocalhost);
+
+        vm.IsDakenCounterLocalhost = true;
+        Assert.Equal("127.0.0.1", vm.DakenCounterHost);
+    }
+
+    [Theory]
+    [InlineData("127.0.0.1", 8767, true, true)]
+    [InlineData("192.168.1.10", 1, true, true)]
+    [InlineData("192.168.1", 8767, false, true)]
+    [InlineData("127.0.0.1", 0, true, false)]
+    [InlineData("127.0.0.1", 65536, true, false)]
+    public void DakenCounterValidity(string host, int port, bool hostValid, bool portValid)
+    {
+        var vm = Make();
+        vm.DakenCounterHost = host;
+        vm.DakenCounterPort = port;
+
+        Assert.Equal(hostValid, vm.IsDakenCounterHostValid);
+        Assert.Equal(portValid, vm.IsDakenCounterPortValid);
     }
 }

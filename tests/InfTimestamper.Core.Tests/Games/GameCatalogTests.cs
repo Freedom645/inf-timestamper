@@ -113,6 +113,17 @@ public class GameCatalogTests
     public void DisplayNameAndToolName_AreNotEmpty(GameId game)
     {
         Assert.False(string.IsNullOrWhiteSpace(GameCatalog.DisplayName(game)));
-        Assert.False(string.IsNullOrWhiteSpace(GameCatalog.WatcherToolName(game)));
+        Assert.NotEmpty(GameCatalog.PlaySources(game));
+        foreach (var source in GameCatalog.PlaySources(game))
+            Assert.False(string.IsNullOrWhiteSpace(GameCatalog.WatcherToolName(source)));
+    }
+
+    [Fact]
+    public void PlaySources_InfinitasDefaultsToReflux()
+    {
+        // 既定は従来どおり Reflux。打鍵カウンタは設定で選んだときだけ使う（issue #13）
+        Assert.Equal(new[] { PlaySourceId.Reflux, PlaySourceId.DakenCounter }, GameCatalog.PlaySources(GameId.Infinitas));
+        Assert.Equal(new[] { PlaySourceId.PopnTracker }, GameCatalog.PlaySources(GameId.Popn));
+        Assert.Equal(new[] { PlaySourceId.SdvxHelper }, GameCatalog.PlaySources(GameId.Sdvx));
     }
 }

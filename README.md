@@ -27,7 +27,7 @@
 
 | ゲーム | プレイ検知に使う外部ツール |
 | --- | --- |
-| コナステ版 beatmania IIDX INFINITAS | [Reflux](https://github.com/olji/Reflux) |
+| コナステ版 beatmania IIDX INFINITAS | [Reflux](https://github.com/olji/Reflux) または [打鍵カウンタ](https://github.com/dj-kata/inf_daken_counter_obsw)（設定で選択） |
 | pop'n music | 別途トラッカーが必要（下記） |
 | SOUND VOLTEX | [SDVX Helper](https://github.com/dj-kata/sdvx_helper) v2 系 |
 
@@ -44,6 +44,15 @@ pop'n のプレイ検知には、次の 2 ファイルを出力する外部ト�
 
 `result.json` はリザルト画面の表示から数秒遅れて書かれても構いません。本アプリは `state.txt` が `プレイ中` に変わった時刻をプレイ開始として記録し、その後 `result.json` が書き換わった時点で成績を紐づけます。書き出しは一時ファイル経由の置き換え（アトミック）を想定しています。
 
+### INFINITAS で打鍵カウンタを使う場合
+
+INFINITAS タブの「プレイの検知元」を `打鍵カウンタ` にすると、Reflux の代わりに**打鍵カウンタのデータ配信 WebSocket**（既定 `ws://127.0.0.1:8767`）を購読します。
+
+- 打鍵カウンタ側の WebSocket のポートを確認し、INFINITAS タブに同じ値を入れてください。打鍵カウンタを別の PC（ゲーム PC など）で動かしている場合は、その PC の IP アドレスを指定できます
+- 既定ポート 8767 は SDVX Helper と同じです。両方を常駐させる場合はどちらかのポートを変えてください
+- 打鍵カウンタはプレイ開始を直接知らせないため、**プレイが終わった時点で開始時刻をさかのぼって記録します。** タイムスタンプがリストに増えるのはプレイ終了時です（時刻は曲決定〜ロード中あたり。Reflux より数秒早めになります）
+- Reflux では拾えない**クイックリトライも 1 回ずつ記録されます**（途中のアテンプトは曲情報だけで、成績は最後のアテンプトに付きます）
+
 ### SOUND VOLTEX について
 
 SDVX だけはファイル監視ではなく、**SDVX Helper のデータ配信 WebSocket**（既定 `ws://127.0.0.1:8767`）を購読します。SDVX Helper は v2 系でファイル出力をやめて WebSocket 配信へ移行したためです。**v1 系（`out/history_cursong.xml` を出力する版）には対応していません。**
@@ -56,7 +65,7 @@ SDVX だけはファイル監視ではなく、**SDVX Helper のデータ配信 
 ## 仕組み
 
 - **配信の開始・終了**は OBS WebSocket から受け取ります。「記録中」へ遷移した時刻がタイムスタンプの基準（`00:00:00`）になります
-- **プレイの開始・リザルト**は、上記の外部ツールが書き出すファイルを監視して取得します。画面キャプチャや OCR は使いません
+- **プレイの開始・リザルト**は、上記の外部ツールが書き出すファイルの監視か、外部ツールのデータ配信 WebSocket の購読で取得します。本アプリ自身は画面キャプチャや OCR を行いません
 - 記録は 1 配信 1 ファイルの JSON として自動バックアップされます（書き込み中にクラッシュしても壊れないアトミック保存）
 
 OBS に繋がらない場合や、外部ツールを使わない場合でも、「強制開始」で手動記録に切り替えられます。
@@ -92,7 +101,7 @@ OBS に繋がらない場合や、外部ツールを使わない場合でも、�
 
 ```mermaid
 flowchart TD
-    TRK["トラッカー<br/>起動する（Reflux / pop'n トラッカー / SDVX Helper）"]
+    TRK["トラッカー<br/>起動する（Reflux / 打鍵カウンタ / pop'n トラッカー / SDVX Helper）"]
     APP1["INF-TIMESTAMPER<br/>起動して記録するゲームを選択"]
     APP2["INF-TIMESTAMPER<br/>「開始」をクリック"]
     OBS1["OBS Studio<br/>配信を開始"]
@@ -127,7 +136,7 @@ OBS を使わない場合は、「開始」のあとに続けて「強制開始�
 **ゲーム側**
 プレイ検知に使う外部ツールを起動し、その出力先フォルダを控えます。
 
-- INFINITAS: Reflux が `playstate.txt` / `title.txt` / `level.txt` / `latest.json` を出力するフォルダ
+- INFINITAS: Reflux が `playstate.txt` / `title.txt` / `level.txt` / `latest.json` を出力するフォルダ。打鍵カウンタを使う場合は、打鍵カウンタを動かしている PC の IP アドレスと WebSocket のポート（既定 8767）
 - pop'n music: トラッカーが `state.txt` / `result.json` を出力するフォルダ
 - SOUND VOLTEX: SDVX Helper の「WebSocketデータ配信ポート」（既定 8767）と、SDVX Helper のフォルダ
 
@@ -136,7 +145,8 @@ OBS を使わない場合は、「開始」のあとに続けて「強制開始�
 「ファイル」→「設定...」から、
 
 - **配信ソフト連携タブ**: OBS のホスト・ポート・パスワードを入力し、「接続テスト」で疎通を確認します
-- **INFINITAS タブ / pop'n music タブ**: 外部ツールの出力フォルダを指定し、タイムスタンプの書式を決めます
+- **INFINITAS タブ**: プレイの検知元（Reflux / 打鍵カウンタ）を選び、Reflux の出力フォルダか打鍵カウンタの接続先を指定して、タイムスタンプの書式を決めます
+- **pop'n music タブ**: トラッカーの出力フォルダを指定し、タイムスタンプの書式を決めます
 - **SOUND VOLTEX タブ**: SDVX Helper の接続先（ホスト・ポート）とフォルダを指定し、タイムスタンプの書式を決めます
 
 ### 3. 記録
@@ -248,9 +258,11 @@ dotnet run --project src/InfTimestamper -- --log-level=Debug
 ゲーム固有の処理は `src/InfTimestamper.Core/Games/` の抽象に寄せてあります。追加時に触るのは次の 4 箇所です。
 
 1. `Models/GameId` — enum とシリアライズ表記
-2. `Games/GameCatalog` — 表示名・使える識別子・プレビュー用データ
-3. `IPlayWatcher` の実装と、リザルト → 識別子の変換を行う FieldMapper（ファイル監視でも WebSocket でも構いません）
-4. 設定ダイアログのタブと `AppSettings` のゲーム別セクション
+2. `Games/GameCatalog` — 表示名・使える識別子・プレビュー用データ・検知元（`PlaySources`）
+3. `Games/PlaySourceId` と `IPlayWatcher` の実装、リザルト → 識別子の変換を行う FieldMapper（ファイル監視でも WebSocket でも構いません）
+4. 設定ダイアログのタブと `AppSettings` のゲーム別セクション（`PlaySourceFor` / `WatchTargetFor`）
+
+同じゲームに検知元を足すだけなら（INFINITAS の打鍵カウンタのように）、1 は不要です。
 
 ## 経緯
 

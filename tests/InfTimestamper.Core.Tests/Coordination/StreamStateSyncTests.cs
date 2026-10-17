@@ -38,7 +38,7 @@ public class StreamStateSyncTests
 
         var coordinator = new RecordingCoordinator(
             state,
-            new Dictionary<GameId, IPlayWatcher> { [GameId.Infinitas] = watcher },
+            new Dictionary<PlaySourceId, IPlayWatcher> { [PlaySourceId.Reflux] = watcher },
             ImmediateUiDispatcher.Instance,
             streamConnectionFactory: () => connection,
             managerFactory: c => new ObsConnectionManager(
@@ -47,7 +47,7 @@ public class StreamStateSyncTests
         coordinator.Configure(new RecordingCoordinatorOptions
         {
             StreamObs = DefaultObs,
-            Game = GameId.Infinitas,
+            PlaySource = PlaySourceId.Reflux,
             WatchTarget = WatchTarget.ForDirectory(watchDirectory),
         });
         return coordinator;
@@ -143,7 +143,7 @@ public class StreamStateSyncTests
             coordinator.Configure(new RecordingCoordinatorOptions
             {
                 StreamObs = new ObsConnectionOptions("192.168.1.111", 4455, ""),
-                Game = GameId.Infinitas,
+                PlaySource = PlaySourceId.Reflux,
                 WatchTarget = WatchTarget.Empty,
             });
 
@@ -167,7 +167,7 @@ public class StreamStateSyncTests
             coordinator.Configure(new RecordingCoordinatorOptions
             {
                 StreamObs = new ObsConnectionOptions("127.0.0.1", 4455, ""),
-                Game = GameId.Infinitas,
+                PlaySource = PlaySourceId.Reflux,
                 WatchTarget = WatchTarget.Empty,
             });
 

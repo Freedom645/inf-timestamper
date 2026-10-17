@@ -1,8 +1,6 @@
-using System.Buffers;
-using System.Net.WebSockets;
 using System.Text.Json;
 using InfTimestamper.Core.Games;
-using InfTimestamper.Core.Obs;
+using InfTimestamper.Core.Net;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Logging.Abstractions;
 
@@ -55,9 +53,6 @@ public sealed class SdvxHelperPlayWatcher : IPlayWatcher
 
     /// <summary>1 メッセージの上限。<c>nowplaying</c> は base64 の切り出し画像を含むため大きめに取る。</summary>
     private const int MaxMessageBytes = 16 * 1024 * 1024;
-
-    private const int ReceiveBufferBytes = 64 * 1024;
-
 
     private readonly ILogger<SdvxHelperPlayWatcher> _logger;
     private readonly object _gate = new();
@@ -117,11 +112,8 @@ public sealed class SdvxHelperPlayWatcher : IPlayWatcher
         if (string.IsNullOrWhiteSpace(source))
             throw new ArgumentException("SDVX Helper の接続先が指定されていません。", nameof(source));
 
-        if (!Uri.TryCreate(source, UriKind.Absolute, out var endpoint)
-            || (endpoint.Scheme != "ws" && endpoint.Scheme != "wss"))
-        {
+        if (!WebSocketSubscription.TryParseEndpoint(source, out var endpoint))
             throw new ArgumentException($"SDVX Helper の接続先が不正です: {source}", nameof(source));
-        }
 
         lock (_gate)
         {
@@ -136,7 +128,9 @@ public sealed class SdvxHelperPlayWatcher : IPlayWatcher
             _cts = new CancellationTokenSource();
 
             var token = _cts.Token;
-            _loopTask = Task.Run(() => RunAsync(endpoint, token), token);
+            var subscription = new WebSocketSubscription(
+                "SDVX Helper", MaxMessageBytes, _logger, onConnected: () => { }, onMessage: HandleMessage);
+            _loopTask = Task.Run(() => subscription.RunAsync(endpoint, token), token);
 
             _logger.LogInformation("SDVX Helper への接続を開始します: {Endpoint}", endpoint);
 
@@ -205,94 +199,6 @@ public sealed class SdvxHelperPlayWatcher : IPlayWatcher
 
         cts.Dispose();
         _logger.LogInformation("SDVX Helper への接続を停止しました。");
-    }
-
-    /// <summary>接続 → 受信 → 切断されたらバックオフして再接続、を停止まで繰り返す。</summary>
-    private async Task RunAsync(Uri endpoint, CancellationToken cancellationToken)
-    {
-        var attempt = 0;
-
-        while (!cancellationToken.IsCancellationRequested)
-        {
-            try
-            {
-                using var socket = new ClientWebSocket();
-                await socket.ConnectAsync(endpoint, cancellationToken).ConfigureAwait(false);
-
-                attempt = 0;
-                _logger.LogInformation("SDVX Helper に接続しました: {Endpoint}", endpoint);
-
-                await ReceiveLoopAsync(socket, cancellationToken).ConfigureAwait(false);
-            }
-            catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
-            {
-                return;
-            }
-            catch (Exception ex)
-            {
-                attempt++;
-                // 接続できないのは SDVX Helper が未起動なだけのことが多いので、警告は初回のみ
-                if (attempt == 1)
-                    _logger.LogWarning(ex, "SDVX Helper への接続が切れました。再接続します: {Endpoint}", endpoint);
-                else
-                    _logger.LogDebug(ex, "SDVX Helper への再接続に失敗しました（{Attempt} 回目）。", attempt);
-            }
-
-            if (cancellationToken.IsCancellationRequested) return;
-
-            try
-            {
-                await Task.Delay(BackoffSchedule.GetDelay(attempt), cancellationToken).ConfigureAwait(false);
-            }
-            catch (OperationCanceledException)
-            {
-                return;
-            }
-        }
-    }
-
-    private async Task ReceiveLoopAsync(ClientWebSocket socket, CancellationToken cancellationToken)
-    {
-        var buffer = ArrayPool<byte>.Shared.Rent(ReceiveBufferBytes);
-        try
-        {
-            var message = new ArrayBufferWriter<byte>(ReceiveBufferBytes);
-
-            while (socket.State == WebSocketState.Open && !cancellationToken.IsCancellationRequested)
-            {
-                message.Clear();
-                bool oversized = false;
-
-                ValueWebSocketReceiveResult result;
-                do
-                {
-                    result = await socket.ReceiveAsync(buffer.AsMemory(), cancellationToken).ConfigureAwait(false);
-
-                    if (result.MessageType == WebSocketMessageType.Close)
-                        return;
-
-                    // 上限を超えたぶんは捨てるが、フレームは最後まで読み切らないと次のメッセージとずれる
-                    if (!oversized && message.WrittenCount + result.Count > MaxMessageBytes)
-                    {
-                        oversized = true;
-                        _logger.LogWarning("SDVX Helper から上限を超えるメッセージを受信したため破棄します。");
-                    }
-
-                    if (!oversized)
-                        message.Write(buffer.AsSpan(0, result.Count));
-                }
-                while (!result.EndOfMessage);
-
-                if (oversized || result.MessageType != WebSocketMessageType.Text || message.WrittenCount == 0)
-                    continue;
-
-                HandleMessage(message.WrittenMemory);
-            }
-        }
-        finally
-        {
-            ArrayPool<byte>.Shared.Return(buffer);
-        }
     }
 
     /// <summary>受信した 1 メッセージ（UTF-8 の JSON）を処理する。テストからも直接呼ぶ。</summary>

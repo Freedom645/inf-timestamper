@@ -2,8 +2,9 @@ namespace InfTimestamper.Core.Games;
 
 /// <summary>
 /// ゲーム検知の監視対象。
-/// INFINITAS / pop'n music は外部ツールの出力ディレクトリ（<see cref="Directory"/>）だけ。
-/// SOUND VOLTEX は SDVX Helper のデータ配信 WebSocket（<see cref="Endpoint"/>）に加えて、
+/// Reflux / popn-lively-tracker は外部ツールの出力ディレクトリ（<see cref="Directory"/>）だけ。
+/// 打鍵カウンタはデータ配信 WebSocket（<see cref="Endpoint"/>）だけ。
+/// SDVX Helper はデータ配信 WebSocket（<see cref="Endpoint"/>）に加えて、
 /// 任意で SDVX Helper のフォルダ（<see cref="Directory"/>。ログ監視に使う）を持つ。
 /// </summary>
 public sealed record WatchTarget(string? Directory = null, string? Endpoint = null)

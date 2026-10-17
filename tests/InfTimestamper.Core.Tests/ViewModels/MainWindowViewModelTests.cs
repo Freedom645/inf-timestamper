@@ -385,7 +385,7 @@ public class MainWindowViewModelTests
         var fakeConn = new FakeObsConnection();
         var coord = new RecordingCoordinator(
             state,
-            new Dictionary<GameId, IPlayWatcher> { [GameId.Infinitas] = watcher },
+            new Dictionary<PlaySourceId, IPlayWatcher> { [PlaySourceId.Reflux] = watcher },
             ImmediateUiDispatcher.Instance,
             streamConnectionFactory: () => fakeConn,
             managerFactory: c => new ObsConnectionManager(c, Microsoft.Extensions.Logging.Abstractions.NullLogger<ObsConnectionManager>.Instance, new TestDelayProvider(), TimeSpan.FromMilliseconds(50)));

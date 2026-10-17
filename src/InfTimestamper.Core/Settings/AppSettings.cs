@@ -16,6 +16,15 @@ public sealed class AppSettings
 
     /// <summary>SDVX Helper の <c>websocket_data_port</c> の既定値。</summary>
     public const int DefaultSdvxHelperPort = 8767;
+
+    /// <summary>打鍵カウンタのデータ配信 WebSocket の既定ホスト。</summary>
+    public const string DefaultDakenCounterHost = "127.0.0.1";
+
+    /// <summary>
+    /// 打鍵カウンタの <c>websocket_data_port</c> の既定値。SDVX Helper と同じ値なので、
+    /// 両方を常駐させる場合はどちらかのポートを変える必要がある。
+    /// </summary>
+    public const int DefaultDakenCounterPort = 8767;
     public const string DefaultStreamStartRowLabel = "配信開始";
 
     [JsonPropertyOrder(0)]
@@ -51,7 +60,10 @@ public sealed class AppSettings
         Infinitas = new InfinitasSettings
         {
             TimestampFormat = DefaultTimestampFormat,
+            PlaySource = PlaySourceIdExtensions.RefluxSerialized,
             RefluxDirectory = string.Empty,
+            DakenCounterHost = DefaultDakenCounterHost,
+            DakenCounterPort = DefaultDakenCounterPort,
         },
         Popn = new PopnSettings
         {
@@ -79,22 +91,39 @@ public sealed class AppSettings
     }
 
     /// <summary>
-    /// ゲーム検知の監視対象。INFINITAS / pop'n music は外部ツールの出力ディレクトリ、
-    /// SOUND VOLTEX は SDVX Helper のデータ配信 WebSocket の接続先 + 任意で SDVX Helper のフォルダ。
-    /// 未設定なら <see cref="WatchTarget.Empty"/>（検知しない）。
+    /// ゲームのプレイ検知に使う取得元。INFINITAS だけ設定で Reflux / 打鍵カウンタを選べる（既定は Reflux）。
     /// </summary>
-    public WatchTarget WatchTargetFor(GameId game) => game switch
+    public PlaySourceId PlaySourceFor(GameId game) => game switch
     {
-        GameId.Popn => WatchTarget.ForDirectory(Popn?.TrackerDirectory),
-        GameId.Sdvx => Sdvx is null
+        GameId.Popn => PlaySourceId.PopnTracker,
+        GameId.Sdvx => PlaySourceId.SdvxHelper,
+        _ => PlaySourceIdExtensions.ParseInfinitasSource(Infinitas?.PlaySource),
+    };
+
+    /// <summary>
+    /// ゲーム検知の監視対象。Reflux / popn-lively-tracker は出力ディレクトリ、
+    /// 打鍵カウンタはデータ配信 WebSocket の接続先、SDVX Helper はデータ配信 WebSocket の接続先 +
+    /// 任意で SDVX Helper のフォルダ。未設定なら <see cref="WatchTarget.Empty"/>（検知しない）。
+    /// </summary>
+    public WatchTarget WatchTargetFor(GameId game) => PlaySourceFor(game) switch
+    {
+        PlaySourceId.PopnTracker => WatchTarget.ForDirectory(Popn?.TrackerDirectory),
+        PlaySourceId.SdvxHelper => Sdvx is null
             ? WatchTarget.Empty
             : WatchTarget.ForEndpoint(SdvxHelperEndpoint(Sdvx.HelperHost, Sdvx.HelperPort), Sdvx.HelperDirectory),
+        PlaySourceId.DakenCounter => Infinitas is null
+            ? WatchTarget.Empty
+            : WatchTarget.ForEndpoint(DakenCounterEndpoint(Infinitas.DakenCounterHost, Infinitas.DakenCounterPort)),
         _ => WatchTarget.ForDirectory(Infinitas?.RefluxDirectory),
     };
 
     /// <summary>SDVX Helper のデータ配信 WebSocket の接続先。ホスト未設定なら既定ホスト。</summary>
     public static string SdvxHelperEndpoint(string? host, int port)
         => $"ws://{(string.IsNullOrWhiteSpace(host) ? DefaultSdvxHelperHost : host.Trim())}:{port}";
+
+    /// <summary>打鍵カウンタのデータ配信 WebSocket の接続先。ホスト未設定なら既定ホスト、ポート未設定なら既定ポート。</summary>
+    public static string DakenCounterEndpoint(string? host, int port)
+        => $"ws://{(string.IsNullOrWhiteSpace(host) ? DefaultDakenCounterHost : host.Trim())}:{(port == 0 ? DefaultDakenCounterPort : port)}";
 
     /// <summary>永続化された選択ゲームを解釈する。未知の値・欠損時は INFINITAS。</summary>
     public GameId ResolveSelectedGame()
@@ -165,6 +194,24 @@ public sealed class InfinitasSettings
     /// <summary>Reflux の出力ディレクトリ（playstate.txt / title.txt / level.txt / latest.json を含む）。</summary>
     [JsonPropertyOrder(1)]
     public string RefluxDirectory { get; set; } = string.Empty;
+
+    /// <summary>
+    /// プレイ検知の取得元（<c>reflux</c> / <c>daken_counter</c>）。未知の値・欠損時は Reflux。
+    /// v1.2.0 以前の settings.json には無いので、そのまま読めば従来どおり Reflux になる。
+    /// </summary>
+    [JsonPropertyOrder(2)]
+    public string PlaySource { get; set; } = PlaySourceIdExtensions.RefluxSerialized;
+
+    /// <summary>
+    /// 打鍵カウンタのデータ配信 WebSocket のホスト。打鍵カウンタは 0.0.0.0 に bind するので、
+    /// ゲーム PC で打鍵カウンタを動かし、配信 PC からその IP を指定する構成にもできる。
+    /// </summary>
+    [JsonPropertyOrder(3)]
+    public string DakenCounterHost { get; set; } = AppSettings.DefaultDakenCounterHost;
+
+    /// <summary>打鍵カウンタのデータ配信ポート（打鍵カウンタ側の <c>websocket_data_port</c>）。</summary>
+    [JsonPropertyOrder(4)]
+    public int DakenCounterPort { get; set; } = AppSettings.DefaultDakenCounterPort;
 }
 
 public sealed class PopnSettings

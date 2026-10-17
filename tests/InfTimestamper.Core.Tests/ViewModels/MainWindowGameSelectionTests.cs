@@ -37,10 +37,10 @@ public class MainWindowGameSelectionTests
 
         var coordinator = new RecordingCoordinator(
             state,
-            new Dictionary<GameId, IPlayWatcher>
+            new Dictionary<PlaySourceId, IPlayWatcher>
             {
-                [GameId.Infinitas] = reflux,
-                [GameId.Popn] = popn,
+                [PlaySourceId.Reflux] = reflux,
+                [PlaySourceId.PopnTracker] = popn,
             },
             ImmediateUiDispatcher.Instance,
             streamConnectionFactory: () => conn,
@@ -117,7 +117,7 @@ public class MainWindowGameSelectionTests
         f.Vm.SelectedGame = GameId.Popn;
 
         Assert.Equal("$timestamp $title ($rank, $medal)", f.Vm.Format);
-        Assert.Equal(GameId.Popn, f.Coordinator.Options.Game);
+        Assert.Equal(PlaySourceId.PopnTracker, f.Coordinator.Options.PlaySource);
         Assert.Equal(@"C:\popn", f.Coordinator.Options.WatchTarget.Directory);
     }
 
@@ -156,7 +156,7 @@ public class MainWindowGameSelectionTests
         f.Vm.SelectedGame = GameId.Popn;
 
         Assert.Equal(GameId.Infinitas, f.Vm.SelectedGame);
-        Assert.Equal(GameId.Infinitas, f.Coordinator.Options.Game);
+        Assert.Equal(PlaySourceId.Reflux, f.Coordinator.Options.PlaySource);
     }
 
     [Fact]
@@ -244,10 +244,10 @@ public class MainWindowGameSelectionTests
 
         var coordinator = new RecordingCoordinator(
             state,
-            new Dictionary<GameId, IPlayWatcher>
+            new Dictionary<PlaySourceId, IPlayWatcher>
             {
-                [GameId.Infinitas] = reflux,
-                [GameId.Popn] = popn,
+                [PlaySourceId.Reflux] = reflux,
+                [PlaySourceId.PopnTracker] = popn,
             },
             ImmediateUiDispatcher.Instance,
             streamConnectionFactory: () => conn,

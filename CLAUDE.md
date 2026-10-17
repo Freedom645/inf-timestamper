@@ -4,7 +4,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## リポジトリの状態
 
-実装は一通り完了している。MVP に必要な機能（状態機械・OBS 接続・ゲーム検知・フォーマット展開・永続化・設定画面・ログ・自己アップデート）に加え、3 ゲーム目（SOUND VOLTEX）まで通っており、**3 ゲームとも実機検証済み**。`dotnet build` 警告 0 / `dotnet test` 全緑。最新リリースは v1.2.0。
+実装は一通り完了している。MVP に必要な機能（状態機械・OBS 接続・ゲーム検知・フォーマット展開・永続化・設定画面・ログ・自己アップデート）に加え、3 ゲーム目（SOUND VOLTEX）まで通っており、**3 ゲームとも実機検証済み**。`dotnet build` 警告 0 / `dotnet test` 全緑。最新リリースは v1.2.0。INFINITAS の検知元に打鍵カウンタを選べるようにする対応（Phase 13 / issue #13）はコード側完了・実機確認待ち。
 
 進捗と「次にやること」の正本は `docs/実装計画.md`（フェーズ別の DoD とセッション引き継ぎメモ）。**作業を始める前にその「現在のフェーズ」節を読むこと。**
 
@@ -25,9 +25,11 @@ dotnet publish src/InfTimestamper/InfTimestamper.csproj -c Release -r win-x64 --
 
 対応ゲームは **コナステ版 beatmaniaIIDX INFINITAS**（`INFINITAS`）、**pop'n music**（`POPN`）、**SOUND VOLTEX**（`SDVX`）の 3 つ。**1 配信 = 1 ゲーム**で、記録対象はメインウィンドウのゲーム選択コンボボックスで決める（`初期状態` でのみ変更可能）。
 
-ゲーム抽象化は Phase 9 で `Core/Games/` に抽出済み。**ゲームを増やすときに触るのは 4 箇所**：`Models/GameId`（enum + シリアライズ表記）／`Games/GameCatalog`（表示名・識別子リスト・プレビューデータ・監視ツール名）／新しい `IPlayWatcher` 実装（+ 対応する FieldMapper）／設定ダイアログのタブと `AppSettings` のゲーム別セクション。
+ゲーム抽象化は Phase 9 で `Core/Games/` に抽出済み。**ゲームを増やすときに触るのは 4 箇所**：`Models/GameId`（enum + シリアライズ表記）／`Games/GameCatalog`（表示名・識別子リスト・プレビューデータ・検知元の一覧）／新しい `Games/PlaySourceId` の値と `IPlayWatcher` 実装（+ 対応する FieldMapper）／設定ダイアログのタブと `AppSettings` のゲーム別セクション。
 
-`IPlayWatcher.Start(WatchTarget target)` の `WatchTarget` は `Directory` / `Endpoint` を持つレコード。ファイル監視系は `Directory`（出力ディレクトリ）だけ、SDVX は `Endpoint`（`ws://host:port`）+ 任意で `Directory`（SDVX Helper のフォルダ。ログ監視用）。`AppSettings.WatchTargetFor(GameId)` がゲームごとにこれを組み立てる。
+**ゲームとプレイ検知の取得元（`PlaySourceId`：`Reflux` / `DakenCounter` / `PopnTracker` / `SdvxHelper`）は別物**（issue #13）。INFINITAS だけ Reflux と打鍵カウンタを設定で選べる（既定 Reflux）。`AppSettings.PlaySourceFor(GameId)` が取得元を、`AppSettings.WatchTargetFor(GameId)` が監視対象を決め、`RecordingCoordinator` は `IReadOnlyDictionary<PlaySourceId, IPlayWatcher>` から `Options.PlaySource` でウォッチャーを選ぶ。ウォッチャー名（ログ・設定画面）は `GameCatalog.WatcherToolName(PlaySourceId)`。
+
+`IPlayWatcher.Start(WatchTarget target)` の `WatchTarget` は `Directory` / `Endpoint` を持つレコード。ファイル監視系は `Directory`（出力ディレクトリ）だけ、打鍵カウンタは `Endpoint`（`ws://host:port`）だけ、SDVX は `Endpoint` + 任意で `Directory`（SDVX Helper のフォルダ。ログ監視用）。WebSocket の接続・受信・バックオフ再接続は `Net/WebSocketSubscription` で打鍵カウンタと SDVX が共有している（同じ作者・同じ配信サーバ実装のため）。
 
 ### 前段アプリとの関係
 
@@ -73,7 +75,7 @@ OBS WebSocket は **配信開始/終了の検知**（= タイムスタンプの�
 
 ### ゲーム検知の方針（外部ツールの出力を読む）
 
-INFINITAS と pop'n music は「外部ツールが出力する 1 行の状態ファイル + JSON のリザルトファイル」を `FileSystemWatcher` で監視する。SDVX だけは SDVX Helper のデータ配信 WebSocket を購読する（下記）。取得方式が違っても `Core/Games/IPlayWatcher`（`PlayStarted` / `PlayResultDetected`）で抽象化してあり、`RecordingCoordinator` は `IReadOnlyDictionary<GameId, IPlayWatcher>` を受け取って `Options.Game` で動かすウォッチャーを選ぶ。
+INFINITAS（Reflux）と pop'n music は「外部ツールが出力する 1 行の状態ファイル + JSON のリザルトファイル」を `FileSystemWatcher` で監視する。INFINITAS（打鍵カウンタ）と SDVX は外部ツールのデータ配信 WebSocket を購読する（下記）。取得方式が違っても `Core/Games/IPlayWatcher`（`PlayStarted` / `PlayResultDetected`）で抽象化してあり、`RecordingCoordinator` は `IReadOnlyDictionary<PlaySourceId, IPlayWatcher>` を受け取って `Options.PlaySource` で動かすウォッチャーを選ぶ。
 
 #### INFINITAS（Reflux ファイル監視）
 
@@ -84,6 +86,21 @@ INFINITAS のプレイ開始とプレイデータは、**Reflux が出力する�
 - **プレイリザルト**：`latest.json` を読み、`RefluxFieldMapper` で各識別子（`$diff_*` / `$dj_level` / `$lamp` / `$miss_count` / `$ex_score` 等）へ変換して直近エントリにマージ。マッピングは `RefluxFieldMapper` に集約（調整はここだけ）。実機サンプル（`docs/sample/reflux/`）で全フィールドが正しく展開されることを確認済み。
 - **重複防止**：エントリ操作は状態遷移エッジでのみ行う（同一状態の連続通知はノーオペ）。
 - 監視失敗・読込失敗はダイアログを出さず、配信開始/終了の記録には影響させない（ログのみ）。
+
+#### INFINITAS（打鍵カウンタの WebSocket 購読。Reflux の代わりに選べる）
+
+`DakenCounterPlayWatcher` が打鍵カウンタ（inf_daken_counter_obsw）のデータ配信 WebSocket（既定 `ws://127.0.0.1:8767`。SDVX Helper と同じポート）を購読する（`Core/DakenCounter/`）。打鍵カウンタは `0.0.0.0` に bind するので別 PC からも繋がる。判定規則は実機ダンプ（`docs/sample/daken-counter/probe.jsonl`。採取は `tools/daken-counter-probe.ps1`）と、同じ配信の Reflux の記録（`reflux-record.json`）の突き合わせで決めた。回帰テストがこのダンプを再生している。
+
+**他のどれとも違う点：プレイ開始を示すメッセージが無く、プレイ終了時にさかのぼって確定させる。** 画面遷移のログ（SDVX Helper で使った手）も打鍵カウンタではコメントアウトされていて使えない。
+
+- **プレイ終了**は `graph` の `playcount` の増加。`graph` は打鍵カウンタの起動時・設定変更時・接続時にも飛ぶが、そのときは `playcount` が変わらない。基準は接続のたびに取り直す
+- **プレイ開始**は「プレイ終了の直前に受信した時刻」。プレイ中は何も飛ばないため。Reflux より 0〜8 秒早い（曲決定〜ロード中）。クイックリトライでは前のアテンプトの `graph` の時刻になり、**Reflux が拾えないクイックリトライも 1 回ずつ記録できる**（実機ダンプで Reflux 68 件 / 打鍵カウンタ 89 件）。`PlayStarted` はプレイ終了時に過去の `CapturedAt` で発火するので、**リストへの追加はプレイ終了時**になる（ユーザ了承済み：正確な時刻を優先）
+- **BPIM2（BPI）の非同期取得が終わるたびに `history_cursong` + 同じ内容の `today_updates` が再送される。** 画面と無関係に（プレイ中にも）届くので、重複した `today_updates` の直前 0.3 秒の受信をプレイ開始の判定から取り消す。`today_stats` は判定に使わない
+- **プレイリザルト**は新しい内容の `today_updates`（リザルト登録。プレイ終了の 3〜8 秒後）。内容（`timestamp` + 譜面 + 成績）で重複を除き、リザルト待ちのときだけ採る。Issue にあった「無音明けの `today_updates` でプレイ開始を救う」経路は実データで不要かつ誤検知の元だったので入れていない
+- 無音の閾値は使わない（選曲画面・リザルト画面でも 15 秒程度の無音が普通にある）
+
+マッピングは `DakenCounterFieldMapper` に集約し、表記は Reflux に揃えた。`history_cursong` の曲名キーは `music`（`today_updates` は `title`）。`$dj_level` は送られてこないので EX スコア / (ノーツ数 × 2) の 9 分割で求める。`$miss_count` は `bp` をそのまま（途中落ちでは残りノーツも POOR に数えた値になるが、Reflux も途中落ちの BP をそのまま出すのでユーザ判断で加工しない）。**`pre_*` / `best_*` は自己ベスト側の値なので取り込まない。**
+
 #### pop'n music（popn-lively-tracker ファイル監視）
 
 `PopnPlayWatcher` が `state.txt` と `result.json` の**両方**を監視する（`Core/Popn/`）。入力仕様は `popn-lively-tracker` の `docs/file-output.md`（互換契約）。
@@ -163,7 +180,9 @@ inf-timestamper/
 │   ├── 要件.md                     仕様の正本
 │   ├── 実装計画.md                 フェーズ別の進捗・DoD・引き継ぎメモ
 │   ├── release.md                  publish → vpk pack → GitHub Releases のリリース手順
-│   └── sample/                     外部ツールの実出力サンプル（reflux / popn-tracker / sdvx_helper）
+│   └── sample/                     外部ツールの実出力サンプル（reflux / popn-tracker / sdvx_helper / daken-counter）
+├── tools/
+│   └── daken-counter-probe.ps1     打鍵カウンタの配信を受信時刻つきでダンプするプローブ（実機調査用）
 ├── src/
 │   ├── InfTimestamper/             WPF 本体。Views / ViewModels / Services / Converters / Behaviors、
 │   │                               App.xaml.cs（DI 組立）、Program.cs（独自 Main + Velopack）、
@@ -179,10 +198,12 @@ inf-timestamper/
 | --- | --- |
 | `Coordination/` | `RecordingCoordinator` — 状態機械・プレイ監視・OBS 接続を束ねる中核 |
 | `States/` | `AppStateMachine` — 4 状態のメイン状態機械 |
-| `Games/` | ゲーム抽象化。`FieldKeys`（識別子キーの正本）/ `FieldLabels`（識別子の論理名）/ `GameCatalog`（ゲーム別メタデータ）/ `IPlayWatcher` / `WatchTarget` / `PlayEvents` |
+| `Games/` | ゲーム抽象化。`FieldKeys`（識別子キーの正本）/ `FieldLabels`（識別子の論理名）/ `GameCatalog`（ゲーム別メタデータ）/ `PlaySourceId`（検知元）/ `IPlayWatcher` / `WatchTarget` / `PlayEvents` |
 | `Reflux/` | INFINITAS のゲーム検知。`RefluxPlayWatcher` / `RefluxLatestJson` / `RefluxFieldMapper` |
 | `Popn/` | pop'n music のゲーム検知。`PopnPlayWatcher` / `PopnResultJson` / `PopnFieldMapper` |
+| `DakenCounter/` | INFINITAS のゲーム検知（打鍵カウンタ）。`DakenCounterPlayWatcher`（WebSocket 購読）/ `DakenCounterFieldMapper` |
 | `Sdvx/` | SOUND VOLTEX のゲーム検知。`SdvxHelperPlayWatcher`（WebSocket 購読）/ `SdvxHelperLogTail`（ログ監視）/ `SdvxFieldMapper` |
+| `Net/` | `WebSocketSubscription` — 打鍵カウンタ / SDVX Helper 共通の WebSocket 受信ループ（接続・受信・バックオフ再接続） |
 | `Obs/` | OBS WebSocket 接続と再接続バックオフ。配信開始/終了の検知のみ |
 | `Persistence/` | `JsonRecordStore` — バックアップ JSON のアトミック保存と異常終了復旧 |
 | `Formatting/` | `FormatExpander`（`$identifier` の展開）/ `IdentifierCompletion`（サジェストのロジック） |
@@ -191,4 +212,4 @@ inf-timestamper/
 | `Updates/` | GitHub Releases 照会とバージョン比較 |
 | `Threading/` | `IUiDispatcher`（UI スレッドへのマーシャリング抽象） |
 
-同梱リソースは持たない。プレイ検知は外部ツールの出力を読むだけなので、publish 出力は exe 単体になる。SDVX の WebSocket 購読も BCL の `System.Net.WebSockets.ClientWebSocket` で済ませており、追加パッケージは無い。
+同梱リソースは持たない。プレイ検知は外部ツールの出力を読むだけなので、publish 出力は exe 単体になる。打鍵カウンタ / SDVX の WebSocket 購読も BCL の `System.Net.WebSockets.ClientWebSocket` で済ませており、追加パッケージは無い。
