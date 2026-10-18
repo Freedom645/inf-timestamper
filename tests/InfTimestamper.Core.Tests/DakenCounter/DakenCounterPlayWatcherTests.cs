@@ -330,10 +330,17 @@ public class DakenCounterPlayWatcherTests
             Assert.Equal(reflux.Fields["level"], result.Fields[FieldKeys.Level]);
             Assert.Equal(reflux.Fields["lamp"], result.Fields[FieldKeys.Lamp]);
             Assert.Equal(reflux.Fields["dj_level"], result.Fields[FieldKeys.DjLevel]);
-            // BP は途中落ちのとき打鍵カウンタ（残りノーツも POOR に数える）と Reflux で食い違うので、完走したものだけ比べる
-            if (reflux.Fields["lamp"] != "FAILED")
-                Assert.Equal(reflux.Fields["miss_count"], result.Fields[FieldKeys.MissCount]);
+            // 途中落ち・途中終了のプレイは BP を出さない（打鍵カウンタが残りノーツを POOR に足し込むため）。
+            // 出すもの（完走したプレイ。ゲージ不足の FAILED を含む）は Reflux と一致する
+            if (result.Fields.TryGetValue(FieldKeys.MissCount, out var missCount))
+                Assert.Equal(reflux.Fields["miss_count"], missCount);
+            else
+                Assert.Equal("FAILED", result.Fields[FieldKeys.Lamp]);
         }
+
+        // 実機ダンプのリザルト 50 件のうち途中落ちは 10 件。完走した FAILED（1 件）は BP を出す
+        Assert.Equal(10, replay.Results.Count(r => !r.Fields.ContainsKey(FieldKeys.MissCount)));
+        Assert.Contains(replay.Results, r => r.Fields[FieldKeys.Lamp] == "FAILED" && r.Fields.ContainsKey(FieldKeys.MissCount));
     }
 
     [Fact]

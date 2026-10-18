@@ -54,12 +54,25 @@ public class DakenCounterFieldMapperTests
     }
 
     [Fact]
-    public void MapResult_DeadPlay_KeepsBpAsIs()
+    public void MapResult_DeadPlay_OmitsBp()
     {
-        // 途中落ちは落ちた後のノーツも POOR に数えた値になるが、Reflux と同じくそのまま出す
-        var fields = DakenCounterFieldMapper.MapResult(Parse("""{"bp":273,"dead":true,"lamp":1}"""));
+        // 途中落ち・途中終了は打鍵カウンタが残りノーツを POOR に足し込むので BP が実態の無い値になる
+        // （ゲームのリザルト画面でも "-" 表示）。BP だけ欠損扱いにし、ランプは記録する
+        var fields = DakenCounterFieldMapper.MapResult(Parse("""{"bp":273,"dead":true,"lamp":1,"score":1409}"""));
 
-        Assert.Equal("273", fields[FieldKeys.MissCount]);
+        Assert.False(fields.ContainsKey(FieldKeys.MissCount));
+        Assert.Equal("FAILED", fields[FieldKeys.Lamp]);
+        Assert.Equal("1409", fields[FieldKeys.ExScore]);
+    }
+
+    [Fact]
+    public void MapResult_FailedButCompleted_KeepsBp()
+    {
+        // 完走してゲージ不足で FAILED になったプレイの BP は正しい値なので記録する
+        var fields = DakenCounterFieldMapper.MapResult(Parse("""{"bp":45,"dead":false,"lamp":1}"""));
+
+        Assert.Equal("45", fields[FieldKeys.MissCount]);
+        Assert.Equal("FAILED", fields[FieldKeys.Lamp]);
     }
 
     [Theory]

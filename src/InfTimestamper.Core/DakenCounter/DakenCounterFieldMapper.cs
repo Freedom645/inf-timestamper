@@ -79,10 +79,11 @@ public static class DakenCounterFieldMapper
         if (score is not null)
             fields[FieldKeys.ExScore] = score.Value.ToString(CultureInfo.InvariantCulture);
 
-        // bp は BAD + POOR。途中落ちのプレイでは落ちた後のノーツも POOR に数えた値になるが、
-        // Reflux も途中落ちの BP をそのまま出しているので、手を加えずに使う
+        // bp は BAD + POOR。途中落ち・途中終了（dead）のプレイでは、打鍵カウンタが落ちた後の残りノーツを
+        // POOR に足し込むため 700 や 1000 といった実態の無い値になる（ゲームのリザルト画面でも BP は "-" 表示）。
+        // そのため dead のときは欠損扱いにする。完走して FAILED になったプレイの BP は正しいので記録する
         var bp = ReadNonNegativeInt(item, "bp");
-        if (bp is not null)
+        if (bp is not null && !IsDead(item))
             fields[FieldKeys.MissCount] = bp.Value.ToString(CultureInfo.InvariantCulture);
 
         var lamp = ReadNonNegativeInt(item, "lamp");
@@ -154,6 +155,10 @@ public static class DakenCounterFieldMapper
             fields[FieldKeys.DiffLong] = diffLong;
         }
     }
+
+    /// <summary>途中落ち・途中終了したプレイか（<c>dead</c>）。</summary>
+    private static bool IsDead(JsonElement element)
+        => element.TryGetProperty("dead", out var dead) && dead.ValueKind == JsonValueKind.True;
 
     private static void AddText(Dictionary<string, string> fields, string key, JsonElement element, string name)
     {
