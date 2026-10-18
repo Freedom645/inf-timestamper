@@ -4,7 +4,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## リポジトリの状態
 
-実装は一通り完了している。MVP に必要な機能（状態機械・OBS 接続・ゲーム検知・フォーマット展開・永続化・設定画面・ログ・自己アップデート）に加え、3 ゲーム目（SOUND VOLTEX）まで通っており、**3 ゲームとも実機検証済み**。`dotnet build` 警告 0 / `dotnet test` 全緑。最新リリースは v1.2.0。INFINITAS の検知元に打鍵カウンタを選べるようにする対応（Phase 13 / issue #13）はコード側完了。v1.4.0-alpha.1 として α 版で配布し、実機確認待ち（YouTube 対応の v1.3.0-alpha.1 とは別系統で、YouTube の変更は含まない）。
+実装は一通り完了している。MVP に必要な機能（状態機械・OBS 接続・ゲーム検知・フォーマット展開・永続化・設定画面・ログ・自己アップデート）に加え、3 ゲーム目（SOUND VOLTEX）まで通っており、**3 ゲームとも実機検証済み**。`dotnet build` 警告 0 / `dotnet test` 全緑。最新リリースは v1.2.0。INFINITAS の検知元に打鍵カウンタを選べるようにする対応（Phase 13 / issue #13）はコード側完了。α 版で配布中（α.1 で実機確認済み。途中落ちの BP を出さない修正を v1.4.0-alpha.2 で確認待ち）（YouTube 対応の v1.3.0-alpha.1 とは別系統で、YouTube の変更は含まない）。
 
 進捗と「次にやること」の正本は `docs/実装計画.md`（フェーズ別の DoD とセッション引き継ぎメモ）。**作業を始める前にその「現在のフェーズ」節を読むこと。**
 
@@ -99,7 +99,7 @@ INFINITAS のプレイ開始とプレイデータは、**Reflux が出力する�
 - **プレイリザルト**は新しい内容の `today_updates`（リザルト登録。プレイ終了の 3〜8 秒後）。内容（`timestamp` + 譜面 + 成績）で重複を除き、リザルト待ちのときだけ採る。Issue にあった「無音明けの `today_updates` でプレイ開始を救う」経路は実データで不要かつ誤検知の元だったので入れていない
 - 無音の閾値は使わない（選曲画面・リザルト画面でも 15 秒程度の無音が普通にある）
 
-マッピングは `DakenCounterFieldMapper` に集約し、表記は Reflux に揃えた。`history_cursong` の曲名キーは `music`（`today_updates` は `title`）。`$dj_level` は送られてこないので EX スコア / (ノーツ数 × 2) の 9 分割で求める。`$miss_count` は `bp` をそのまま（途中落ちでは残りノーツも POOR に数えた値になるが、Reflux も途中落ちの BP をそのまま出すのでユーザ判断で加工しない）。**`pre_*` / `best_*` は自己ベスト側の値なので取り込まない。**
+マッピングは `DakenCounterFieldMapper` に集約し、表記は Reflux に揃えた。`history_cursong` の曲名キーは `music`（`today_updates` は `title`）。`$dj_level` は送られてこないので EX スコア / (ノーツ数 × 2) の 9 分割で求める。`$miss_count` は `bp` だが、**途中落ち・途中終了（`dead`）のプレイでは欠損扱い**にする（打鍵カウンタが残りノーツを POOR に足し込むので 700 や 1000 といった値になる。ゲーム側も `-` 表示）。完走した FAILED は記録する。当初は Reflux に合わせてそのまま出していたが、α.1 の実機確認を受けたユーザ判断で変えた。**`pre_*` / `best_*` は自己ベスト側の値なので取り込まない。**
 
 #### pop'n music（popn-lively-tracker ファイル監視）
 
